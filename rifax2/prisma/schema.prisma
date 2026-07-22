@@ -1,15 +1,443 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
-  // Prisma 7: la URL de conexión se define en prisma.config.ts (CLI) y en
-  // src/lib/prisma.ts (runtime), no en este archivo.
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model abonos {
+  id               BigInt          @id @default(autoincrement())
+  venta_id         BigInt
+  origen           String
+  monto            Decimal         @db.Decimal(14, 2)
+  pago_pasarela_id BigInt?
+  comprobante_id   BigInt?
+  registrado_por   BigInt?
+  registrado_en    DateTime        @default(now()) @db.Timestamptz(6)
+  comprobantes     comprobantes?   @relation(fields: [comprobante_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  pagos_pasarela   pagos_pasarela? @relation(fields: [pago_pasarela_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  usuarios         usuarios?       @relation(fields: [registrado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas           ventas          @relation(fields: [venta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([venta_id], map: "idx_abonos_venta")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model auditoria {
+  id              BigInt    @id @default(autoincrement())
+  actor_id        BigInt?
+  actor_tipo      String    @default("usuario")
+  accion          String
+  entidad_tipo    String
+  entidad_id      BigInt?
+  valores_antes   Json?
+  valores_despues Json?
+  ip              String?   @db.Inet
+  hash_encadenado String?
+  creado_en       DateTime  @default(now()) @db.Timestamptz(6)
+  usuarios        usuarios? @relation(fields: [actor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([entidad_tipo, entidad_id], map: "idx_auditoria_entidad")
+  @@index([creado_en], map: "idx_auditoria_fecha")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model boletas {
+  id             BigInt          @id @default(autoincrement())
+  rifa_id        BigInt
+  numero         Int
+  estado         String          @default("disponible")
+  talonario_id   BigInt?
+  venta_id       BigInt?
+  version        Int             @default(0)
+  actualizado_en DateTime        @default(now()) @db.Timestamptz(6)
+  rifas          rifas           @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  talonarios     talonarios?     @relation(fields: [talonario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas         ventas?         @relation(fields: [venta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ganadores      ganadores[]
+  ventas_boletas ventas_boletas?
+
+  @@unique([rifa_id, numero])
+  @@index([rifa_id, estado], map: "idx_boletas_rifa_estado")
+  @@index([talonario_id], map: "idx_boletas_talonario", where: raw("(talonario_id IS NOT NULL)"))
+}
+
+model clientes {
+  id                        BigInt                     @id @default(autoincrement())
+  uuid                      String                     @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre                    String
+  documento                 String?
+  telefono                  String                     @unique
+  correo                    String?                    @db.Citext
+  consentimiento_datos      Boolean                    @default(false)
+  creado_en                 DateTime                   @default(now()) @db.Timestamptz(6)
+  ganadores                 ganadores[]
+  mensajes                  mensajes[]
+  preferencias_notificacion preferencias_notificacion?
+  ventas                    ventas[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model comprobantes {
+  id                  BigInt    @id @default(autoincrement())
+  venta_id            BigInt?
+  url_archivo         String
+  estado_ia           String    @default("pendiente")
+  monto_extraido      Decimal?  @db.Decimal(14, 2)
+  referencia_extraida String?
+  banco_extraido      String?
+  fecha_extraida      DateTime? @db.Date
+  confianza_ia        Decimal?  @db.Decimal(4, 3)
+  subido_en           DateTime  @default(now()) @db.Timestamptz(6)
+  abonos              abonos[]
+  ventas              ventas?   @relation(fields: [venta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ganadores {
+  id             BigInt    @id @default(autoincrement())
+  sorteo_id      BigInt
+  rifa_id        BigInt
+  boleta_id      BigInt?
+  cliente_id     BigInt?
+  premio_id      BigInt?
+  estado_entrega String    @default("pendiente")
+  registrado_en  DateTime  @default(now()) @db.Timestamptz(6)
+  boletas        boletas?  @relation(fields: [boleta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  clientes       clientes? @relation(fields: [cliente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  premios        premios?  @relation(fields: [premio_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rifas          rifas     @relation(fields: [rifa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sorteos        sorteos   @relation(fields: [sorteo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model gestiones_cobranza {
+  id            BigInt    @id @default(autoincrement())
+  venta_id      BigInt
+  canal         String
+  mensaje_id    BigInt?
+  resultado     String?
+  promesa_fecha DateTime? @db.Date
+  creado_en     DateTime  @default(now()) @db.Timestamptz(6)
+  mensajes      mensajes? @relation(fields: [mensaje_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas        ventas    @relation(fields: [venta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([venta_id], map: "idx_gestiones_venta")
+}
+
+model ia_interacciones {
+  id           BigInt   @id @default(autoincrement())
+  tarea        String
+  modelo       String
+  entidad_tipo String?
+  entidad_id   BigInt?
+  tokens_in    Int?
+  tokens_out   Int?
+  latencia_ms  Int?
+  costo_usd    Decimal? @db.Decimal(10, 6)
+  resultado    Json?
+  exito        Boolean  @default(true)
+  creado_en    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([tarea, creado_en], map: "idx_ia_tarea_fecha")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model mensajes {
+  id                 BigInt               @id @default(autoincrement())
+  direccion          String
+  canal              String
+  cliente_id         BigInt?
+  venta_id           BigInt?
+  plantilla_id       BigInt?
+  proveedor_msg_id   String?
+  contenido          String?
+  adjunto_url        String?
+  estado             String?
+  intencion_ia       String?
+  creado_en          DateTime             @default(now()) @db.Timestamptz(6)
+  gestiones_cobranza gestiones_cobranza[]
+  clientes           clientes?            @relation(fields: [cliente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  plantillas_mensaje plantillas_mensaje?  @relation(fields: [plantilla_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas             ventas?              @relation(fields: [venta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([cliente_id], map: "idx_mensajes_cliente")
+  @@index([estado], map: "idx_mensajes_estado")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model outbox_notificaciones {
+  id              BigInt    @id @default(autoincrement())
+  evento          String
+  payload         Json
+  canal           String
+  estado          String    @default("pendiente")
+  intentos        Int       @default(0) @db.SmallInt
+  proximo_intento DateTime? @db.Timestamptz(6)
+  creado_en       DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([estado, proximo_intento], map: "idx_outbox_pendiente")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model pagos_pasarela {
+  id                 BigInt   @id @default(autoincrement())
+  venta_id           BigInt
+  proveedor          String
+  transaccion_ext_id String
+  metodo             String?
+  monto              Decimal  @db.Decimal(14, 2)
+  moneda             String   @default("COP") @db.Char(3)
+  estado             String
+  payload_firma_ok   Boolean
+  raw_payload        Json?
+  creado_en          DateTime @default(now()) @db.Timestamptz(6)
+  abonos             abonos[]
+  ventas             ventas   @relation(fields: [venta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([proveedor, transaccion_ext_id])
+}
+
+model permisos {
+  id             BigInt           @id @default(autoincrement())
+  codigo         String           @unique
+  roles_permisos roles_permisos[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model plantillas_mensaje {
+  id                    BigInt     @id @default(autoincrement())
+  codigo                String     @unique
+  canal                 String
+  idioma                String     @default("es")
+  cuerpo                String
+  proveedor_template_id String?
+  estado                String     @default("activa")
+  mensajes              mensajes[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model preferencias_notificacion {
+  cliente_id       BigInt   @id
+  canal_preferido  String   @default("whatsapp")
+  opt_in_marketing Boolean  @default(false)
+  opt_out_total    Boolean  @default(false)
+  actualizado_en   DateTime @default(now()) @db.Timestamptz(6)
+  clientes         clientes @relation(fields: [cliente_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model premios {
+  id             BigInt      @id @default(autoincrement())
+  rifa_id        BigInt
+  orden          Int         @db.SmallInt
+  nombre         String
+  valor_estimado Decimal?    @db.Decimal(14, 2)
+  ganadores      ganadores[]
+  rifas          rifas       @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sorteos        sorteos[]
+
+  @@unique([rifa_id, orden])
+}
+
+model rendiciones {
+  id              BigInt     @id @default(autoincrement())
+  vendedor_id     BigInt
+  rifa_id         BigInt
+  monto_entregado Decimal    @db.Decimal(14, 2)
+  monto_esperado  Decimal    @db.Decimal(14, 2)
+  diferencia      Decimal?   @default(dbgenerated("(monto_entregado - monto_esperado)")) @db.Decimal(14, 2)
+  registrado_por  BigInt?
+  registrado_en   DateTime   @default(now()) @db.Timestamptz(6)
+  usuarios        usuarios?  @relation(fields: [registrado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rifas           rifas      @relation(fields: [rifa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendedores      vendedores @relation(fields: [vendedor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model rifas {
+  id                  BigInt        @id @default(autoincrement())
+  uuid                String        @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo              String        @unique
+  nombre              String
+  descripcion         String?
+  numero_digitos      Int           @db.SmallInt
+  numero_min          Int           @default(0)
+  numero_max          Int
+  precio_boleta       Decimal       @db.Decimal(14, 2)
+  moneda              String        @default("COP") @db.Char(3)
+  fecha_apertura      DateTime      @db.Timestamptz(6)
+  fecha_cierre_ventas DateTime      @db.Timestamptz(6)
+  fecha_sorteo        DateTime      @db.Timestamptz(6)
+  estado              String        @default("borrador")
+  tasa_derechos       Decimal       @default(0.1400) @db.Decimal(6, 4)
+  total_boletas       Int
+  creado_por          BigInt?
+  creado_en           DateTime      @default(now()) @db.Timestamptz(6)
+  actualizado_en      DateTime      @default(now()) @db.Timestamptz(6)
+  boletas             boletas[]
+  ganadores           ganadores[]
+  premios             premios[]
+  rendiciones         rendiciones[]
+  usuarios            usuarios?     @relation(fields: [creado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sorteos             sorteos[]
+  talonarios          talonarios[]
+  ventas              ventas[]
+}
+
+model roles {
+  id             BigInt           @id @default(autoincrement())
+  nombre         String           @unique
+  descripcion    String?
+  roles_permisos roles_permisos[]
+  usuarios       usuarios[]
+}
+
+model roles_permisos {
+  rol_id     BigInt
+  permiso_id BigInt
+  permisos   permisos @relation(fields: [permiso_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles      roles    @relation(fields: [rol_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([rol_id, permiso_id])
+}
+
+model sesiones {
+  id                 BigInt   @id @default(autoincrement())
+  usuario_id         BigInt
+  refresh_token_hash String
+  familia            String   @db.Uuid
+  ip                 String?  @db.Inet
+  user_agent         String?
+  expira_en          DateTime @db.Timestamptz(6)
+  revocada           Boolean  @default(false)
+  creada_en          DateTime @default(now()) @db.Timestamptz(6)
+  usuarios           usuarios @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([usuario_id], map: "idx_sesiones_usuario", where: raw("(revocada = false)"))
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model sorteos {
+  id             BigInt      @id @default(autoincrement())
+  rifa_id        BigInt
+  modalidad      String
+  numero_ganador Int
+  premio_id      BigInt?
+  commit_hash    String?
+  semilla        String?
+  evidencia_url  String?
+  ejecutado_por  BigInt?
+  ejecutado_en   DateTime    @default(now()) @db.Timestamptz(6)
+  ganadores      ganadores[]
+  usuarios       usuarios?   @relation(fields: [ejecutado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  premios        premios?    @relation(fields: [premio_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rifas          rifas       @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([rifa_id, premio_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model talonarios {
+  id            BigInt     @id @default(autoincrement())
+  rifa_id       BigInt
+  vendedor_id   BigInt
+  numero_inicio Int
+  numero_fin    Int
+  estado        String     @default("asignado")
+  asignado_en   DateTime   @default(now()) @db.Timestamptz(6)
+  boletas       boletas[]
+  rifas         rifas      @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  vendedores    vendedores @relation(fields: [vendedor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([vendedor_id], map: "idx_talonarios_vendedor")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model usuarios {
+  id             BigInt        @id @default(autoincrement())
+  uuid           String        @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre         String
+  correo         String        @unique @db.Citext
+  telefono       String?
+  password_hash  String
+  rol_id         BigInt
+  estado         String        @default("activo")
+  mfa_secret     String?
+  ultimo_login   DateTime?     @db.Timestamptz(6)
+  creado_en      DateTime      @default(now()) @db.Timestamptz(6)
+  actualizado_en DateTime      @default(now()) @db.Timestamptz(6)
+  abonos         abonos[]
+  auditoria      auditoria[]
+  rendiciones    rendiciones[]
+  rifas          rifas[]
+  sesiones       sesiones[]
+  sorteos        sorteos[]
+  roles          roles         @relation(fields: [rol_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendedores     vendedores[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model vendedores {
+  id           BigInt        @id @default(autoincrement())
+  uuid         String        @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  usuario_id   BigInt?
+  nombre       String
+  documento    String
+  telefono     String
+  correo       String?       @db.Citext
+  pct_comision Decimal       @default(0) @db.Decimal(5, 2)
+  cupo_max     Int?
+  estado       String        @default("activo")
+  creado_en    DateTime      @default(now()) @db.Timestamptz(6)
+  rendiciones  rendiciones[]
+  talonarios   talonarios[]
+  usuarios     usuarios?     @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas       ventas[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ventas {
+  id                 BigInt               @id @default(autoincrement())
+  uuid               String               @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo             String               @unique
+  rifa_id            BigInt
+  cliente_id         BigInt
+  vendedor_id        BigInt?
+  cantidad           Int
+  total              Decimal              @db.Decimal(14, 2)
+  saldo              Decimal              @db.Decimal(14, 2)
+  estado             String               @default("pendiente_pago")
+  canal              String               @default("web")
+  idempotency_key    String?              @unique(map: "uq_ventas_idem", where: raw("(idempotency_key IS NOT NULL)"))
+  expira_en          DateTime?            @db.Timestamptz(6)
+  creado_en          DateTime             @default(now()) @db.Timestamptz(6)
+  actualizado_en     DateTime             @default(now()) @db.Timestamptz(6)
+  abonos             abonos[]
+  boletas            boletas[]
+  comprobantes       comprobantes[]
+  gestiones_cobranza gestiones_cobranza[]
+  mensajes           mensajes[]
+  pagos_pasarela     pagos_pasarela[]
+  clientes           clientes             @relation(fields: [cliente_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rifas              rifas                @relation(fields: [rifa_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  vendedores         vendedores?          @relation(fields: [vendedor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas_boletas     ventas_boletas[]
+
+  @@index([cliente_id], map: "idx_ventas_cliente")
+  @@index([rifa_id, estado], map: "idx_ventas_rifa_estado")
+  @@index([vendedor_id], map: "idx_ventas_vendedor")
+}
+
+model ventas_boletas {
+  venta_id  BigInt
+  boleta_id BigInt  @unique
+  precio    Decimal @db.Decimal(14, 2)
+  boletas   boletas @relation(fields: [boleta_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ventas    ventas  @relation(fields: [venta_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([venta_id, boleta_id])
 }
