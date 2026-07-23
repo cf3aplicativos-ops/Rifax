@@ -224,10 +224,10 @@ export async function crearVenta(
 
 export async function registrarAbono(
   ventaId: bigint,
-  datos: { monto: number; origen?: "pasarela" | "comprobante" | "efectivo" | "ajuste" },
+  datos: { monto: number | string; origen?: "pasarela" | "comprobante" | "efectivo" | "ajuste" },
   actorId: bigint | null,
 ): Promise<Resultado<{ saldo: string; estado: string }>> {
-  if (!(datos.monto > 0)) return { ok: false, error: "El monto debe ser positivo." };
+  if (!(Number(datos.monto) > 0)) return { ok: false, error: "El monto debe ser positivo." };
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -241,22 +241,34 @@ export async function registrarAbono(
         return { ok: false as const, error: `La venta está '${venta.estado}'.` };
       }
 
-      await tx.abonos.create({
-        data: {
-          venta_id: ventaId,
-          origen: datos.origen ?? "efectivo",
-          monto: datos.monto,
-          registrado_por: actorId,
-        },
-      });
+      // Aritmética monetaria EXACTA: se hace en Postgres sobre NUMERIC, no con
+      // el float de JavaScript. `saldo` es NUMERIC(14,2) y restar en `number`
+      // puede introducir error de redondeo en montos con centavos.
+      // El monto viaja como texto para no perder precisión al pasar por JS.
+      const montoTexto = String(datos.monto);
 
-      const nuevoSaldo = Number(venta.saldo) - datos.monto;
-      const nuevoEstado = nuevoSaldo <= 0 ? "pagada" : "parcial";
+      await tx.$executeRawUnsafe(
+        `INSERT INTO abonos (venta_id, origen, monto, registrado_por)
+         VALUES ($1::bigint, $2::text, $3::numeric, $4::bigint)`,
+        ventaId,
+        datos.origen ?? "efectivo",
+        montoTexto,
+        actorId,
+      );
 
-      await tx.ventas.update({
-        where: { id: ventaId },
-        data: { saldo: Math.max(nuevoSaldo, 0), estado: nuevoEstado },
-      });
+      // En un UPDATE, las referencias a `saldo` en SET/CASE usan el valor
+      // ANTERIOR de la fila, así que ambas expresiones son consistentes.
+      const actualizadas = await tx.$queryRawUnsafe<{ saldo: string; estado: string }[]>(
+        `UPDATE ventas
+            SET saldo  = GREATEST(saldo - $2::numeric, 0),
+                estado = CASE WHEN saldo - $2::numeric <= 0 THEN 'pagada' ELSE 'parcial' END
+          WHERE id = $1::bigint
+        RETURNING saldo::text AS saldo, estado`,
+        ventaId,
+        montoTexto,
+      );
+      const nuevoSaldo = actualizadas[0].saldo;
+      const nuevoEstado = actualizadas[0].estado;
 
       // Si quedó saldada, las boletas pasan a 'pagada' y se notifica.
       if (nuevoEstado === "pagada") {
@@ -279,12 +291,12 @@ export async function registrarAbono(
         entidadTipo: "venta",
         entidadId: ventaId,
         antes: { saldo: venta.saldo, estado: venta.estado },
-        despues: { saldo: String(Math.max(nuevoSaldo, 0)), estado: nuevoEstado },
+        despues: { saldo: nuevoSaldo, estado: nuevoEstado },
       });
 
       return {
         ok: true as const,
-        data: { saldo: String(Math.max(nuevoSaldo, 0)), estado: nuevoEstado },
+        data: { saldo: nuevoSaldo, estado: nuevoEstado },
       };
     });
   } catch (e) {

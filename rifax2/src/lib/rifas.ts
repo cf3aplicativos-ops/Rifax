@@ -93,7 +93,7 @@ export async function crearRifa(input: unknown, actorId: bigint | null) {
     });
 
     return actualizada;
-  });
+  }, { maxWait: 15_000, timeout: 30_000 });
 
   return { ok: true as const, rifa };
 }
