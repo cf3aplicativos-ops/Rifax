@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const modulos = [
   { nombre: "Seguridad / RBAC", detalle: "Usuarios, roles y permisos" },
   { nombre: "Rifas y premios", detalle: "Configuración y estados" },
@@ -23,6 +25,13 @@ export default function Home() {
           Plataforma de rifas masivas sobre Next.js, Prisma y Neon. Basada en el
           núcleo original RIFAX API (24 tablas, auditoría con hash encadenado).
         </p>
+
+        <Link
+          href="/login"
+          className="mt-6 inline-flex items-center rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+        >
+          Ingresar al panel →
+        </Link>
 
         <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {modulos.map((m) => (
