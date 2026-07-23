@@ -2,11 +2,14 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth/rbac";
 import { logoutAction } from "./actions";
 
+// Cada sección declara el permiso que exige; el nav solo muestra aquellas a las
+// que el usuario realmente puede entrar (coherente con requirePermission).
 const nav = [
-  { href: "/admin", label: "Resumen" },
-  { href: "/admin/rifas", label: "Rifas" },
-  { href: "/admin/ventas", label: "Ventas" },
-  { href: "/admin/cartera", label: "Cartera" },
+  { href: "/admin", label: "Resumen", permiso: null },
+  { href: "/admin/rifas", label: "Rifas", permiso: "rifa.ver" },
+  { href: "/admin/ventas", label: "Ventas", permiso: "venta.ver" },
+  { href: "/admin/cartera", label: "Cartera", permiso: "cartera.ver" },
+  { href: "/admin/usuarios", label: "Usuarios", permiso: "usuario.ver" },
 ];
 
 export default async function AdminLayout({
@@ -25,7 +28,9 @@ export default async function AdminLayout({
               RIFAX <span className="text-red-600">2</span>
             </Link>
             <nav className="hidden gap-4 sm:flex">
-              {nav.map((n) => (
+              {nav
+                .filter((n) => n.permiso === null || user.permisos.includes(n.permiso))
+                .map((n) => (
                 <Link
                   key={n.href}
                   href={n.href}
@@ -37,12 +42,12 @@ export default async function AdminLayout({
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-right">
+            <Link href="/admin/perfil" className="text-right transition hover:opacity-70">
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 {user.nombre}
               </p>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{user.rol}</p>
-            </div>
+            </Link>
             <form action={logoutAction}>
               <button
                 type="submit"
