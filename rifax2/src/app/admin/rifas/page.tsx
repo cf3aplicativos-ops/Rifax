@@ -76,8 +76,13 @@ export default async function RifasPage({
             <tbody className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-950">
               {rifas.map((r) => (
                 <tr key={String(r.id)}>
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                    {r.codigo}
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/admin/rifas/${r.id}`}
+                      className="font-mono text-xs text-red-600 hover:underline dark:text-red-400"
+                    >
+                      {r.codigo}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
                     {r.nombre}
