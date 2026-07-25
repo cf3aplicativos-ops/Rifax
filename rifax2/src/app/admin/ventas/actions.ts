@@ -29,9 +29,12 @@ export async function crearVentaAction(
   const correo = String(formData.get("correo") ?? "").trim();
   const documento = String(formData.get("documento") ?? "").trim();
 
+  const vendedorId = String(formData.get("vendedor_id") ?? "").trim();
+
   const input = {
     rifa_id: String(formData.get("rifa_id") ?? ""),
     numeros,
+    ...(vendedorId ? { vendedor_id: vendedorId } : {}),
     cliente: {
       nombre: String(formData.get("nombre") ?? "").trim(),
       telefono: String(formData.get("telefono") ?? "").trim(),

@@ -9,10 +9,14 @@ export const dynamic = "force-dynamic";
 export default async function NuevaVentaPage() {
   await requirePermission("venta.crear");
 
-  const activas = await prisma.rifas.findMany({
-    where: { estado: "activa" },
-    orderBy: { id: "desc" },
-  });
+  const [activas, vendedoresActivos] = await Promise.all([
+    prisma.rifas.findMany({ where: { estado: "activa" }, orderBy: { id: "desc" } }),
+    prisma.vendedores.findMany({
+      where: { estado: "activo" },
+      orderBy: { nombre: "asc" },
+      select: { id: true, nombre: true },
+    }),
+  ]);
 
   // Todo lo que cruza al cliente debe ser serializable (sin BigInt ni Decimal).
   const rifas = await Promise.all(
@@ -45,7 +49,10 @@ export default async function NuevaVentaPage() {
           No hay rifas activas. Publica una rifa antes de registrar ventas.
         </p>
       ) : (
-        <FormVenta rifas={rifas} />
+        <FormVenta
+          rifas={rifas}
+          vendedores={vendedoresActivos.map((v) => ({ id: String(v.id), nombre: v.nombre }))}
+        />
       )}
     </div>
   );

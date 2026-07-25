@@ -26,7 +26,18 @@ const cop = new Intl.NumberFormat("es-CO", {
   maximumFractionDigits: 0,
 });
 
-export default function FormVenta({ rifas }: { rifas: RifaOpcion[] }) {
+export interface VendedorOpcion {
+  id: string;
+  nombre: string;
+}
+
+export default function FormVenta({
+  rifas,
+  vendedores,
+}: {
+  rifas: RifaOpcion[];
+  vendedores: VendedorOpcion[];
+}) {
   const [state, action, pending] = useActionState(crearVentaAction, initialState);
   const [rifaId, setRifaId] = useState(rifas[0]?.id ?? "");
   const [numeros, setNumeros] = useState("");
@@ -169,16 +180,31 @@ export default function FormVenta({ rifas }: { rifas: RifaOpcion[] }) {
         </label>
       </fieldset>
 
-      <div>
-        <label htmlFor="canal" className={etiqueta}>
-          Canal
-        </label>
-        <select id="canal" name="canal" defaultValue="web" className={campo}>
-          <option value="web">Web</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="vendedor">Vendedor</option>
-          <option value="pos">Punto de venta</option>
-        </select>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="canal" className={etiqueta}>
+            Canal
+          </label>
+          <select id="canal" name="canal" defaultValue="web" className={campo}>
+            <option value="web">Web</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="vendedor">Vendedor</option>
+            <option value="pos">Punto de venta</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="vendedor_id" className={etiqueta}>
+            Vendedor <span className="text-zinc-400">(opcional)</span>
+          </label>
+          <select id="vendedor_id" name="vendedor_id" defaultValue="" className={campo}>
+            <option value="">Sin vendedor</option>
+            {vendedores.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {state.error ? (
