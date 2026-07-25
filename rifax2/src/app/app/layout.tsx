@@ -4,6 +4,7 @@ import { logoutUserAction } from "./actions";
 
 const nav = [
   { href: "/app", label: "Inicio", permiso: null },
+  { href: "/app/rifas", label: "Rifas", permiso: "rifa.ver" },
   { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },
 ];
 
