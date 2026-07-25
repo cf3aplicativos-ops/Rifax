@@ -9,6 +9,7 @@ const nav = [
   { href: "/admin/rifas", label: "Rifas", permiso: "rifa.ver" },
   { href: "/admin/ventas", label: "Ventas", permiso: "venta.ver" },
   { href: "/admin/cartera", label: "Cartera", permiso: "cartera.ver" },
+  { href: "/admin/reportes", label: "Reportes", permiso: "reporte.ver" },
   { href: "/admin/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
   { href: "/admin/notificaciones", label: "Notificaciones", permiso: "mensaje.enviar" },
   { href: "/admin/usuarios", label: "Usuarios", permiso: "usuario.ver" },
