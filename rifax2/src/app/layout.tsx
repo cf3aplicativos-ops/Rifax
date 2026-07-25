@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RIFAX 2",
-  description: "Plataforma de rifas masivas — Next.js, Prisma y Neon",
+  title: "RIFAX SaaS",
+  description: "Plataforma multi-empresa de gestión de rifas",
 };
 
 export default function RootLayout({

@@ -44,3 +44,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Referencia single-tenant (en historial de git)
+.legacy_ref/

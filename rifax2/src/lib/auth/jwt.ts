@@ -1,17 +1,15 @@
-// Firma/verificación del JWT de sesión con `jose` (Web Crypto): funciona tanto
-// en runtime Node (server components/actions) como en el Edge (middleware).
-// Este módulo NO importa Prisma ni nada de Node, para poder usarse en middleware.
+// Firma/verificación del JWT de sesión con `jose` (Edge-safe: sin Prisma/Node).
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 
 export const SESSION_COOKIE = "rfx_session";
 
 export interface SessionClaims extends JWTPayload {
-  /** uuid del usuario */
+  /** uuid del principal (super-admin de plataforma o usuario de tenant) */
   sub: string;
-  /** familia de la sesión (columna sesiones.familia) */
-  sid: string;
-  /** nombre del rol */
-  rol: string;
+  /** tipo de principal */
+  kind: "super" | "user";
+  /** familia de la sesión en BD (solo usuarios de tenant) */
+  sid?: string;
 }
 
 function getSecret(): Uint8Array {
@@ -21,21 +19,22 @@ function getSecret(): Uint8Array {
 }
 
 export async function signSession(
-  claims: { sub: string; sid: string; rol: string },
+  claims: { sub: string; kind: "super" | "user"; sid?: string },
   ttlSeconds: number,
 ): Promise<string> {
-  return new SignJWT({ sid: claims.sid, rol: claims.rol })
+  const jwt = new SignJWT({ kind: claims.kind, ...(claims.sid ? { sid: claims.sid } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.sub)
     .setIssuedAt()
-    .setExpirationTime(`${ttlSeconds}s`)
-    .sign(getSecret());
+    .setExpirationTime(`${ttlSeconds}s`);
+  return jwt.sign(getSecret());
 }
 
 export async function verifySession(token: string): Promise<SessionClaims | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
-    if (typeof payload.sub !== "string" || typeof payload.sid !== "string") return null;
+    if (typeof payload.sub !== "string") return null;
+    if (payload.kind !== "super" && payload.kind !== "user") return null;
     return payload as SessionClaims;
   } catch {
     return null;

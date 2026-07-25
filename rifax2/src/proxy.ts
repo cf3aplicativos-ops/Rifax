@@ -1,7 +1,6 @@
-// Proxy (antes "middleware", Edge): protege /admin verificando el JWT de sesión
-// con `jose`. No toca la base de datos (Prisma no corre en Edge); la validación
-// completa (sesión no revocada, usuario activo, permisos) ocurre en los server
-// components.
+// Proxy (Edge): protege /panel (super-admin) y /app (tenant) verificando el JWT
+// con jose. La validación completa (sesión no revocada, tenant activo, permisos,
+// y que el tipo de principal corresponde al área) ocurre en los server components.
 import { NextResponse, type NextRequest } from "next/server";
 import { verifySession, SESSION_COOKIE } from "@/lib/auth/jwt";
 
@@ -15,9 +14,18 @@ export async function proxy(req: NextRequest) {
     url.searchParams.set("next", req.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
+
+  // Redirige cada tipo de principal a su área correcta.
+  const path = req.nextUrl.pathname;
+  if (path.startsWith("/panel") && claims.kind !== "super") {
+    return NextResponse.redirect(new URL("/app", req.url));
+  }
+  if (path.startsWith("/app") && claims.kind !== "user") {
+    return NextResponse.redirect(new URL("/panel", req.url));
+  }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/panel", "/panel/:path*", "/app", "/app/:path*"],
 };

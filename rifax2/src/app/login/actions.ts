@@ -3,47 +3,44 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/auth/password";
-import { createSession } from "@/lib/auth/session";
+import { createSuperSession, createUserSession } from "@/lib/auth/session";
 
 export interface LoginState {
   error?: string;
 }
 
-export async function loginAction(
-  _prev: LoginState,
-  formData: FormData,
-): Promise<LoginState> {
+export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
   const correo = String(formData.get("correo") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  if (!correo || !password) return { error: "Ingresa correo y contraseña." };
 
-  if (!correo || !password) {
-    return { error: "Ingresa correo y contraseña." };
-  }
-
-  const usuario = await prisma.usuarios.findUnique({
-    where: { correo },
-    include: { roles: true },
-  });
-
-  // Mensaje genérico para no revelar si el correo existe.
-  if (!usuario || usuario.estado !== "activo") {
+  // 1) ¿Super-admin de plataforma?
+  const superAdmin = await prisma.plataforma_admins.findUnique({ where: { correo } });
+  if (superAdmin && superAdmin.estado === "activo") {
+    if (await verifyPassword(password, superAdmin.password_hash)) {
+      await createSuperSession({ uuid: superAdmin.uuid });
+      await prisma.plataforma_admins.update({
+        where: { id: superAdmin.id },
+        data: { ultimo_login: new Date() },
+      });
+      redirect("/panel");
+    }
     return { error: "Credenciales inválidas." };
   }
 
-  const ok = await verifyPassword(password, usuario.password_hash);
-  if (!ok) {
-    return { error: "Credenciales inválidas." };
+  // 2) ¿Usuario de un tenant? (el correo es único por tenant)
+  const usuario = await prisma.usuarios.findFirst({
+    where: { correo, estado: "activo" },
+    include: { tenants: true },
+  });
+  if (usuario && (await verifyPassword(password, usuario.password_hash))) {
+    if (usuario.tenants.estado !== "activo") {
+      return { error: "La cuenta de tu empresa está suspendida. Contacta al administrador." };
+    }
+    await createUserSession({ id: usuario.id, uuid: usuario.uuid });
+    await prisma.usuarios.update({ where: { id: usuario.id }, data: { ultimo_login: new Date() } });
+    redirect("/app");
   }
 
-  await createSession({
-    id: usuario.id,
-    uuid: usuario.uuid,
-    rolNombre: usuario.roles.nombre,
-  });
-  await prisma.usuarios.update({
-    where: { id: usuario.id },
-    data: { ultimo_login: new Date() },
-  });
-
-  redirect("/admin");
+  return { error: "Credenciales inválidas." };
 }
