@@ -16,6 +16,10 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
+// El modelo multi-tenant vive en el schema `saas`. Prisma cualifica las tablas
+// con "saas". gracias a @@schema, así que NO se fija search_path por conexión
+// (el pooler de Neon lo rechaza). El SQL crudo del código cualifica saas.* y las
+// funciones plpgsql llevan `SET search_path = saas, public` en su definición.
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 
 export const prisma =
