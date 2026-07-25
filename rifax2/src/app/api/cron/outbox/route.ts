@@ -2,6 +2,10 @@
 // Se protege con CRON_SECRET: Vercel envía "Authorization: Bearer <CRON_SECRET>".
 // Si la variable no está configurada, el endpoint queda deshabilitado (503) para
 // no exponer un disparador sin autenticar.
+//
+// NOTA: en plan Hobby de Vercel el cron corre 1 vez al día (ver vercel.json).
+// El envío inmediato se hace con el botón "Procesar pendientes" del panel, o
+// llamando a este endpoint desde un scheduler externo con más frecuencia.
 import { NextResponse, type NextRequest } from "next/server";
 import { procesarOutbox } from "@/lib/outbox";
 
