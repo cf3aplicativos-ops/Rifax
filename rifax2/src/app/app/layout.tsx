@@ -1,5 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { requireUser } from "@/lib/auth/rbac";
+import { getBranding } from "@/lib/branding";
 import { logoutUserAction } from "./actions";
 
 const nav = [
@@ -15,16 +17,25 @@ const nav = [
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const branding = await getBranding(user.tenant.id);
+
+  const fondoStyle = branding.fondoUrl
+    ? { backgroundImage: `url(${branding.fondoUrl})`, backgroundSize: "cover", backgroundAttachment: "fixed" as const }
+    : undefined;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950" style={fondoStyle}>
+      <header className="border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-6">
             <Link href="/app" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-                {user.tenant.nombre.charAt(0).toUpperCase()}
-              </div>
+              {branding.logoUrl ? (
+                <Image src={branding.logoUrl} alt={user.tenant.nombre} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" />
+              ) : (
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white" style={{ backgroundColor: branding.colorPrimario }}>
+                  {user.tenant.nombre.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div>
                 <p className="text-sm font-bold leading-none text-slate-900 dark:text-white">
                   {user.tenant.nombre}

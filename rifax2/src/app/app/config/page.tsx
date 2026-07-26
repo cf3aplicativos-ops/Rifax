@@ -1,13 +1,15 @@
+import Image from "next/image";
 import { requirePermission } from "@/lib/auth/rbac";
 import { listarCatalogos, TIPOS } from "@/lib/catalogos";
-import { agregarItemAction, toggleItemAction } from "./actions";
+import { getBranding } from "@/lib/branding";
+import { agregarItemAction, toggleItemAction, guardarBrandingAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const user = await requirePermission("config.gestionar");
   const sp = await searchParams;
-  const porTipo = await listarCatalogos(user.tenant.id);
+  const [porTipo, branding] = await Promise.all([listarCatalogos(user.tenant.id), getBranding(user.tenant.id)]);
 
   return (
     <div className="max-w-3xl">
@@ -19,6 +21,39 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
 
       {sp.ok ? <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Guardado.</p> : null}
       {sp.error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
+
+      {/* BRANDING (#6) */}
+      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Marca (logo, fondo y color)</h2>
+        <form action={guardarBrandingAction} className="mt-3 space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm text-slate-700 dark:text-slate-300">Logo <span className="text-slate-400">(PNG/JPG/WEBP/SVG, ≤400KB)</span></label>
+              {branding.logoUrl ? (
+                <div className="mb-2 flex items-center gap-3">
+                  <Image src={branding.logoUrl} alt="logo" width={40} height={40} unoptimized className="h-10 w-10 rounded object-contain" />
+                  <label className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><input type="checkbox" name="quitar_logo" /> quitar</label>
+                </div>
+              ) : null}
+              <input type="file" name="logo" accept="image/*" className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:text-slate-400 dark:file:bg-indigo-950 dark:file:text-indigo-300" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-slate-700 dark:text-slate-300">Imagen de fondo <span className="text-slate-400">(≤1.5MB)</span></label>
+              {branding.fondoUrl ? (
+                <label className="mb-2 flex items-center gap-1 text-xs text-red-600 dark:text-red-400"><input type="checkbox" name="quitar_fondo" /> quitar fondo actual</label>
+              ) : null}
+              <input type="file" name="fondo" accept="image/*" className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 dark:text-slate-400 dark:file:bg-indigo-950 dark:file:text-indigo-300" />
+            </div>
+          </div>
+          <div className="flex items-end gap-3">
+            <div>
+              <label className="mb-1 block text-sm text-slate-700 dark:text-slate-300">Color primario</label>
+              <input type="color" name="color" defaultValue={branding.colorPrimario} className="h-9 w-16 rounded border border-slate-300 dark:border-slate-700" />
+            </div>
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar marca</button>
+          </div>
+        </form>
+      </section>
 
       <div className="mt-6 space-y-6">
         {TIPOS.map((t) => {
