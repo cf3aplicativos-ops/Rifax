@@ -19,7 +19,7 @@ const campo =
 const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
 const cop = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
-export default function FormVenta({ rifas }: { rifas: Rifa[] }) {
+export default function FormVenta({ rifas, canales }: { rifas: Rifa[]; canales: { valor: string; etiqueta: string }[] }) {
   const [state, action, pending] = useActionState(crearVentaAction, initialState);
   const [rifaId, setRifaId] = useState(rifas[0]?.id ?? "");
   const [numeros, setNumeros] = useState("");
@@ -97,11 +97,8 @@ export default function FormVenta({ rifas }: { rifas: Rifa[] }) {
 
       <div>
         <label htmlFor="canal" className={etiqueta}>Canal</label>
-        <select id="canal" name="canal" defaultValue="web" className={campo}>
-          <option value="web">Web</option>
-          <option value="whatsapp">WhatsApp</option>
-          <option value="vendedor">Vendedor</option>
-          <option value="pos">Punto de venta</option>
+        <select id="canal" name="canal" defaultValue={canales[0]?.valor ?? "web"} className={campo}>
+          {canales.map((c) => <option key={c.valor} value={c.valor}>{c.etiqueta}</option>)}
         </select>
       </div>
 

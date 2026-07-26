@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { rifasActivas, boletasDisponibles } from "@/lib/ventas";
+import { opcionesDe } from "@/lib/catalogos";
 import FormVenta from "./form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NuevaVentaPage() {
   const user = await requirePermission("venta.crear");
-  const activas = await rifasActivas(user.tenant.id, user.sede?.id ?? null);
+  const [activas, canales] = await Promise.all([
+    rifasActivas(user.tenant.id, user.sede?.id ?? null),
+    opcionesDe(user.tenant.id, "canal_venta"),
+  ]);
 
   const rifas = await Promise.all(
     activas.map(async (r) => ({
@@ -32,7 +36,7 @@ export default async function NuevaVentaPage() {
           No hay rifas activas. Publica una rifa antes de vender.
         </p>
       ) : (
-        <FormVenta rifas={rifas} />
+        <FormVenta rifas={rifas} canales={canales} />
       )}
     </div>
   );

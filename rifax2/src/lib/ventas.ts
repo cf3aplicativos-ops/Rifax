@@ -19,7 +19,8 @@ export const crearVentaSchema = z.object({
     consentimiento_datos: z.boolean().optional(),
   }),
   vendedor_id: z.coerce.bigint().optional(),
-  canal: z.enum(["web", "whatsapp", "vendedor", "pos"]).default("web"),
+  // Canal configurable vía catálogo (tipo canal_venta); sin CHECK en BD.
+  canal: z.string().min(1).default("web"),
 });
 
 type Resultado<T> = { ok: true; data: T } | { ok: false; error: string };

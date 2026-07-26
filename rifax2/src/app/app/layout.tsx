@@ -10,6 +10,7 @@ const nav = [
   { href: "/app/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
   { href: "/app/usuarios", label: "Usuarios", permiso: "usuario.ver" },
   { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },
+  { href: "/app/config", label: "Configuración", permiso: "config.gestionar" },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
