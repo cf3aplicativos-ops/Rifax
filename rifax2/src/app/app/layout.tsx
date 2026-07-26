@@ -6,6 +6,8 @@ const nav = [
   { href: "/app", label: "Inicio", permiso: null },
   { href: "/app/rifas", label: "Rifas", permiso: "rifa.ver" },
   { href: "/app/ventas", label: "Ventas", permiso: "venta.ver" },
+  { href: "/app/cartera", label: "Cartera", permiso: "cartera.ver" },
+  { href: "/app/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
   { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },
 ];
 
