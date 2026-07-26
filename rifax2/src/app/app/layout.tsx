@@ -8,6 +8,7 @@ const nav = [
   { href: "/app/ventas", label: "Ventas", permiso: "venta.ver" },
   { href: "/app/cartera", label: "Cartera", permiso: "cartera.ver" },
   { href: "/app/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
+  { href: "/app/usuarios", label: "Usuarios", permiso: "usuario.ver" },
   { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },
 ];
 
@@ -47,10 +48,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <div className="text-right">
+            <Link href="/app/perfil" className="text-right transition hover:opacity-70">
               <p className="text-sm font-medium text-slate-900 dark:text-white">{user.nombre}</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">{user.rol}</p>
-            </div>
+            </Link>
             <form action={logoutUserAction}>
               <button
                 type="submit"
