@@ -47,6 +47,39 @@ const pasos = [
   { n: "4", t: "Sortea y audita", d: "Ejecuta sorteos verificables y revisa la auditoría de punta a punta." },
 ];
 
+const planes = [
+  {
+    nombre: "Emprende",
+    para: "Una sede, ideal para empezar",
+    precio: "Gratis",
+    periodo: "",
+    destacado: false,
+    cta: "Empezar",
+    incluye: ["1 sede", "Rifas, ventas y cartera", "Hasta 3 usuarios", "Sorteos verificables", "Auditoría incluida"],
+  },
+  {
+    nombre: "Negocio",
+    para: "Varias sedes y equipo de venta",
+    precio: "$99.000",
+    periodo: "/ mes",
+    destacado: true,
+    cta: "Ingresar",
+    incluye: ["Hasta 5 sedes", "Usuarios ilimitados", "Vendedores y talonarios", "Reportes y branding", "Soporte prioritario"],
+  },
+  {
+    nombre: "Corporativo",
+    para: "Operaciones a gran escala",
+    precio: "A medida",
+    periodo: "",
+    destacado: false,
+    cta: "Contáctanos",
+    incluye: ["Sedes ilimitadas", "Integraciones (pasarela, WhatsApp)", "Portales de vendedor y cliente", "SLA y capacitación", "Datos aislados por empresa"],
+  },
+];
+
+const inputCls =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -64,7 +97,8 @@ export default function Home() {
           <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex dark:text-slate-300">
             <a href="#caracteristicas" className="transition hover:text-slate-900 dark:hover:text-white">Características</a>
             <a href="#como-funciona" className="transition hover:text-slate-900 dark:hover:text-white">Cómo funciona</a>
-            <a href="#seguridad" className="transition hover:text-slate-900 dark:hover:text-white">Seguridad</a>
+            <a href="#precios" className="transition hover:text-slate-900 dark:hover:text-white">Precios</a>
+            <a href="#contacto" className="transition hover:text-slate-900 dark:hover:text-white">Contacto</a>
           </nav>
           <Link
             href="/login"
@@ -208,6 +242,121 @@ ganador   = min + (sha256(semilla) mod N)
         </div>
       </section>
 
+      {/* PRECIOS */}
+      <section id="precios" className="py-20">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight">Planes para cada operación</h2>
+            <p className="mt-3 text-slate-600 dark:text-slate-400">
+              Empieza pequeño y crece por sedes. Sin permanencia.
+            </p>
+          </div>
+          <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {planes.map((p) => (
+              <div
+                key={p.nombre}
+                className={`relative flex flex-col rounded-2xl border p-7 ${
+                  p.destacado
+                    ? "border-indigo-500 bg-white shadow-xl shadow-indigo-600/10 dark:border-indigo-500 dark:bg-slate-900"
+                    : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                }`}
+              >
+                {p.destacado ? (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">
+                    Más popular
+                  </span>
+                ) : null}
+                <h3 className="text-lg font-semibold">{p.nombre}</h3>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{p.para}</p>
+                <div className="mt-5">
+                  <span className="text-4xl font-extrabold tracking-tight">{p.precio}</span>
+                  {p.periodo ? <span className="text-sm text-slate-500 dark:text-slate-400"> {p.periodo}</span> : null}
+                </div>
+                <ul className="mt-6 flex-1 space-y-3 text-sm">
+                  {p.incluye.map((i) => (
+                    <li key={i} className="flex items-start gap-2.5">
+                      <IconCheck />
+                      <span className="text-slate-700 dark:text-slate-300">{i}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={p.cta === "Contáctanos" ? "#contacto" : "/login"}
+                  className={`mt-7 rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition ${
+                    p.destacado
+                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                      : "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {p.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-center text-xs text-slate-400">
+            Los precios son referenciales y pueden ajustarse a tu operación.
+          </p>
+        </div>
+      </section>
+
+      {/* CONTACTO */}
+      <section id="contacto" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 lg:grid-cols-2">
+          <div>
+            <span className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Contacto</span>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight">Hablemos de tu operación</h2>
+            <p className="mt-4 text-slate-600 dark:text-slate-400">
+              ¿Quieres una demostración o dar de alta tu empresa? Escríbenos y te contactamos.
+            </p>
+            <ul className="mt-6 space-y-4 text-sm">
+              <li className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"><IconMail /></span>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">Correo</p>
+                  <a href="mailto:contacto@rifax.co" className="text-slate-500 hover:text-indigo-600 dark:text-slate-400">contacto@rifax.co</a>
+                </div>
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"><IconPhone /></span>
+                <div>
+                  <p className="font-medium text-slate-900 dark:text-slate-100">WhatsApp</p>
+                  <p className="text-slate-500 dark:text-slate-400">+57 300 000 0000</p>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+          <form
+            action="mailto:contacto@rifax.co"
+            method="post"
+            encType="text/plain"
+            className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="c_nombre" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nombre</label>
+                <input id="c_nombre" name="nombre" required className={inputCls} />
+              </div>
+              <div>
+                <label htmlFor="c_empresa" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Empresa</label>
+                <input id="c_empresa" name="empresa" className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="c_correo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Correo</label>
+              <input id="c_correo" name="correo" type="email" required className={inputCls} />
+            </div>
+            <div>
+              <label htmlFor="c_msg" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Mensaje</label>
+              <textarea id="c_msg" name="mensaje" rows={4} className={inputCls} />
+            </div>
+            <button type="submit" className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
+              Enviar mensaje
+            </button>
+          </form>
+        </div>
+      </section>
+
       {/* CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-4xl px-6">
@@ -274,4 +423,10 @@ function IconBuildings() {
 }
 function IconLock() {
   return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>;
+}
+function IconMail() {
+  return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>;
+}
+function IconPhone() {
+  return <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z" /></svg>;
 }
