@@ -42,6 +42,32 @@ export async function obtenerRifa(tenantId: bigint, id: bigint) {
   });
 }
 
+export async function agregarPremio(
+  tenantId: bigint,
+  rifaId: bigint,
+  datos: { nombre: string; valorEstimado?: number | null },
+  actorId: bigint,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!datos.nombre?.trim()) return { ok: false, error: "El nombre del premio es obligatorio." };
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId } });
+  if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  if (["sorteada", "liquidada", "archivada"].includes(rifa.estado)) {
+    return { ok: false, error: `No se pueden agregar premios a una rifa '${rifa.estado}'.` };
+  }
+  try {
+    await prisma.$transaction(async (tx) => {
+      const max = await tx.premios.aggregate({ where: { rifa_id: rifaId }, _max: { orden: true } });
+      const premio = await tx.premios.create({
+        data: { rifa_id: rifaId, orden: (max._max.orden ?? 0) + 1, nombre: datos.nombre.trim(), valor_estimado: datos.valorEstimado ?? null },
+      });
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "premio", entidadId: premio.id, despues: { rifa: rifa.codigo, nombre: datos.nombre.trim() } });
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al agregar el premio." };
+  }
+}
+
 export async function crearRifa(
   input: unknown,
   tenantId: bigint,
