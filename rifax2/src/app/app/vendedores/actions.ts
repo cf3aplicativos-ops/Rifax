@@ -4,6 +4,21 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
 import { crearVendedor, cambiarEstadoVendedor, asignarTalonario, cerrarTalonario } from "@/lib/vendedores";
+import { crearAccesoVendedor } from "@/lib/portal-vendedor";
+
+export async function crearAccesoVendedorAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("usuario.crear");
+  const vendedorId = String(formData.get("vendedor_id") ?? "0");
+  const res = await crearAccesoVendedor(
+    BigInt(vendedorId),
+    user.tenant.id,
+    String(formData.get("correo") ?? ""),
+    String(formData.get("password") ?? ""),
+    user.id,
+  );
+  revalidatePath(`/app/vendedores/${vendedorId}`);
+  redirect(res.ok ? `/app/vendedores/${vendedorId}?acceso=1` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
+}
 
 export interface VendedorFormState {
   error?: string;

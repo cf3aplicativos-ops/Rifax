@@ -31,7 +31,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // 2) ¿Usuario de un tenant? (el correo es único por tenant)
   const usuario = await prisma.usuarios.findFirst({
     where: { correo, estado: "activo" },
-    include: { tenants: true },
+    include: { tenants: true, roles: { select: { nombre: true } } },
   });
   if (usuario && (await verifyPassword(password, usuario.password_hash))) {
     if (usuario.tenants.estado !== "activo") {
@@ -39,7 +39,8 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     }
     await createUserSession({ id: usuario.id, uuid: usuario.uuid });
     await prisma.usuarios.update({ where: { id: usuario.id }, data: { ultimo_login: new Date() } });
-    redirect("/app");
+    // Los vendedores van a su portal móvil; los demás roles, al panel.
+    redirect(usuario.roles.nombre === "vendedor" ? "/vendedor" : "/app");
   }
 
   return { error: "Credenciales inválidas." };

@@ -20,12 +20,12 @@ export async function proxy(req: NextRequest) {
   if (path.startsWith("/panel") && claims.kind !== "super") {
     return NextResponse.redirect(new URL("/app", req.url));
   }
-  if (path.startsWith("/app") && claims.kind !== "user") {
+  if ((path.startsWith("/app") || path.startsWith("/vendedor")) && claims.kind !== "user") {
     return NextResponse.redirect(new URL("/panel", req.url));
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/panel", "/panel/:path*", "/app", "/app/:path*"],
+  matcher: ["/panel", "/panel/:path*", "/app", "/app/:path*", "/vendedor", "/vendedor/:path*"],
 };

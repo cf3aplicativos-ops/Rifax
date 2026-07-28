@@ -4,7 +4,7 @@ import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVendedor } from "@/lib/vendedores";
 import { prisma } from "@/lib/prisma";
 import { fecha } from "@/lib/format";
-import { asignarTalonarioAction, cerrarTalonarioAction } from "../actions";
+import { asignarTalonarioAction, cerrarTalonarioAction, crearAccesoVendedorAction } from "../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export default async function VendedorDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ asignadas?: string; liberadas?: string; error?: string }>;
+  searchParams: Promise<{ asignadas?: string; liberadas?: string; acceso?: string; error?: string }>;
 }) {
   const user = await requirePermission("vendedor.ver");
   const { id } = await params;
@@ -50,9 +50,26 @@ export default async function VendedorDetalle({
         {vePii ? `${vendedor.documento} · ${vendedor.telefono}` : "datos protegidos"} · {Number(vendedor.pct_comision.toString())}% comisión · {vendedor.cupo_max ? `${asignadas}/${vendedor.cupo_max}` : asignadas} boletas
       </p>
 
+      {sp.acceso ? <Aviso tipo="ok">Acceso al portal de vendedor creado. Ya puede ingresar.</Aviso> : null}
       {sp.asignadas ? <Aviso tipo="ok">Talonario asignado: {sp.asignadas} boletas.</Aviso> : null}
       {sp.liberadas ? <Aviso tipo="neutral">Talonario cerrado. {sp.liberadas} boletas liberadas.</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
+
+      {hasPermission(user, "usuario.crear") ? (
+        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Acceso al portal de vendedor</h2>
+          {vendedor.usuario_id ? (
+            <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">✓ Este vendedor ya tiene acceso al portal móvil.</p>
+          ) : (
+            <form action={crearAccesoVendedorAction} className="mt-2 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="vendedor_id" value={String(vendedor.id)} />
+              <input name="correo" type="email" required placeholder="correo@empresa.co" className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              <input name="password" type="text" required minLength={8} placeholder="contraseña (≥8)" className="w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Crear acceso</button>
+            </form>
+          )}
+        </div>
+      ) : null}
 
       <h2 className="mt-8 text-lg font-semibold text-slate-900 dark:text-white">Talonarios</h2>
       {vendedor.talonarios.length === 0 ? (
