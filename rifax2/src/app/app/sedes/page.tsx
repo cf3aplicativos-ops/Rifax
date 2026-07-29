@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarSedes } from "@/lib/sedes";
 import { crearSedeAction, cambiarEstadoSedeAction } from "../actions";
@@ -42,7 +43,7 @@ export default async function SedesPage({
             >
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-slate-900 dark:text-white">{s.nombre}</h2>
+                  <Link href={`/app/sedes/${s.id}`} className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">{s.nombre}</Link>
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       s.estado === "activa"
@@ -56,6 +57,7 @@ export default async function SedesPage({
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   {s.direccion ?? "sin dirección"} · {s._count.rifas} rifas · {s._count.ventas} ventas
                 </p>
+                <Link href={`/app/sedes/${s.id}`} className="mt-1 inline-block text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400">Ver radiografía →</Link>
               </div>
               {puedeEditar ? (
                 <form action={cambiarEstadoSedeAction} className="flex items-center gap-1">

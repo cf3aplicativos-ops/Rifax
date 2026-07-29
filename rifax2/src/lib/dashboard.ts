@@ -46,6 +46,30 @@ export async function boletasPorEstado(tenantId: bigint, sedeId: bigint | null) 
   return m;
 }
 
+export interface TopVendedor {
+  id: bigint;
+  nombre: string;
+  pctComision: number;
+  ventas: number;
+  recaudado: string;
+}
+
+export async function topVendedores(tenantId: bigint, sedeId: bigint, limite = 10): Promise<TopVendedor[]> {
+  const filas = await prisma.$queryRawUnsafe<{ id: bigint; nombre: string; pct: string; ventas: bigint; recaudado: string }[]>(
+    `SELECT ve.id, ve.nombre, ve.pct_comision::text AS pct,
+       (SELECT COUNT(*) FROM saas.ventas v WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint AND v.estado <> 'anulada') AS ventas,
+       COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint), 0)::text AS recaudado
+     FROM saas.vendedores ve
+     WHERE ve.tenant_id = $1::bigint
+     ORDER BY recaudado DESC, ventas DESC
+     LIMIT $3::int`,
+    tenantId, sedeId, limite,
+  );
+  return filas
+    .map((f) => ({ id: f.id, nombre: f.nombre, pctComision: Number(f.pct), ventas: Number(f.ventas), recaudado: f.recaudado }))
+    .filter((v) => v.ventas > 0 || Number(v.recaudado) > 0);
+}
+
 export async function carteraPorTramo(tenantId: bigint, sedeId: bigint | null) {
   const filas = await prisma.$queryRawUnsafe<{ tramo: string; saldo: string; cuentas: bigint }[]>(
     `SELECT CASE
