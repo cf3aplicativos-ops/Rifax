@@ -564,7 +564,7 @@ ON CONFLICT DO NOTHING;
 INSERT INTO roles_permisos(rol_id, permiso_id)
 SELECT r.id, p.id FROM roles r JOIN permisos p ON TRUE
 WHERE r.nombre = 'vendedor'
-  AND p.codigo IN ('rifa.ver','boleta.ver','venta.crear','venta.ver','cartera.ver','mensaje.enviar')
+  AND p.codigo IN ('rifa.ver','boleta.ver','venta.crear','venta.ver','cartera.ver','mensaje.enviar','pago.registrar')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO roles_permisos(rol_id, permiso_id)

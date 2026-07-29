@@ -37,11 +37,14 @@ export default async function VentaDetalle({
       <Link href="/app/ventas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a ventas
       </Link>
-      <div className="mt-2 flex items-center gap-3">
+      <div className="mt-2 flex flex-wrap items-center gap-3">
         <h1 className="font-mono text-2xl font-bold text-slate-900 dark:text-white">{venta.codigo}</h1>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoVentaClase[venta.estado] ?? estadoVentaClase.pendiente_pago}`}>
           {venta.estado.replace("_", " ")}
         </span>
+        <Link href={`/app/ventas/${venta.id}/recibo`} className="ml-auto rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          🖨️ Imprimir recibo
+        </Link>
       </div>
 
       {abono ? <Aviso tipo="ok">Abono registrado.</Aviso> : null}
