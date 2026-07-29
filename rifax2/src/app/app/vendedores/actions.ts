@@ -58,8 +58,16 @@ export async function cambiarEstadoVendedorAction(formData: FormData): Promise<v
 export async function asignarTalonarioAction(formData: FormData): Promise<void> {
   const user = await requirePermission("talonario.asignar");
   const vendedorId = BigInt(String(formData.get("vendedor_id") ?? "0"));
+  const tipo = String(formData.get("tipo") ?? "consecutiva") === "aleatoria" ? "aleatoria" : "consecutiva";
   const res = await asignarTalonario(
-    { rifaId: BigInt(String(formData.get("rifa_id") ?? "0")), vendedorId, inicio: Number(formData.get("inicio")), fin: Number(formData.get("fin")) },
+    {
+      rifaId: BigInt(String(formData.get("rifa_id") ?? "0")),
+      vendedorId,
+      tipo,
+      ...(tipo === "consecutiva"
+        ? { inicio: Number(formData.get("inicio")), fin: Number(formData.get("fin")) }
+        : { cantidad: Number(formData.get("cantidad")) }),
+    },
     user.tenant.id,
     user.id,
   );

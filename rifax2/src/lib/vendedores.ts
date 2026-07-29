@@ -74,13 +74,11 @@ export async function cambiarEstadoVendedor(vendedorId: bigint, tenantId: bigint
 }
 
 export async function asignarTalonario(
-  datos: { rifaId: bigint; vendedorId: bigint; inicio: number; fin: number },
+  datos: { rifaId: bigint; vendedorId: bigint; tipo: "consecutiva" | "aleatoria"; inicio?: number; fin?: number; cantidad?: number },
   tenantId: bigint,
   actorId: bigint,
 ): Promise<Resultado<{ boletas: number }>> {
-  const { rifaId, vendedorId, inicio, fin } = datos;
-  if (!Number.isInteger(inicio) || !Number.isInteger(fin)) return { ok: false, error: "El rango debe ser entero." };
-  if (fin < inicio) return { ok: false, error: "El número final no puede ser menor que el inicial." };
+  const { rifaId, vendedorId, tipo } = datos;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -88,38 +86,54 @@ export async function asignarTalonario(
 
       const rifa = await tx.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId } });
       if (!rifa) return { ok: false as const, error: "Rifa no encontrada." };
-      if (inicio < rifa.numero_min || fin > rifa.numero_max) {
-        return { ok: false as const, error: `El rango debe estar entre ${rifa.numero_min} y ${rifa.numero_max}.` };
-      }
       const vendedor = await tx.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId } });
       if (!vendedor) return { ok: false as const, error: "Vendedor no encontrado." };
       if (vendedor.estado !== "activo") return { ok: false as const, error: `El vendedor está '${vendedor.estado}'.` };
 
-      const solapados = await tx.talonarios.findMany({
-        where: { rifa_id: rifaId, estado: { not: "cerrado" }, numero_inicio: { lte: fin }, numero_fin: { gte: inicio } },
-        select: { numero_inicio: true, numero_fin: true },
-      });
-      if (solapados.length) {
-        const r = solapados[0];
-        return { ok: false as const, error: `El rango se solapa con un talonario existente (${r.numero_inicio}–${r.numero_fin}).` };
-      }
-
-      const cantidad = fin - inicio + 1;
+      // Cupo del vendedor (aplica a ambos modos).
+      const cantidadPedida = tipo === "consecutiva" ? (datos.fin ?? 0) - (datos.inicio ?? 0) + 1 : datos.cantidad ?? 0;
+      if (cantidadPedida < 1) return { ok: false as const, error: "Indica una cantidad válida de boletas." };
       if (vendedor.cupo_max !== null) {
         const asignadas = await tx.talonarios.findMany({ where: { vendedor_id: vendedorId, estado: { not: "cerrado" } }, select: { numero_inicio: true, numero_fin: true } });
         const ya = asignadas.reduce((a, t) => a + (t.numero_fin - t.numero_inicio + 1), 0);
-        if (ya + cantidad > vendedor.cupo_max) return { ok: false as const, error: `Excede el cupo del vendedor (${vendedor.cupo_max}); ya tiene ${ya}.` };
+        if (ya + cantidadPedida > vendedor.cupo_max) return { ok: false as const, error: `Excede el cupo del vendedor (${vendedor.cupo_max}); ya tiene ${ya}.` };
       }
 
-      const talonario = await tx.talonarios.create({
-        data: { tenant_id: tenantId, rifa_id: rifaId, vendedor_id: vendedorId, numero_inicio: inicio, numero_fin: fin, estado: "asignado" },
-      });
-      const marcadas = await tx.$executeRawUnsafe(
-        `UPDATE saas.boletas SET talonario_id=$1::bigint WHERE rifa_id=$2::bigint AND numero BETWEEN $3::int AND $4::int`,
-        talonario.id, rifaId, inicio, fin,
-      );
-      await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, rango: `${inicio}-${fin}`, boletas: marcadas } });
-      return { ok: true as const, data: { boletas: Number(marcadas) } };
+      let inicio: number;
+      let fin: number;
+      let marcadas: number;
+
+      if (tipo === "consecutiva") {
+        inicio = datos.inicio ?? 0;
+        fin = datos.fin ?? 0;
+        if (!Number.isInteger(inicio) || !Number.isInteger(fin) || fin < inicio) return { ok: false as const, error: "Rango inválido." };
+        if (inicio < rifa.numero_min || fin > rifa.numero_max) return { ok: false as const, error: `El rango debe estar entre ${rifa.numero_min} y ${rifa.numero_max}.` };
+        const solapados = await tx.talonarios.findMany({ where: { rifa_id: rifaId, estado: { not: "cerrado" }, numero_inicio: { lte: fin }, numero_fin: { gte: inicio } }, select: { numero_inicio: true, numero_fin: true } });
+        if (solapados.length) { const r = solapados[0]; return { ok: false as const, error: `El rango se solapa con un talonario existente (${r.numero_inicio}–${r.numero_fin}).` }; }
+
+        const talonario = await tx.talonarios.create({ data: { tenant_id: tenantId, rifa_id: rifaId, vendedor_id: vendedorId, numero_inicio: inicio, numero_fin: fin, estado: "asignado", tipo: "consecutiva" } });
+        marcadas = Number(await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE rifa_id=$2::bigint AND numero BETWEEN $3::int AND $4::int`, talonario.id, rifaId, inicio, fin));
+        await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, tipo, rango: `${inicio}-${fin}`, boletas: marcadas } });
+      } else {
+        // Aleatoria: toma N boletas disponibles y sin talonario, al azar.
+        const boletas = await tx.$queryRawUnsafe<{ id: bigint; numero: number }[]>(
+          `SELECT id, numero FROM saas.boletas
+            WHERE rifa_id=$1::bigint AND estado='disponible' AND talonario_id IS NULL
+            ORDER BY random() LIMIT $2::int
+            FOR UPDATE SKIP LOCKED`,
+          rifaId, cantidadPedida,
+        );
+        if (boletas.length < cantidadPedida) return { ok: false as const, error: `Solo hay ${boletas.length} boletas disponibles para asignar al azar.` };
+        const nums = boletas.map((b) => b.numero);
+        inicio = Math.min(...nums);
+        fin = Math.max(...nums);
+        const talonario = await tx.talonarios.create({ data: { tenant_id: tenantId, rifa_id: rifaId, vendedor_id: vendedorId, numero_inicio: inicio, numero_fin: fin, estado: "asignado", tipo: "aleatoria" } });
+        await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE id = ANY($2::bigint[])`, talonario.id, boletas.map((b) => b.id));
+        marcadas = boletas.length;
+        await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, tipo, cantidad: marcadas } });
+      }
+
+      return { ok: true as const, data: { boletas: marcadas } };
     });
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Error al asignar el talonario." };

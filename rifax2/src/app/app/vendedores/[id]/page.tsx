@@ -4,7 +4,8 @@ import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVendedor } from "@/lib/vendedores";
 import { prisma } from "@/lib/prisma";
 import { fecha } from "@/lib/format";
-import { asignarTalonarioAction, cerrarTalonarioAction, crearAccesoVendedorAction } from "../actions";
+import { cerrarTalonarioAction, crearAccesoVendedorAction } from "../actions";
+import FormAsignarTalonario from "./form-asignar";
 
 export const dynamic = "force-dynamic";
 
@@ -108,18 +109,10 @@ export default async function VendedorDetalle({
         rifas.length === 0 ? (
           <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">No hay rifas activas para asignar talonarios.</p>
         ) : (
-          <form action={asignarTalonarioAction} className="mt-8 space-y-3 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Asignar talonario</h3>
-            <input type="hidden" name="vendedor_id" value={String(vendedor.id)} />
-            <select name="rifa_id" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
-              {rifas.map((r) => <option key={String(r.id)} value={String(r.id)}>{r.codigo} — {r.nombre} ({r.numero_min}–{r.numero_max})</option>)}
-            </select>
-            <div className="grid grid-cols-2 gap-4">
-              <input name="inicio" type="number" min="0" step="1" required placeholder="Número inicial" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-              <input name="fin" type="number" min="0" step="1" required placeholder="Número final" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-            </div>
-            <button type="submit" className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Asignar</button>
-          </form>
+          <FormAsignarTalonario
+            vendedorId={String(vendedor.id)}
+            rifas={rifas.map((r) => ({ id: String(r.id), codigo: r.codigo, nombre: r.nombre, min: r.numero_min, max: r.numero_max }))}
+          />
         )
       ) : null}
     </div>
