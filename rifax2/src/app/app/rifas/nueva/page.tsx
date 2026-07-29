@@ -1,13 +1,17 @@
 import Link from "next/link";
 import { requirePermission } from "@/lib/auth/rbac";
 import { sedesOperables } from "@/lib/rifas";
+import { opcionesDe } from "@/lib/catalogos";
 import FormRifa from "./form";
 
 export const dynamic = "force-dynamic";
 
 export default async function NuevaRifaPage() {
   const user = await requirePermission("rifa.crear");
-  const sedes = await sedesOperables(user.tenant.id, user.sede?.id ?? null);
+  const [sedes, loterias] = await Promise.all([
+    sedesOperables(user.tenant.id, user.sede?.id ?? null),
+    opcionesDe(user.tenant.id, "loteria"),
+  ]);
 
   return (
     <div className="max-w-2xl">
@@ -21,7 +25,7 @@ export default async function NuevaRifaPage() {
           No hay sedes activas. Crea o activa una sede antes de registrar rifas.
         </p>
       ) : (
-        <FormRifa sedes={sedes.map((s) => ({ id: String(s.id), nombre: s.nombre }))} />
+        <FormRifa sedes={sedes.map((s) => ({ id: String(s.id), nombre: s.nombre }))} loterias={loterias} />
       )}
     </div>
   );

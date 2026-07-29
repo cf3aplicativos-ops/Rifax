@@ -3,8 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
-import { agregarPremio } from "@/lib/rifas";
+import { agregarPremio, agregarPremioAnticipado } from "@/lib/rifas";
 import { ejecutarSorteo, cambiarEntregaGanador } from "@/lib/sorteos";
+
+export async function agregarPremioAnticipadoAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const valor = String(formData.get("valor_estimado") ?? "").trim();
+  const pagos = String(formData.get("pagos_requeridos") ?? "").trim();
+  const res = await agregarPremioAnticipado(
+    user.tenant.id,
+    BigInt(rifaId),
+    {
+      nombre: String(formData.get("nombre") ?? ""),
+      loteria: String(formData.get("loteria") ?? "") || undefined,
+      fecha_juego: String(formData.get("fecha_juego") ?? ""),
+      pagos_requeridos: pagos ? Number(pagos) : 1,
+      valor_estimado: valor ? Number(valor) : null,
+    },
+    user.id,
+  );
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?anticipado=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
 
 export async function agregarPremioAction(formData: FormData): Promise<void> {
   const user = await requirePermission("rifa.editar");

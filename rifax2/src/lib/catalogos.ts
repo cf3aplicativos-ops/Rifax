@@ -39,6 +39,17 @@ export const TIPOS: { tipo: string; titulo: string; defaults: { valor: string; e
       { valor: "correo", etiqueta: "Correo" },
     ],
   },
+  {
+    tipo: "loteria",
+    titulo: "Loterías",
+    defaults: [
+      { valor: "boyaca", etiqueta: "Lotería de Boyacá" },
+      { valor: "cruz_roja", etiqueta: "Lotería Cruz Roja" },
+      { valor: "medellin", etiqueta: "Lotería de Medellín" },
+      { valor: "bogota", etiqueta: "Lotería de Bogotá" },
+      { valor: "valle", etiqueta: "Lotería del Valle" },
+    ],
+  },
 ];
 
 export interface Opcion {

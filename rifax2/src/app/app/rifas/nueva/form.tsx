@@ -8,7 +8,7 @@ const campo =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
 
-export default function FormRifa({ sedes }: { sedes: { id: string; nombre: string }[] }) {
+export default function FormRifa({ sedes, loterias }: { sedes: { id: string; nombre: string }[]; loterias: { valor: string; etiqueta: string }[] }) {
   const [state, action, pending] = useActionState(crearRifaAction, initialState);
   const [digitos, setDigitos] = useState(3);
   const total = Math.pow(10, digitos);
@@ -24,9 +24,18 @@ export default function FormRifa({ sedes }: { sedes: { id: string; nombre: strin
         </select>
       </div>
 
-      <div>
-        <label htmlFor="nombre" className={etiqueta}>Nombre</label>
-        <input id="nombre" name="nombre" required minLength={3} className={campo} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="nombre" className={etiqueta}>Nombre</label>
+          <input id="nombre" name="nombre" required minLength={3} className={campo} />
+        </div>
+        <div>
+          <label htmlFor="loteria" className={etiqueta}>Lotería (premio mayor)</label>
+          <select id="loteria" name="loteria" defaultValue="" className={campo}>
+            <option value="">— Sin definir —</option>
+            {loterias.map((l) => <option key={l.valor} value={l.valor}>{l.etiqueta}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>

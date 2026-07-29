@@ -315,6 +315,26 @@ model premios {
   @@schema("saas")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model premios_anticipados {
+  id               BigInt   @id @default(autoincrement())
+  tenant_id        BigInt
+  rifa_id          BigInt
+  nombre           String
+  loteria          String?
+  fecha_juego      DateTime @db.Date
+  pagos_requeridos Int      @default(1) @db.SmallInt
+  valor_estimado   Decimal? @db.Decimal(14, 2)
+  numero_ganador   Int?
+  estado           String   @default("programado")
+  creado_en        DateTime @default(now()) @db.Timestamptz(6)
+  rifas            rifas    @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenants          tenants  @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([rifa_id], map: "idx_premios_ant_rifa")
+  @@schema("saas")
+}
+
 model rendiciones {
   id              BigInt     @id @default(autoincrement())
   tenant_id       BigInt
@@ -335,34 +355,36 @@ model rendiciones {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model rifas {
-  id                  BigInt        @id @default(autoincrement())
-  uuid                String        @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id                  BigInt                @id @default(autoincrement())
+  uuid                String                @unique @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id           BigInt
   sede_id             BigInt
   codigo              String
   nombre              String
   descripcion         String?
-  numero_digitos      Int           @db.SmallInt
-  numero_min          Int           @default(0)
+  numero_digitos      Int                   @db.SmallInt
+  numero_min          Int                   @default(0)
   numero_max          Int
-  precio_boleta       Decimal       @db.Decimal(14, 2)
-  moneda              String        @default("COP") @db.Char(3)
-  fecha_apertura      DateTime      @db.Timestamptz(6)
-  fecha_cierre_ventas DateTime      @db.Timestamptz(6)
-  fecha_sorteo        DateTime      @db.Timestamptz(6)
-  estado              String        @default("borrador")
-  tasa_derechos       Decimal       @default(0.1400) @db.Decimal(6, 4)
+  precio_boleta       Decimal               @db.Decimal(14, 2)
+  moneda              String                @default("COP") @db.Char(3)
+  fecha_apertura      DateTime              @db.Timestamptz(6)
+  fecha_cierre_ventas DateTime              @db.Timestamptz(6)
+  fecha_sorteo        DateTime              @db.Timestamptz(6)
+  estado              String                @default("borrador")
+  tasa_derechos       Decimal               @default(0.1400) @db.Decimal(6, 4)
   total_boletas       Int
   creado_por          BigInt?
-  creado_en           DateTime      @default(now()) @db.Timestamptz(6)
-  actualizado_en      DateTime      @default(now()) @db.Timestamptz(6)
+  creado_en           DateTime              @default(now()) @db.Timestamptz(6)
+  actualizado_en      DateTime              @default(now()) @db.Timestamptz(6)
+  loteria             String?
   boletas             boletas[]
   ganadores           ganadores[]
   premios             premios[]
+  premios_anticipados premios_anticipados[]
   rendiciones         rendiciones[]
-  usuarios            usuarios?     @relation(fields: [creado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  sedes               sedes         @relation(fields: [sede_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  tenants             tenants       @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  usuarios            usuarios?             @relation(fields: [creado_por], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sedes               sedes                 @relation(fields: [sede_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  tenants             tenants               @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   sorteos             sorteos[]
   talonarios          talonarios[]
   ventas              ventas[]
@@ -462,6 +484,7 @@ model talonarios {
   numero_fin    Int
   estado        String     @default("asignado")
   asignado_en   DateTime   @default(now()) @db.Timestamptz(6)
+  tipo          String     @default("consecutiva")
   boletas       boletas[]
   rifas         rifas      @relation(fields: [rifa_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   tenants       tenants    @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -506,6 +529,7 @@ model tenants {
   outbox_notificaciones outbox_notificaciones[]
   pagos_pasarela        pagos_pasarela[]
   plantillas_mensaje    plantillas_mensaje[]
+  premios_anticipados   premios_anticipados[]
   rendiciones           rendiciones[]
   rifas                 rifas[]
   sedes                 sedes[]

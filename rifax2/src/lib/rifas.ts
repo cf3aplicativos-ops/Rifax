@@ -10,6 +10,7 @@ export const crearRifaSchema = z.object({
   sede_id: z.coerce.bigint(),
   nombre: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
   descripcion: z.string().optional(),
+  loteria: z.string().optional(),
   numero_digitos: z.coerce.number().int().min(2).max(6),
   precio_boleta: z.coerce.number().positive("El precio debe ser mayor que 0."),
   fecha_apertura: z.string().min(1, "Indica la fecha de apertura."),
@@ -38,8 +39,44 @@ export async function listarRifas(tenantId: bigint, sedeId: bigint | null) {
 export async function obtenerRifa(tenantId: bigint, id: bigint) {
   return prisma.rifas.findFirst({
     where: { id, tenant_id: tenantId },
-    include: { premios: { orderBy: { orden: "asc" } }, sedes: { select: { nombre: true } } },
+    include: {
+      premios: { orderBy: { orden: "asc" } },
+      premios_anticipados: { orderBy: { fecha_juego: "asc" } },
+      sedes: { select: { nombre: true } },
+    },
   });
+}
+
+export async function agregarPremioAnticipado(
+  tenantId: bigint,
+  rifaId: bigint,
+  datos: { nombre: string; loteria?: string; fecha_juego: string; pagos_requeridos?: number; valor_estimado?: number | null },
+  actorId: bigint,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!datos.nombre?.trim()) return { ok: false, error: "El nombre del premio es obligatorio." };
+  if (!datos.fecha_juego) return { ok: false, error: "La fecha de juego es obligatoria." };
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId } });
+  if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      const p = await tx.premios_anticipados.create({
+        data: {
+          tenant_id: tenantId,
+          rifa_id: rifaId,
+          nombre: datos.nombre.trim(),
+          loteria: datos.loteria || null,
+          fecha_juego: new Date(datos.fecha_juego),
+          pagos_requeridos: datos.pagos_requeridos && datos.pagos_requeridos >= 1 ? datos.pagos_requeridos : 1,
+          valor_estimado: datos.valor_estimado ?? null,
+          estado: "programado",
+        },
+      });
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "premio_anticipado", entidadId: p.id, despues: { rifa: rifa.codigo, nombre: datos.nombre.trim(), fecha: datos.fecha_juego } });
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al agregar el premio anticipado." };
+  }
 }
 
 export async function agregarPremio(
@@ -107,6 +144,7 @@ export async function crearRifa(
         codigo: `TMP-${randomUUID()}`,
         nombre: d.nombre,
         descripcion: d.descripcion || null,
+        loteria: d.loteria || null,
         numero_digitos: d.numero_digitos,
         numero_min: 0,
         numero_max: numeroMax,
