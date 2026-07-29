@@ -1,6 +1,7 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { resumenVentas, avancePorRifa, verificarAuditoria } from "@/lib/reportes";
 import { money, fechaHora } from "@/lib/format";
+import PrintButton from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 const pct = (p: number, t: number) => (t > 0 ? Math.round((p / t) * 100) : 0);
@@ -22,9 +23,21 @@ export default async function ReportesPage() {
     { l: "Ventas pagadas", v: `${resumen.ventasPagadas}/${resumen.ventas}`, c: "text-slate-900 dark:text-white" },
   ];
 
+  const descarga = "no-print rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800";
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Reportes</h1>
+      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Reportes</h1>
+        <div className="no-print flex flex-wrap items-center gap-2">
+          <a href="/api/export/ventas" className={descarga}>⬇ Ventas CSV</a>
+          <a href="/api/export/cartera" className={descarga}>⬇ Cartera CSV</a>
+          <a href="/api/export/avance" className={descarga}>⬇ Avance CSV</a>
+          {veAud ? <a href="/api/export/auditoria" className={descarga}>⬇ Auditoría CSV</a> : null}
+          <PrintButton label="Imprimir" />
+        </div>
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tarjetas.map((t) => (
