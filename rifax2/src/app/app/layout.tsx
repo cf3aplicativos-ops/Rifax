@@ -17,6 +17,14 @@ const nav = [
   { href: "/app/config", label: "Configuración", permiso: "config.gestionar" },
 ];
 
+function darken(hex: string, amt: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const f = (x: number) => Math.max(0, Math.round(x * (1 - amt))).toString(16).padStart(2, "0");
+  return `#${f((n >> 16) & 255)}${f((n >> 8) & 255)}${f(n & 255)}`;
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const branding = await getBranding(user.tenant.id);
@@ -25,8 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     ? { backgroundImage: `url(${branding.fondoUrl})`, backgroundSize: "cover", backgroundAttachment: "fixed" as const }
     : undefined;
 
+  // Aplica el color de marca a toda la app: Tailwind v4 resuelve los colores vía
+  // variables CSS, así que se sobrescriben los tonos indigo con el color del tenant.
+  const brand = branding.colorPrimario;
+  const brandCss = `:root{--color-indigo-50:${brand}14;--color-indigo-500:${brand};--color-indigo-600:${brand};--color-indigo-700:${darken(brand, 0.14)};}`;
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950" style={fondoStyle}>
+      <style>{brandCss}</style>
       <header className="border-b border-slate-200 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-6">

@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: import.meta.dirname,
   },
+  // El branding sube logo/fondo como data-URI vía server action; el límite por
+  // defecto (1MB) no alcanza. Se amplía para permitir imágenes hasta ~1.5MB.
+  experimental: {
+    serverActions: { bodySizeLimit: "5mb" },
+  },
 };
 
 export default nextConfig;
