@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { requireUser, hasPermission } from "@/lib/auth/rbac";
-import { estadoSedes } from "@/lib/dashboard";
+import { estadoSedes, boletasPorEstado, carteraPorTramo } from "@/lib/dashboard";
 import { money } from "@/lib/format";
+import { BarChart, Donut } from "@/components/charts";
+import PrintButton from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +16,16 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
   const user = await requireUser();
   const { denied } = await searchParams;
 
-  const sedes = await estadoSedes(user.tenant.id);
+  const sede = user.sede?.id ?? null;
+  const [sedes, boletas, tramos] = await Promise.all([
+    estadoSedes(user.tenant.id),
+    boletasPorEstado(user.tenant.id, sede),
+    carteraPorTramo(user.tenant.id, sede),
+  ]);
   // Si el usuario está acotado a una sede, solo muestra la suya.
   const visibles = user.sede ? sedes.filter((s) => s.id === user.sede!.id) : sedes;
+
+  const tramoLabel: Record<string, string> = { corriente: "Corriente", mora_1: "Mora 8–15d", mora_2: "Mora 16–30d", mora_3: "Mora +30d" };
 
   const tot = visibles.reduce(
     (a, s) => ({
@@ -28,8 +37,16 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
     { recaudado: 0, cartera: 0, ventas: 0, rifas: 0 },
   );
 
+  const boletasVendidas = boletas.pagada + boletas.reservada;
+  const boletasChart = [
+    { label: "Pagadas", value: boletas.pagada, color: "#10b981" },
+    { label: "Reservadas", value: boletas.reservada, color: "#f59e0b" },
+    { label: "Disponibles", value: boletas.disponible, color: "#cbd5e1" },
+  ];
+
   return (
     <div>
+      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       {denied ? (
         <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
           No tienes el permiso <code className="font-mono">{denied}</code> para esa sección.
@@ -43,9 +60,12 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
             {user.tenant.nombre} · {user.rol} · {user.sede ? `Sede ${user.sede.nombre}` : `${sedes.length} sede${sedes.length === 1 ? "" : "s"}`}
           </p>
         </div>
-        {hasPermission(user, "rifa.crear") ? (
-          <Link href="/app/rifas/nueva" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">+ Nueva rifa</Link>
-        ) : null}
+        <div className="no-print flex items-center gap-2">
+          <PrintButton label="Imprimir informe" />
+          {hasPermission(user, "rifa.crear") ? (
+            <Link href="/app/rifas/nueva" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">+ Nueva rifa</Link>
+          ) : null}
+        </div>
       </div>
 
       {sedes.length === 0 && hasPermission(user, "sede.crear") ? (
@@ -62,6 +82,22 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
         <Tarjeta v={money(tot.cartera)} l="Cartera pendiente" tono="text-amber-600 dark:text-amber-400" />
         <Tarjeta v={String(tot.ventas)} l="Ventas" />
         <Tarjeta v={String(tot.rifas)} l="Rifas activas" />
+      </div>
+
+      {/* Gráficas gerenciales */}
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Boletas ({boletasVendidas.toLocaleString("es-CO")} vendidas)</h2>
+          <div className="mt-4"><Donut data={boletasChart} /></div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Recaudo por sede</h2>
+          <div className="mt-4"><BarChart data={visibles.map((s) => ({ label: s.nombre, value: Number(s.recaudado) }))} format={money} /></div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cartera por antigüedad</h2>
+          <div className="mt-4"><BarChart data={tramos.map((t) => ({ label: tramoLabel[t.tramo] ?? t.tramo, value: t.saldo }))} format={money} color="#f59e0b" /></div>
+        </div>
       </div>
 
       {/* Estado por sede */}

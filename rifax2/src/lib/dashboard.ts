@@ -32,3 +32,37 @@ export async function estadoSedes(tenantId: bigint): Promise<EstadoSede[]> {
     recaudado: f.recaudado, cartera: f.cartera,
   }));
 }
+
+export async function boletasPorEstado(tenantId: bigint, sedeId: bigint | null) {
+  const filas = await prisma.$queryRawUnsafe<{ estado: string; n: bigint }[]>(
+    `SELECT b.estado, COUNT(*) AS n
+       FROM saas.boletas b JOIN saas.rifas r ON r.id = b.rifa_id
+      WHERE b.tenant_id = $1::bigint AND ($2::bigint IS NULL OR r.sede_id = $2::bigint)
+      GROUP BY b.estado`,
+    tenantId, sedeId,
+  );
+  const m: Record<string, number> = { disponible: 0, reservada: 0, pagada: 0, anulada: 0, bloqueada: 0 };
+  for (const f of filas) m[f.estado] = Number(f.n);
+  return m;
+}
+
+export async function carteraPorTramo(tenantId: bigint, sedeId: bigint | null) {
+  const filas = await prisma.$queryRawUnsafe<{ tramo: string; saldo: string; cuentas: bigint }[]>(
+    `SELECT CASE
+              WHEN now() - creado_en <= INTERVAL '7 days'  THEN 'corriente'
+              WHEN now() - creado_en <= INTERVAL '15 days' THEN 'mora_1'
+              WHEN now() - creado_en <= INTERVAL '30 days' THEN 'mora_2'
+              ELSE 'mora_3' END AS tramo,
+            COALESCE(SUM(saldo),0)::text AS saldo, COUNT(*) AS cuentas
+       FROM saas.ventas
+      WHERE tenant_id = $1::bigint AND ($2::bigint IS NULL OR sede_id = $2::bigint)
+        AND estado IN ('pendiente_pago','parcial') AND saldo > 0
+      GROUP BY tramo`,
+    tenantId, sedeId,
+  );
+  const orden = ["corriente", "mora_1", "mora_2", "mora_3"];
+  return orden.map((t) => {
+    const f = filas.find((x) => x.tramo === t);
+    return { tramo: t, saldo: f ? Number(f.saldo) : 0, cuentas: f ? Number(f.cuentas) : 0 };
+  });
+}
