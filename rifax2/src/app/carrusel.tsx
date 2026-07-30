@@ -21,7 +21,7 @@ export default function Carrusel({ slides }: { slides: Slide[] }) {
       {slides.map((s, idx) => (
         <div
           key={idx}
-          className={`absolute inset-0 transition-opacity duration-700 ${idx === i ? "opacity-100" : "opacity-0"} ${s.imagen ? "bg-contain bg-center bg-no-repeat bg-slate-900" : (s.gradiente ?? "bg-slate-800")}`}
+          className={`absolute inset-0 transition-opacity duration-700 ${idx === i ? "opacity-100" : "opacity-0"} ${s.imagen ? "bg-cover bg-center bg-no-repeat" : (s.gradiente ?? "bg-slate-800")}`}
           style={s.imagen ? { backgroundImage: `url(${s.imagen})` } : undefined}
         >
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

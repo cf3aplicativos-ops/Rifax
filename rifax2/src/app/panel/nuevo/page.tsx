@@ -21,11 +21,28 @@ function slugify(s: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function addMeses(base: Date, meses: number): Date {
+  const d = new Date(base);
+  d.setMonth(d.getMonth() + meses);
+  return d;
+}
+// Fechas de vencimiento según periodicidad: mensual=12, semestral=2, anual=1.
+function calcularVencimientos(inicioISO: string, periodicidad: string): string[] {
+  const base = inicioISO && /^\d{4}-\d{2}-\d{2}$/.test(inicioISO) ? new Date(inicioISO + "T00:00:00") : new Date();
+  const n = periodicidad === "mensual" ? 12 : periodicidad === "semestral" ? 2 : 1;
+  const pasoMeses = periodicidad === "mensual" ? 1 : periodicidad === "semestral" ? 6 : 12;
+  const fmt = new Intl.DateTimeFormat("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return Array.from({ length: n }, (_, k) => fmt.format(addMeses(base, (k + 1) * pasoMeses)));
+}
+
 export default function NuevoTenantPage() {
   const [state, action, pending] = useActionState(crearTenantAction, initialState);
   const [slug, setSlug] = useState("");
   const [sedesIlim, setSedesIlim] = useState(false);
   const [usuariosIlim, setUsuariosIlim] = useState(false);
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [periodicidad, setPeriodicidad] = useState("mensual");
+  const vencimientos = calcularVencimientos(fechaInicio, periodicidad);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -111,11 +128,11 @@ export default function NuevoTenantPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label htmlFor="fecha_inicio" className={etiqueta}>Fecha de inicio</label>
-              <input id="fecha_inicio" name="fecha_inicio" type="date" className={campo} />
+              <input id="fecha_inicio" name="fecha_inicio" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} className={campo} />
             </div>
             <div>
               <label htmlFor="periodicidad" className={etiqueta}>Periodicidad del plan</label>
-              <select id="periodicidad" name="periodicidad" defaultValue="mensual" className={campo}>
+              <select id="periodicidad" name="periodicidad" value={periodicidad} onChange={(e) => setPeriodicidad(e.target.value)} className={campo}>
                 <option value="mensual">Mensual</option>
                 <option value="semestral">Semestral</option>
                 <option value="anual">Anual</option>
@@ -130,7 +147,20 @@ export default function NuevoTenantPage() {
               </select>
             </div>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400">La fecha de vencimiento se calcula automáticamente según la periodicidad del plan (por defecto, desde hoy).</p>
+          {/* Fechas de vencimiento calculadas (mensual=12, semestral=2, anual=1). */}
+          <div className="rounded-lg border border-slate-300 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-950/40">
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Fechas de vencimiento ({vencimientos.length})
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {vencimientos.map((v, i) => (
+                <span key={i} className="rounded-md bg-white px-2 py-1 font-mono text-xs text-slate-700 shadow-sm dark:bg-slate-900 dark:text-slate-300">{v}</span>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+              Se generan automáticamente desde la fecha de inicio (o desde hoy). Podrás registrar el pago de cada fecha en el panel.
+            </p>
+          </div>
         </fieldset>
 
         <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">

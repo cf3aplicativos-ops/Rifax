@@ -4,6 +4,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
+import { generarVencimientos } from "@/lib/vencimientos";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -86,7 +87,6 @@ export async function crearTenant(
         },
       });
       // Campos de plan y vigencia (columnas fuera del modelo Prisma).
-      const intervalo = d.periodicidad === "anual" ? "1 year" : d.periodicidad === "semestral" ? "6 months" : "1 month";
       await tx.$executeRawUnsafe(
         `UPDATE saas.tenants SET
            plan = $2::text,
@@ -95,8 +95,7 @@ export async function crearTenant(
            max_usuarios = $5,
            periodicidad = $6::text,
            periodicidad_pago = $7::text,
-           fecha_inicio = COALESCE($8::date, CURRENT_DATE),
-           fecha_vencimiento = (COALESCE($8::date, CURRENT_DATE) + $9::interval)::date
+           fecha_inicio = COALESCE($8::date, CURRENT_DATE)
          WHERE id = $1::bigint`,
         tenant.id,
         d.plan,
@@ -106,8 +105,10 @@ export async function crearTenant(
         d.periodicidad,
         d.periodicidad_pago,
         d.fecha_inicio && /^\d{4}-\d{2}-\d{2}$/.test(d.fecha_inicio) ? d.fecha_inicio : null,
-        intervalo,
       );
+      // Genera el calendario de fechas de vencimiento (mensual=12, semestral=2, anual=1)
+      // y sincroniza fecha_vencimiento con la próxima pendiente.
+      await generarVencimientos(tx as typeof prisma, tenant.id, d.fecha_inicio ?? null, d.periodicidad);
       // Config de branding por defecto
       await tx.tenant_config.create({ data: { tenant_id: tenant.id } });
       // Usuario administrador del tenant (sede_id NULL = acceso a todo el tenant)

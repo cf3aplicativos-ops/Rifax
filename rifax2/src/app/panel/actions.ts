@@ -11,6 +11,7 @@ import {
   purgarTenant,
 } from "@/lib/superadmin";
 import { cambiarPlanTenant } from "@/lib/plataforma";
+import { registrarPagoVencimiento, regenerarVencimientos } from "@/lib/vencimientos";
 
 export interface TenantFormState {
   error?: string;
@@ -81,6 +82,20 @@ export async function cambiarPlanTenantAction(formData: FormData): Promise<void>
   );
   revalidatePath("/panel");
   redirect(res.ok ? "/panel?plan=1" : `/panel?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function registrarPagoVencimientoAction(formData: FormData): Promise<void> {
+  await requireSuper();
+  await registrarPagoVencimiento(BigInt(String(formData.get("vencimiento_id") ?? "0")));
+  revalidatePath("/panel");
+  redirect("/panel?pago=1");
+}
+
+export async function regenerarVencimientosAction(formData: FormData): Promise<void> {
+  await requireSuper();
+  const res = await regenerarVencimientos(BigInt(String(formData.get("tenant_id") ?? "0")));
+  revalidatePath("/panel");
+  redirect(res.ok ? "/panel?calendario=1" : `/panel?error=${encodeURIComponent(res.error)}`);
 }
 
 // Borrado de la base de datos del cliente con verificación en TRES pasos:

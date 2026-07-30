@@ -3,9 +3,10 @@ import { PageTitle } from "@/components/icons";
 import { requireSuper } from "@/lib/auth/rbac";
 import { listarTenants } from "@/lib/superadmin";
 import { moraPorTenant } from "@/lib/facturacion";
+import { vencimientosPorTenant, proximosVencimientos } from "@/lib/vencimientos";
 import { PLANES } from "@/lib/planes";
 import { fechaHora, money } from "@/lib/format";
-import { cambiarEstadoTenantAction, cambiarMaxSedesAction, cambiarPlanTenantAction } from "./actions";
+import { cambiarEstadoTenantAction, cambiarMaxSedesAction, cambiarPlanTenantAction, registrarPagoVencimientoAction, regenerarVencimientosAction } from "./actions";
 import BorrarWizard from "./borrar-wizard";
 
 export const dynamic = "force-dynamic";
@@ -19,11 +20,11 @@ const estadoClase: Record<string, string> = {
 export default async function PanelHome({
   searchParams,
 }: {
-  searchParams: Promise<{ creado?: string; estado?: string; sedes?: string; plan?: string; purgado?: string; error?: string }>;
+  searchParams: Promise<{ creado?: string; estado?: string; sedes?: string; plan?: string; purgado?: string; pago?: string; calendario?: string; error?: string }>;
 }) {
   await requireSuper();
   const sp = await searchParams;
-  const [tenants, mora] = await Promise.all([listarTenants(), moraPorTenant()]);
+  const [tenants, mora, vencs, prox] = await Promise.all([listarTenants(), moraPorTenant(), vencimientosPorTenant(), proximosVencimientos()]);
 
   return (
     <div>
@@ -42,6 +43,8 @@ export default async function PanelHome({
       </div>
 
       {sp.creado ? <Aviso tipo="ok">Empresa creada con su administrador.</Aviso> : null}
+      {sp.pago ? <Aviso tipo="ok">Pago registrado. La fecha se marcó como pagada.</Aviso> : null}
+      {sp.calendario ? <Aviso tipo="ok">Calendario de vencimientos regenerado.</Aviso> : null}
       {sp.estado ? <Aviso tipo="ok">Estado actualizado.</Aviso> : null}
       {sp.sedes ? <Aviso tipo="ok">Número de sedes actualizado.</Aviso> : null}
       {sp.plan ? <Aviso tipo="ok">Plan actualizado.</Aviso> : null}
@@ -69,6 +72,11 @@ export default async function PanelHome({
                       {m && m.pendiente > 0 ? (
                         <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
                           Mora {money(m.pendiente)}{m.vencidas > 0 ? ` · ${m.vencidas} vencida${m.vencidas === 1 ? "" : "s"}` : ""}
+                        </span>
+                      ) : null}
+                      {prox[t.id] ? (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${prox[t.id].dias <= 3 ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"}`}>
+                          Próx. vence {prox[t.id].fecha}{prox[t.id].dias < 0 ? " (vencido)" : ` · ${prox[t.id].dias}d`}
                         </span>
                       ) : null}
                     </div>
@@ -125,6 +133,35 @@ export default async function PanelHome({
                     <BorrarWizard tenantId={t.id} slug={t.slug} nombre={t.nombre} />
                   </div>
                 </div>
+
+                {/* Calendario de vencimientos */}
+                <details className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-700">
+                  <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Fechas de vencimiento {vencs[t.id] ? `(${vencs[t.id].filter((v) => v.estado === "pagada").length}/${vencs[t.id].length} pagadas)` : "(sin calendario)"}
+                  </summary>
+                  {vencs[t.id] && vencs[t.id].length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {vencs[t.id].map((v) => (
+                        <div key={v.id} className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${v.estado === "pagada" ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/40" : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950"}`}>
+                          <span className="font-mono text-slate-700 dark:text-slate-300">#{v.numero} {v.fecha}</span>
+                          {v.estado === "pagada" ? (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400">✓ pagada</span>
+                          ) : (
+                            <form action={registrarPagoVencimientoAction}>
+                              <input type="hidden" name="vencimiento_id" value={v.id} />
+                              <button type="submit" className="rounded-md border border-emerald-300 px-2 py-0.5 font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-300">Registrar pago</button>
+                            </form>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <form action={regenerarVencimientosAction} className="mt-3">
+                      <input type="hidden" name="tenant_id" value={t.id} />
+                      <button type="submit" className={btnSec}>Generar calendario</button>
+                    </form>
+                  )}
+                </details>
               </div>
             );
           })}
