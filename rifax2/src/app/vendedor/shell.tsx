@@ -26,7 +26,7 @@ export default function VendedorShell({
   );
 
   return (
-    <SideNav nav={nav} brand={tenant} subtitle="Vendedor" logoUrl={logoUrl} homeHref="/vendedor" footer={footer}>
+    <SideNav nav={nav} brand={tenant} subtitle="Vendedor" logoUrl={logoUrl} homeHref="/vendedor" footer={footer} mode="hamburger">
       {children}
     </SideNav>
   );

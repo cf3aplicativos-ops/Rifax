@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import GanadoresVivo from "./ganadores-vivo";
+import Carrusel from "./carrusel";
+import { slidesLanding } from "@/lib/landing-slides";
 
 export const metadata: Metadata = {
   title: "RIFAX SaaS — Plataforma multi-empresa de gestión de rifas",
@@ -121,6 +123,9 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {/* CARRUSEL configurable (parte superior) */}
+      <Carrusel slides={slidesLanding} />
 
       {/* HERO */}
       <section className="relative overflow-hidden">

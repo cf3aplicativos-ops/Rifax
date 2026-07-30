@@ -29,7 +29,7 @@ export default function ConsultaPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       <style>{"@media print{.no-print{display:none!important}aside{display:none!important}}"}</style>
-      <SideNav nav={nav} brand="RIFAX" subtitle="Consulta pública" logoUrl={null} homeHref="/">
+      <SideNav nav={nav} brand="RIFAX" subtitle="Consulta pública" logoUrl={null} homeHref="/" mode="hamburger">
         <div className="mx-auto max-w-lg">
           <div className="no-print rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center gap-3">

@@ -41,7 +41,7 @@ export async function GET() {
       LEFT JOIN saas.clientes cl ON cl.id = g.cliente_id
       LEFT JOIN saas.premios pr  ON pr.id = s.premio_id
       ORDER BY s.ejecutado_en DESC
-      LIMIT 8
+      LIMIT 12
     `);
 
     const data = filas.map((f) => ({

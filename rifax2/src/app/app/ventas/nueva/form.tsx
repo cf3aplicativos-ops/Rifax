@@ -10,7 +10,8 @@ interface Rifa {
   precio: string;
   numeroMin: number;
   numeroMax: number;
-  sugeridos: number[];
+  sugeridos?: number[];
+  disponibles?: number[];
 }
 
 const initialState: VentaFormState = {};
@@ -19,7 +20,15 @@ const campo =
 const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
 const cop = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
-export default function FormVenta({ rifas, canales }: { rifas: Rifa[]; canales: { valor: string; etiqueta: string }[] }) {
+export default function FormVenta({
+  rifas, canales, modo = "general", vendedorNombre,
+}: {
+  rifas: Rifa[];
+  canales: { valor: string; etiqueta: string }[];
+  modo?: "general" | "vendedor";
+  vendedorNombre?: string;
+}) {
+  const esVendedor = modo === "vendedor";
   const [state, action, pending] = useActionState(crearVentaAction, initialState);
   const [rifaId, setRifaId] = useState(rifas[0]?.id ?? "");
   const [numeros, setNumeros] = useState("");
@@ -32,42 +41,104 @@ export default function FormVenta({ rifas, canales }: { rifas: Rifa[]; canales: 
   );
   const total = rifa ? Number(rifa.precio) * unicos.length : 0;
 
+  // Boletas disponibles (asignadas) que aún no ha elegido, para el desplegable.
+  const disponiblesRestantes = useMemo(
+    () => (rifa?.disponibles ?? []).filter((n) => !unicos.includes(n)),
+    [rifa, unicos],
+  );
+
   function agregar(n: number) {
     setNumeros((prev) => {
       const a = prev.split(/[\s,]+/).filter(Boolean);
       return a.includes(String(n)) ? prev : [...a, String(n)].join(", ");
     });
   }
+  function quitar(n: number) {
+    setNumeros((prev) => prev.split(/[\s,]+/).filter(Boolean).filter((x) => x !== String(n)).join(", "));
+  }
+  // Al cambiar de rifa se limpia la selección (los números pertenecen a otra rifa).
+  function cambiarRifa(id: string) {
+    setRifaId(id);
+    setNumeros("");
+  }
 
   return (
     <form action={action} className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
       <input type="hidden" name="idem" value={idem} />
+      {esVendedor ? <input type="hidden" name="numeros" value={unicos.join(",")} /> : null}
+
+      {esVendedor && vendedorNombre ? (
+        <div className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm dark:bg-amber-950/40">
+          <span className="text-amber-700 dark:text-amber-400">Vendedor:</span>
+          <span className="font-semibold text-slate-900 dark:text-white">{vendedorNombre}</span>
+        </div>
+      ) : null}
+
       <div>
         <label htmlFor="rifa_id" className={etiqueta}>Rifa</label>
-        <select id="rifa_id" name="rifa_id" value={rifaId} onChange={(e) => setRifaId(e.target.value)} className={campo}>
+        <select id="rifa_id" name="rifa_id" value={rifaId} onChange={(e) => cambiarRifa(e.target.value)} className={campo}>
           {rifas.map((r) => <option key={r.id} value={r.id}>{r.codigo} — {r.nombre} ({cop.format(Number(r.precio))} c/u)</option>)}
         </select>
       </div>
 
-      <div>
-        <label htmlFor="numeros" className={etiqueta}>Números de boleta</label>
-        <input id="numeros" name="numeros" value={numeros} onChange={(e) => setNumeros(e.target.value)} placeholder="Ej: 7, 15, 42" required className={campo} />
-        {rifa && rifa.sugeridos.length > 0 ? (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-slate-500 dark:text-slate-400">Disponibles:</span>
-            {rifa.sugeridos.map((n) => (
-              <button key={n} type="button" onClick={() => agregar(n)} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700 transition hover:bg-indigo-100 hover:text-indigo-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-950 dark:hover:text-indigo-300">
-                {n}
-              </button>
-            ))}
+      {esVendedor ? (
+        /* Selección por desplegable de las boletas asignadas al vendedor. */
+        <div>
+          <label htmlFor="sel_boleta" className={etiqueta}>Boletas a vender <span className="text-slate-400">(de tus talonarios)</span></label>
+          <div className="flex gap-2">
+            <select
+              id="sel_boleta"
+              value=""
+              onChange={(e) => { if (e.target.value) agregar(Number(e.target.value)); }}
+              disabled={disponiblesRestantes.length === 0}
+              className={campo}
+            >
+              <option value="">
+                {disponiblesRestantes.length === 0 ? "Sin boletas disponibles" : "Selecciona un número…"}
+              </option>
+              {disponiblesRestantes.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
           </div>
-        ) : null}
-        {unicos.length > 0 ? (
-          <p className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {unicos.length} boleta{unicos.length === 1 ? "" : "s"} · Total <span className="text-indigo-600">{cop.format(total)}</span>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            {(rifa?.disponibles?.length ?? 0).toLocaleString("es-CO")} boletas disponibles en tus talonarios.
           </p>
-        ) : null}
-      </div>
+          {unicos.length > 0 ? (
+            <div className="mt-3">
+              <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">Seleccionadas:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {unicos.map((n) => (
+                  <span key={n} className="inline-flex items-center gap-1 rounded-md bg-[#1e293b] px-2 py-1 font-mono text-xs font-semibold text-[#f5c518]">
+                    {n}
+                    <button type="button" onClick={() => quitar(n)} aria-label={`Quitar ${n}`} className="text-slate-400 hover:text-white">×</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        /* Modo general: entrada libre + sugeridos. */
+        <div>
+          <label htmlFor="numeros" className={etiqueta}>Números de boleta</label>
+          <input id="numeros" name="numeros" value={numeros} onChange={(e) => setNumeros(e.target.value)} placeholder="Ej: 7, 15, 42" required className={campo} />
+          {rifa && (rifa.sugeridos?.length ?? 0) > 0 ? (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-slate-500 dark:text-slate-400">Disponibles:</span>
+              {rifa.sugeridos!.map((n) => (
+                <button key={n} type="button" onClick={() => agregar(n)} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700 transition hover:bg-indigo-100 hover:text-indigo-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-950 dark:hover:text-indigo-300">
+                  {n}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {unicos.length > 0 ? (
+        <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          {unicos.length} boleta{unicos.length === 1 ? "" : "s"} · Total <span className="text-indigo-600">{cop.format(total)}</span>
+        </p>
+      ) : null}
 
       <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
         <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Cliente</legend>

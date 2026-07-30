@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireUser, hasPermission } from "@/lib/auth/rbac";
-import { estadoSedes, boletasPorEstado, carteraPorTramo } from "@/lib/dashboard";
+import { estadoSedes, boletasPorEstado, carteraPorTramo, topVendedores, topVendedoresTenant } from "@/lib/dashboard";
 import { money } from "@/lib/format";
 import { BarChart, Donut } from "@/components/charts";
 import PrintButton from "@/components/PrintButton";
@@ -18,10 +18,11 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
   const { denied } = await searchParams;
 
   const sede = user.sede?.id ?? null;
-  const [sedes, boletas, tramos] = await Promise.all([
+  const [sedes, boletas, tramos, top] = await Promise.all([
     estadoSedes(user.tenant.id),
     boletasPorEstado(user.tenant.id, sede),
     carteraPorTramo(user.tenant.id, sede),
+    user.sede ? topVendedores(user.tenant.id, user.sede.id, 10) : topVendedoresTenant(user.tenant.id, 10),
   ]);
   // Si el usuario está acotado a una sede, solo muestra la suya.
   const visibles = user.sede ? sedes.filter((s) => s.id === user.sede!.id) : sedes;
@@ -103,6 +104,31 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
           <div className="mt-4"><BarChart data={tramos.map((t) => ({ label: tramoLabel[t.tramo] ?? t.tramo, value: t.saldo }))} format={money} color="#f59e0b" /></div>
         </div>
       </div>
+
+      {/* Top vendedores */}
+      {top.length > 0 ? (
+        <section className="mt-8">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="vendedores" className="h-5 w-5" /></span>
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Top {top.length} vendedores por ventas</h2>
+          </div>
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            {top.map((v, i) => {
+              const medalla = ["bg-amber-400 text-slate-900", "bg-slate-300 text-slate-900", "bg-orange-400 text-slate-900"][i] ?? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
+              return (
+                <div key={String(v.id)} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0 dark:border-slate-800">
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold ${medalla}`}>{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{v.nombre}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{v.ventas} venta{v.ventas === 1 ? "" : "s"} · {v.pctComision}% comisión</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-bold text-emerald-600 dark:text-emerald-400">{money(v.recaudado)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* Estado por sede */}
       {visibles.length > 0 ? (
