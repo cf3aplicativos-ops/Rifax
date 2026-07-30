@@ -62,8 +62,11 @@ export default function AppShell({
               : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
           }`}
         >
-          <span className="grid h-5 w-5 shrink-0 place-items-center text-[13px] font-bold">{n.label.charAt(0)}</span>
-          {!collapsed ? <span className="truncate">{n.label}</span> : null}
+          {collapsed ? (
+            <span className="grid h-5 w-5 shrink-0 place-items-center text-[13px] font-bold">{n.label.charAt(0)}</span>
+          ) : (
+            <span className="truncate">{n.label}</span>
+          )}
         </Link>
       ))}
     </nav>
