@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarUsuarios, listarRoles } from "@/lib/usuarios";
 import { fechaHora } from "@/lib/format";
@@ -23,7 +24,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Usuarios</h1>
+        <PageTitle icon="usuarios">Usuarios</PageTitle>
         {puedeCrear ? <Link href="/app/usuarios/nuevo" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">+ Nuevo usuario</Link> : null}
       </div>
       {sp.creado || sp.rol || sp.estado ? <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Cambio aplicado.</p> : null}

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { fecha } from "@/lib/format";
 import { cerrarTalonarioAction, crearAccesoVendedorAction } from "../actions";
 import FormAsignarTalonario from "./form-asignar";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,10 @@ export default async function VendedorDetalle({
   return (
     <div className="max-w-3xl">
       <Link href="/app/vendedores" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a vendedores</Link>
-      <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{vendedor.nombre}</h1>
+      <div className="mt-2 flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="vendedores" /></span>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{vendedor.nombre}</h1>
+      </div>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {vePii ? `${vendedor.documento} · ${vendedor.telefono}` : "datos protegidos"} · {Number(vendedor.pct_comision.toString())}% comisión · {vendedor.cupo_max ? `${asignadas}/${vendedor.cupo_max}` : asignadas} boletas
       </p>

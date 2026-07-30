@@ -3,17 +3,17 @@ import { getBranding } from "@/lib/branding";
 import AppShell from "./shell";
 
 const nav = [
-  { href: "/app", label: "Inicio", permiso: null },
-  { href: "/app/rifas", label: "Rifas", permiso: "rifa.ver" },
-  { href: "/app/ventas", label: "Ventas", permiso: "venta.ver" },
-  { href: "/app/cartera", label: "Cartera", permiso: "cartera.ver" },
-  { href: "/app/reportes", label: "Reportes", permiso: "reporte.ver" },
-  { href: "/app/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
-  { href: "/app/comisiones", label: "Comisiones", permiso: "cartera.ver" },
-  { href: "/app/notificaciones", label: "Notificaciones", permiso: "mensaje.enviar" },
-  { href: "/app/usuarios", label: "Usuarios", permiso: "usuario.ver" },
-  { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },
-  { href: "/app/config", label: "Configuración", permiso: "config.gestionar" },
+  { href: "/app", label: "Inicio", icon: "inicio", exact: true, permiso: null },
+  { href: "/app/rifas", label: "Rifas", icon: "rifas", permiso: "rifa.ver" },
+  { href: "/app/ventas", label: "Ventas", icon: "ventas", permiso: "venta.ver" },
+  { href: "/app/cartera", label: "Cartera", icon: "cartera", permiso: "cartera.ver" },
+  { href: "/app/reportes", label: "Reportes", icon: "reportes", permiso: "reporte.ver" },
+  { href: "/app/vendedores", label: "Vendedores", icon: "vendedores", permiso: "vendedor.ver" },
+  { href: "/app/comisiones", label: "Comisiones", icon: "comisiones", permiso: "cartera.ver" },
+  { href: "/app/notificaciones", label: "Notificaciones", icon: "notificaciones", permiso: "mensaje.enviar" },
+  { href: "/app/usuarios", label: "Usuarios", icon: "usuarios", permiso: "usuario.ver" },
+  { href: "/app/sedes", label: "Sedes", icon: "sedes", permiso: "sede.ver" },
+  { href: "/app/config", label: "Configuración", icon: "config", permiso: "config.gestionar" },
 ];
 
 function darken(hex: string, amt: number): string {
@@ -24,13 +24,29 @@ function darken(hex: string, amt: number): string {
   return `#${f((n >> 16) & 255)}${f((n >> 8) & 255)}${f(n & 255)}`;
 }
 
+// Luminancia relativa aproximada (0 = negro, 1 = blanco) para decidir el color
+// de texto que contrasta sobre el color de marca.
+function luminancia(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return 0;
+  const n = parseInt(m[1], 16);
+  const r = ((n >> 16) & 255) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const branding = await getBranding(user.tenant.id);
   const brand = branding.colorPrimario;
-  const brandCss = `:root{--color-indigo-50:${brand}14;--color-indigo-500:${brand};--color-indigo-600:${brand};--color-indigo-700:${darken(brand, 0.14)};}`;
+  // Si el color de marca es claro (p. ej. el amarillo Rifax), el texto sobre los
+  // elementos primarios debe ser oscuro para que contraste.
+  const claro = luminancia(brand) > 0.6;
+  const fgPrimario = claro ? "#1e293b" : "#ffffff";
+  const brandCss =
+    `:root{--rifax-accent:${brand};--color-indigo-50:${brand}14;--color-indigo-500:${brand};--color-indigo-600:${brand};--color-indigo-700:${darken(brand, 0.12)};}` +
+    (claro ? ".bg-indigo-600{color:" + fgPrimario + " !important}" : "");
 
-  const items = nav.filter((n) => n.permiso === null || user.permisos.includes(n.permiso)).map((n) => ({ href: n.href, label: n.label }));
+  const items = nav.filter((n) => n.permiso === null || user.permisos.includes(n.permiso)).map((n) => ({ href: n.href, label: n.label, icon: n.icon, exact: n.exact }));
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">

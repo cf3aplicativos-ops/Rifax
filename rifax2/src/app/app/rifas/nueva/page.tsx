@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { sedesOperables } from "@/lib/rifas";
 import { opcionesDe } from "@/lib/catalogos";
@@ -18,7 +19,7 @@ export default async function NuevaRifaPage() {
       <Link href="/app/rifas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a rifas
       </Link>
-      <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Nueva rifa</h1>
+      <PageTitle icon="nuevo" className="mt-2">Nueva rifa</PageTitle>
 
       {sedes.length === 0 ? (
         <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">

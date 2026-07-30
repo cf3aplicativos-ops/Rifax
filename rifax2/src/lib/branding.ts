@@ -18,7 +18,7 @@ export async function getBranding(tenantId: bigint) {
   return {
     logoUrl: c?.logo_url ?? null,
     fondoUrl: c?.fondo_url ?? null,
-    colorPrimario: c?.color_primario ?? "#4f46e5",
+    colorPrimario: c?.color_primario ?? "#f5c518",
   };
 }
 
@@ -35,7 +35,7 @@ export async function guardarBranding(
   datos: { logo: File | null; fondo: File | null; color: string; quitarLogo?: boolean; quitarFondo?: boolean },
   actorId: bigint,
 ): Promise<Resultado> {
-  const color = /^#[0-9a-fA-F]{6}$/.test(datos.color) ? datos.color : "#4f46e5";
+  const color = /^#[0-9a-fA-F]{6}$/.test(datos.color) ? datos.color : "#f5c518";
 
   const logo = await fileADataUri(datos.logo, "logo");
   if (logo && typeof logo === "object") return { ok: false, error: logo.error };

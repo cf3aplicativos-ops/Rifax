@@ -1,4 +1,5 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
+import { PageTitle } from "@/components/icons";
 import { resumenOutbox, listarOutbox } from "@/lib/outbox";
 import { fechaHora } from "@/lib/format";
 import { procesarOutboxAction } from "./actions";
@@ -22,7 +23,7 @@ export default async function NotificacionesPage({ searchParams }: { searchParam
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Notificaciones</h1>
+        <PageTitle icon="notificaciones">Notificaciones</PageTitle>
         {puedeEnviar ? (
           <form action={procesarOutboxAction}>
             <button type="submit" disabled={pendientes === 0} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">

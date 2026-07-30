@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarVendedores } from "@/lib/vendedores";
 import { cambiarEstadoVendedorAction } from "./actions";
@@ -22,7 +23,7 @@ export default async function VendedoresPage({ searchParams }: { searchParams: P
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Vendedores</h1>
+        <PageTitle icon="vendedores">Vendedores</PageTitle>
         {puedeCrear ? <Link href="/app/vendedores/nuevo" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">+ Nuevo vendedor</Link> : null}
       </div>
       {creado || estado ? <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Cambio aplicado.</p> : null}

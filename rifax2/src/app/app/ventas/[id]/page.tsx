@@ -4,6 +4,7 @@ import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVenta } from "@/lib/ventas";
 import { money, fechaHora, estadoVentaClase } from "@/lib/format";
 import { registrarAbonoAction, anularVentaAction } from "../actions";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,7 @@ export default async function VentaDetalle({
         ← Volver a ventas
       </Link>
       <div className="mt-2 flex flex-wrap items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="ventas" /></span>
         <h1 className="font-mono text-2xl font-bold text-slate-900 dark:text-white">{venta.codigo}</h1>
         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoVentaClase[venta.estado] ?? estadoVentaClase.pendiente_pago}`}>
           {venta.estado.replace("_", " ")}

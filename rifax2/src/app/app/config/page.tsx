@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { listarCatalogos, TIPOS } from "@/lib/catalogos";
 import { getBranding } from "@/lib/branding";
@@ -13,7 +14,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Configuración</h1>
+      <PageTitle icon="config">Configuración</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Personaliza las listas desplegables del aplicativo. Si no agregas opciones, se usan las
         predeterminadas.

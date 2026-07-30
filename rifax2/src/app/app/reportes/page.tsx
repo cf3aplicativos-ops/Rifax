@@ -1,4 +1,5 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
+import { PageTitle } from "@/components/icons";
 import { resumenVentas, avancePorRifa, verificarAuditoria } from "@/lib/reportes";
 import { money, fechaHora } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
@@ -29,7 +30,7 @@ export default async function ReportesPage() {
     <div>
       <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Reportes</h1>
+        <PageTitle icon="reportes">Reportes</PageTitle>
         <div className="no-print flex flex-wrap items-center gap-2">
           <a href="/api/export/ventas" className={descarga}>⬇ Ventas CSV</a>
           <a href="/api/export/cartera" className={descarga}>⬇ Cartera CSV</a>

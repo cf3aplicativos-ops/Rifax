@@ -6,6 +6,7 @@ import { estadoSedes, boletasPorEstado, carteraPorTramo, topVendedores } from "@
 import { BarChart, Donut } from "@/components/charts";
 import { money } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 const tramoLabel: Record<string, string> = { corriente: "Corriente", mora_1: "Mora 8–15d", mora_2: "Mora 16–30d", mora_3: "Mora +30d" };
@@ -43,7 +44,10 @@ export default async function SedeRadiografia({ params }: { params: Promise<{ id
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/app/sedes" className="no-print text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a sedes</Link>
-          <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Radiografía · {sede.nombre}</h1>
+          <div className="mt-1 flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="sedes" /></span>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Radiografía · {sede.nombre}</h1>
+          </div>
           <p className="text-sm text-slate-500 dark:text-slate-400">{sede.direccion ?? "sin dirección"} · {sede.estado}</p>
         </div>
         <PrintButton label="Imprimir radiografía" />

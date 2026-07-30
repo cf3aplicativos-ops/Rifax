@@ -4,6 +4,7 @@ import { estadoSedes, boletasPorEstado, carteraPorTramo } from "@/lib/dashboard"
 import { money } from "@/lib/format";
 import { BarChart, Donut } from "@/components/charts";
 import PrintButton from "@/components/PrintButton";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,10 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hola, {user.nombre.split(" ")[0]}</h1>
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="inicio" /></span>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hola, {user.nombre.split(" ")[0]}</h1>
+          </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {user.tenant.nombre} · {user.rol} · {user.sede ? `Sede ${user.sede.nombre}` : `${sedes.length} sede${sedes.length === 1 ? "" : "s"}`}
           </p>

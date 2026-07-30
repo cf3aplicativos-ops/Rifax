@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarSedes } from "@/lib/sedes";
 import { crearSedeAction, cambiarEstadoSedeAction } from "../actions";
@@ -21,7 +22,7 @@ export default async function SedesPage({
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Sedes</h1>
+      <PageTitle icon="sedes">Sedes</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {sedes.length} de {user.tenant.maxSedes} sedes autorizadas
       </p>

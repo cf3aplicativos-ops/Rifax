@@ -1,4 +1,5 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
+import { PageTitle } from "@/components/icons";
 import { estadoComisiones } from "@/lib/comisiones";
 import { money } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
@@ -23,7 +24,7 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
       <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Comisiones</h1>
+          <PageTitle icon="comisiones">Comisiones</PageTitle>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Comisión ganada = recaudado del vendedor × su %.</p>
         </div>
         <div className="no-print flex items-center gap-2">

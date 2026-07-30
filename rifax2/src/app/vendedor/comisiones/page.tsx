@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { comisionVendedor } from "@/lib/comisiones";
 import { money } from "@/lib/format";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,10 @@ export default async function ComisionesVendedor() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-xl font-bold text-slate-900 dark:text-white">Mis comisiones</h1>
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="comisiones" /></span>
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Mis comisiones</h1>
+      </div>
       <p className="text-sm text-slate-500 dark:text-slate-400">Ganas el {c.pct}% de lo que recaudas.</p>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center dark:border-slate-800 dark:bg-slate-900">

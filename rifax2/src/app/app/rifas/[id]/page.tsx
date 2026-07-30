@@ -6,6 +6,7 @@ import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
 import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction } from "./actions";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 const entregaOpc = ["pendiente", "contactado", "entregado", "no_reclamado"];
@@ -40,6 +41,7 @@ export default async function RifaDetalle({
     <div className="max-w-3xl">
       <Link href="/app/rifas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a rifas</Link>
       <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-slate-900 dark:text-white">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="rifas" /></span>
         <span className="font-mono">{rifa.codigo}</span>
         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">{rifa.estado}</span>
       </h1>

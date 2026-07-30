@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarVentas } from "@/lib/ventas";
 import { money, fecha, estadoVentaClase } from "@/lib/format";
@@ -13,7 +14,7 @@ export default async function VentasPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Ventas</h1>
+        <PageTitle icon="ventas">Ventas</PageTitle>
         {puedeCrear ? (
           <Link href="/app/ventas/nueva" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">
             + Nueva venta

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarRifas } from "@/lib/rifas";
 import { money, fecha } from "@/lib/format";
@@ -29,7 +30,7 @@ export default async function RifasPage({
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Rifas</h1>
+        <PageTitle icon="rifas">Rifas</PageTitle>
         {puedeCrear ? (
           <Link
             href="/app/rifas/nueva"

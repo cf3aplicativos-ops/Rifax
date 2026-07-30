@@ -3,7 +3,7 @@
 export function BarChart({
   data,
   format = (n) => String(n),
-  color = "#4f46e5",
+  color = "#1e293b",
 }: {
   data: { label: string; value: number }[];
   format?: (n: number) => string;

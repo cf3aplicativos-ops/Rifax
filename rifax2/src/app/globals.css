@@ -3,6 +3,9 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Acento de marca RIFAX (amarillo). El aplicativo del tenant puede
+     sobrescribirlo con su color configurado. */
+  --rifax-accent: #f5c518;
 }
 
 @theme inline {

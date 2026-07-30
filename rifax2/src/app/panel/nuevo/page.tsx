@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { crearTenantAction, type TenantFormState } from "../actions";
 import PasswordInput from "@/components/PasswordInput";
+import { PageTitle } from "@/components/icons";
 
 const initialState: TenantFormState = {};
 
@@ -29,7 +30,7 @@ export default function NuevoTenantPage() {
       <Link href="/panel" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a empresas
       </Link>
-      <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Nueva empresa</h1>
+      <PageTitle icon="nuevo" className="mt-2">Nueva empresa</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Se crea la empresa (tenant), su administrador y el número de sedes autorizadas.
       </p>

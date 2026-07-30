@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requireSuper } from "@/lib/auth/rbac";
 import { listarTenants } from "@/lib/superadmin";
 import { fechaHora } from "@/lib/format";
@@ -25,7 +26,7 @@ export default async function PanelHome({
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Empresas (tenants)</h1>
+          <PageTitle icon="empresas">Empresas (tenants)</PageTitle>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {tenants.length} {tenants.length === 1 ? "empresa" : "empresas"} en la plataforma
           </p>

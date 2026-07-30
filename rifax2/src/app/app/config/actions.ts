@@ -15,7 +15,7 @@ export async function guardarBrandingAction(formData: FormData): Promise<void> {
     {
       logo: logo instanceof File ? logo : null,
       fondo: fondo instanceof File ? fondo : null,
-      color: String(formData.get("color") ?? "#4f46e5"),
+      color: String(formData.get("color") ?? "#f5c518"),
       quitarLogo: formData.get("quitar_logo") === "on",
       quitarFondo: formData.get("quitar_fondo") === "on",
     },

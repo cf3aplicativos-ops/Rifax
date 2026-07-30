@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import GanadoresVivo from "./ganadores-vivo";
 
 export const metadata: Metadata = {
   title: "RIFAX SaaS — Plataforma multi-empresa de gestión de rifas",
@@ -49,36 +50,43 @@ const pasos = [
 
 const planes = [
   {
-    nombre: "Emprende",
-    para: "Una sede, ideal para empezar",
-    precio: "Gratis",
-    periodo: "",
-    destacado: false,
-    cta: "Empezar",
-    incluye: ["1 sede", "Rifas, ventas y cartera", "Hasta 3 usuarios", "Sorteos verificables", "Auditoría incluida"],
-  },
-  {
-    nombre: "Negocio",
-    para: "Varias sedes y equipo de venta",
+    nombre: "Básico",
+    para: "Una empresa que arranca su operación",
     precio: "$99.000",
     periodo: "/ mes",
     destacado: true,
     cta: "Ingresar",
-    incluye: ["Hasta 5 sedes", "Usuarios ilimitados", "Vendedores y talonarios", "Reportes y branding", "Soporte prioritario"],
+    incluye: [
+      "Hasta 2 sedes",
+      "Hasta 5 usuarios",
+      "Rifas, ventas y cartera",
+      "Vendedores y talonarios",
+      "Sorteos verificables",
+      "Reportes y branding propio",
+      "Portal de cliente y auditoría",
+    ],
   },
   {
     nombre: "Corporativo",
-    para: "Operaciones a gran escala",
+    para: "Operación multi-sede a gran escala",
     precio: "A medida",
     periodo: "",
     destacado: false,
     cta: "Contáctanos",
-    incluye: ["Sedes ilimitadas", "Integraciones (pasarela, WhatsApp)", "Portales de vendedor y cliente", "SLA y capacitación", "Datos aislados por empresa"],
+    incluye: [
+      "Sedes y usuarios ilimitados",
+      "Vendedores ilimitados + liquidación masiva",
+      "Portales de vendedor y cliente",
+      "Integraciones (pasarela, WhatsApp/SMS)",
+      "Conciliación con IA",
+      "SLA, soporte prioritario y capacitación",
+      "Datos totalmente aislados por empresa",
+    ],
   },
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/25 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 
 export default function Home() {
   return (
@@ -87,11 +95,11 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800/70 dark:bg-slate-950/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-lg font-bold text-white shadow-lg shadow-indigo-600/30">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1e293b] text-lg font-black text-[#f5c518] shadow-lg shadow-slate-900/25">
               R
             </div>
-            <span className="text-lg font-bold tracking-tight">
-              RIFAX <span className="text-indigo-600">SaaS</span>
+            <span className="text-lg font-black tracking-tight">
+              RIFA<span className="text-[#eab308]">X</span>
             </span>
           </div>
           <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 md:flex dark:text-slate-300">
@@ -106,7 +114,7 @@ export default function Home() {
             </Link>
             <Link
               href="/login"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+              className="rounded-lg bg-[#f5c518] px-4 py-2 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-[#eab308]"
             >
               Ingresar
             </Link>
@@ -117,15 +125,15 @@ export default function Home() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-[-10rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-indigo-500/20 blur-3xl dark:bg-indigo-600/20" />
+          <div className="absolute left-1/2 top-[-10rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-amber-400/25 blur-3xl dark:bg-amber-500/15" />
         </div>
         <div className="mx-auto max-w-4xl px-6 py-24 text-center sm:py-28">
-          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950/60 dark:text-indigo-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" /> Plataforma multi-empresa
+          <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#f5c518]" /> Plataforma multi-empresa
           </span>
           <h1 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-6xl">
             La gestión de rifas,
-            <br className="hidden sm:block" /> <span className="text-indigo-600">simple y confiable</span>
+            <br className="hidden sm:block" /> <span className="text-[#eab308]">simple y confiable</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
             Administra rifas, sedes, ventas, cartera y sorteos verificables desde un solo lugar. Con
@@ -134,7 +142,7 @@ export default function Home() {
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/login"
-              className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700 sm:w-auto"
+              className="w-full rounded-lg bg-[#f5c518] px-6 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-amber-500/25 transition hover:bg-[#eab308] sm:w-auto"
             >
               Ingresar a la plataforma →
             </Link>
@@ -155,8 +163,11 @@ export default function Home() {
         </div>
       </section>
 
+      {/* RESULTADOS EN VIVO */}
+      <GanadoresVivo />
+
       {/* FEATURES */}
-      <section id="caracteristicas" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
+      <section id="caracteristicas" className="border-t border-slate-100 bg-white py-20 dark:border-slate-900 dark:bg-slate-950">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight">Todo lo que tu operación necesita</h2>
@@ -168,9 +179,9 @@ export default function Home() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-600/5 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-800"
+                className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-800/60"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 transition group-hover:bg-indigo-600 group-hover:text-white dark:bg-indigo-950/60 dark:text-indigo-300">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition group-hover:bg-[#1e293b] group-hover:text-[#f5c518] dark:bg-amber-950/40 dark:text-amber-300">
                   {f.icon}
                 </div>
                 <h3 className="mt-4 text-base font-semibold">{f.title}</h3>
@@ -191,11 +202,11 @@ export default function Home() {
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {pasos.map((p, i) => (
               <div key={p.n} className="relative">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e293b] text-sm font-bold text-[#f5c518]">
                   {p.n}
                 </div>
                 {i < pasos.length - 1 ? (
-                  <div className="absolute left-10 top-5 hidden h-px w-[calc(100%-2.5rem)] bg-gradient-to-r from-indigo-300 to-transparent lg:block dark:from-indigo-800" />
+                  <div className="absolute left-10 top-5 hidden h-px w-[calc(100%-2.5rem)] bg-gradient-to-r from-amber-300 to-transparent lg:block dark:from-amber-800/60" />
                 ) : null}
                 <h3 className="mt-4 font-semibold">{p.t}</h3>
                 <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{p.d}</p>
@@ -209,7 +220,7 @@ export default function Home() {
       <section id="seguridad" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 lg:grid-cols-2">
           <div>
-            <span className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Confianza</span>
+            <span className="text-sm font-semibold uppercase tracking-wide text-amber-600">Confianza</span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight">Transparencia verificable</h2>
             <p className="mt-4 text-slate-600 dark:text-slate-400">
               Los sorteos usan el esquema <strong>commit-reveal</strong>: publicamos el hash de una
@@ -256,18 +267,18 @@ ganador   = min + (sha256(semilla) mod N)
               Empieza pequeño y crece por sedes. Sin permanencia.
             </p>
           </div>
-          <div className="mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
             {planes.map((p) => (
               <div
                 key={p.nombre}
                 className={`relative flex flex-col rounded-2xl border p-7 ${
                   p.destacado
-                    ? "border-indigo-500 bg-white shadow-xl shadow-indigo-600/10 dark:border-indigo-500 dark:bg-slate-900"
+                    ? "border-[#f5c518] bg-white shadow-xl shadow-amber-500/10 dark:border-[#f5c518] dark:bg-slate-900"
                     : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
                 }`}
               >
                 {p.destacado ? (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-indigo-600 px-3 py-1 text-xs font-semibold text-white">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#1e293b] px-3 py-1 text-xs font-semibold text-[#f5c518]">
                     Más popular
                   </span>
                 ) : null}
@@ -289,7 +300,7 @@ ganador   = min + (sha256(semilla) mod N)
                   href={p.cta === "Contáctanos" ? "#contacto" : "/login"}
                   className={`mt-7 rounded-lg px-4 py-2.5 text-center text-sm font-semibold transition ${
                     p.destacado
-                      ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                      ? "bg-[#f5c518] text-slate-900 hover:bg-[#eab308]"
                       : "border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                   }`}
                 >
@@ -308,21 +319,21 @@ ganador   = min + (sha256(semilla) mod N)
       <section id="contacto" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 lg:grid-cols-2">
           <div>
-            <span className="text-sm font-semibold uppercase tracking-wide text-indigo-600">Contacto</span>
+            <span className="text-sm font-semibold uppercase tracking-wide text-amber-600">Contacto</span>
             <h2 className="mt-2 text-3xl font-bold tracking-tight">Hablemos de tu operación</h2>
             <p className="mt-4 text-slate-600 dark:text-slate-400">
               ¿Quieres una demostración o dar de alta tu empresa? Escríbenos y te contactamos.
             </p>
             <ul className="mt-6 space-y-4 text-sm">
               <li className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"><IconMail /></span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><IconMail /></span>
                 <div>
                   <p className="font-medium text-slate-900 dark:text-slate-100">Correo</p>
-                  <a href="mailto:contacto@rifax.co" className="text-slate-500 hover:text-indigo-600 dark:text-slate-400">contacto@rifax.co</a>
+                  <a href="mailto:contacto@rifax.co" className="text-slate-500 hover:text-amber-600 dark:text-slate-400">contacto@rifax.co</a>
                 </div>
               </li>
               <li className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-300"><IconPhone /></span>
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><IconPhone /></span>
                 <div>
                   <p className="font-medium text-slate-900 dark:text-slate-100">WhatsApp</p>
                   <p className="text-slate-500 dark:text-slate-400">+57 300 000 0000</p>
@@ -355,7 +366,7 @@ ganador   = min + (sha256(semilla) mod N)
               <label htmlFor="c_msg" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Mensaje</label>
               <textarea id="c_msg" name="mensaje" rows={4} className={inputCls} />
             </div>
-            <button type="submit" className="w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700">
+            <button type="submit" className="w-full rounded-lg bg-[#f5c518] px-4 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-[#eab308]">
               Enviar mensaje
             </button>
           </form>
@@ -365,14 +376,14 @@ ganador   = min + (sha256(semilla) mod N)
       {/* CTA */}
       <section className="py-20">
         <div className="mx-auto max-w-4xl px-6">
-          <div className="rounded-3xl bg-indigo-600 px-8 py-14 text-center shadow-xl shadow-indigo-600/20">
+          <div className="rounded-3xl bg-[#1e293b] px-8 py-14 text-center shadow-xl shadow-slate-900/20">
             <h2 className="text-3xl font-bold tracking-tight text-white">Empieza a gestionar tus rifas hoy</h2>
-            <p className="mx-auto mt-3 max-w-xl text-indigo-100">
+            <p className="mx-auto mt-3 max-w-xl text-slate-300">
               Accede a la plataforma con las credenciales de tu empresa.
             </p>
             <Link
               href="/login"
-              className="mt-8 inline-flex rounded-lg bg-white px-6 py-3 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50"
+              className="mt-8 inline-flex rounded-lg bg-[#f5c518] px-6 py-3 text-sm font-bold text-slate-900 shadow-sm transition hover:bg-[#eab308]"
             >
               Ingresar →
             </Link>
@@ -384,8 +395,8 @@ ganador   = min + (sha256(semilla) mod N)
       <footer className="border-t border-slate-200 py-10 dark:border-slate-800">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-slate-500 sm:flex-row dark:text-slate-400">
           <div className="flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600 text-xs font-bold text-white">R</div>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">RIFAX SaaS</span>
+            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1e293b] text-xs font-black text-[#f5c518]">R</div>
+            <span className="font-semibold text-slate-700 dark:text-slate-300">RIFAX</span>
           </div>
           <p>© {new Date().getFullYear()} RIFAX. Plataforma multi-empresa de gestión de rifas.</p>
           <p className="text-xs">Next.js · Prisma · Neon</p>

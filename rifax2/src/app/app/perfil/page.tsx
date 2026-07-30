@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/auth/rbac";
+import { PageTitle } from "@/components/icons";
 import FormPassword from "./form";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,7 @@ export default async function PerfilPage() {
   const user = await requireUser();
   return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Mi perfil</h1>
+      <PageTitle icon="perfil">Mi perfil</PageTitle>
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <Dato k="Nombre" v={user.nombre} />

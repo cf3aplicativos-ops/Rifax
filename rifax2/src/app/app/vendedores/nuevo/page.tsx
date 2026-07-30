@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import FormVendedor from "./form";
@@ -16,7 +17,7 @@ export default async function NuevoVendedorPage() {
   return (
     <div className="max-w-xl">
       <Link href="/app/vendedores" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a vendedores</Link>
-      <h1 className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">Nuevo vendedor</h1>
+      <PageTitle icon="nuevo" className="mt-2">Nuevo vendedor</PageTitle>
       <FormVendedor sedes={sedes.map((s) => ({ id: String(s.id), nombre: s.nombre }))} />
     </div>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { listarCartera, resumirCartera, tramoLabel, tramoClase } from "@/lib/cartera";
 import { money } from "@/lib/format";
@@ -12,7 +13,7 @@ export default async function CarteraPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Cartera</h1>
+      <PageTitle icon="cartera">Cartera</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ventas con saldo pendiente, por antigüedad.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">

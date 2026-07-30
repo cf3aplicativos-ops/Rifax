@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth/rbac";
 import { getPortalVendedor } from "@/lib/portal-vendedor";
 import { comisionVendedor } from "@/lib/comisiones";
 import { money, fecha, estadoVentaClase } from "@/lib/format";
+import { Icon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +35,12 @@ export default async function VendedorHome() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">Hola, {vendedor.nombre.split(" ")[0]}</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{Number(vendedor.pct_comision.toString())}% comisión</p>
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="inicio" /></span>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">Hola, {vendedor.nombre.split(" ")[0]}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{Number(vendedor.pct_comision.toString())}% comisión</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -45,7 +49,7 @@ export default async function VendedorHome() {
         <Stat v={money(recaudado)} l="Recaudado" />
       </div>
 
-      <Link href="/app/ventas/nueva" className="block rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700">
+      <Link href="/app/ventas/nueva" className="block rounded-xl bg-[#f5c518] px-4 py-3.5 text-center text-sm font-bold text-slate-900 shadow-lg shadow-amber-500/25 transition hover:bg-[#eab308]">
         + Registrar venta
       </Link>
 
