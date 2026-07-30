@@ -10,6 +10,7 @@ import {
   cambiarMaxSedes,
   purgarTenant,
 } from "@/lib/superadmin";
+import { cambiarPlanTenant } from "@/lib/plataforma";
 
 export interface TenantFormState {
   error?: string;
@@ -63,13 +64,35 @@ export async function cambiarMaxSedesAction(formData: FormData): Promise<void> {
   redirect(res.ok ? "/panel?sedes=1" : `/panel?error=${encodeURIComponent(res.error)}`);
 }
 
+export async function cambiarPlanTenantAction(formData: FormData): Promise<void> {
+  const admin = await requireSuper();
+  const res = await cambiarPlanTenant(
+    BigInt(String(formData.get("tenant_id") ?? "0")),
+    String(formData.get("plan") ?? ""),
+    admin.id,
+  );
+  revalidatePath("/panel");
+  redirect(res.ok ? "/panel?plan=1" : `/panel?error=${encodeURIComponent(res.error)}`);
+}
+
+// Borrado de la base de datos del cliente con verificación en TRES pasos:
+//  1) aceptar que es irreversible, 2) escribir el slug exacto,
+//  3) escribir la palabra ELIMINAR. El servidor revalida los tres.
 export async function purgarTenantAction(formData: FormData): Promise<void> {
   await requireSuper();
-  // Confirmación por texto: hay que escribir el slug exacto.
   const slug = String(formData.get("slug") ?? "");
-  const confirm = String(formData.get("confirm") ?? "");
-  if (slug !== confirm) {
-    redirect(`/panel?error=${encodeURIComponent("La confirmación no coincide con el slug.")}`);
+  const confirmSlug = String(formData.get("confirm_slug") ?? "");
+  const frase = String(formData.get("confirm_frase") ?? "").trim().toUpperCase();
+  const acepta = formData.get("acepta") === "on";
+
+  if (!acepta) {
+    redirect(`/panel?error=${encodeURIComponent("Paso 1: debes aceptar que la acción es irreversible.")}`);
+  }
+  if (slug !== confirmSlug) {
+    redirect(`/panel?error=${encodeURIComponent("Paso 2: el identificador (slug) no coincide.")}`);
+  }
+  if (frase !== "ELIMINAR") {
+    redirect(`/panel?error=${encodeURIComponent("Paso 3: escribe la palabra ELIMINAR para confirmar.")}`);
   }
   const res = await purgarTenant(BigInt(String(formData.get("tenant_id") ?? "0")));
   revalidatePath("/panel");

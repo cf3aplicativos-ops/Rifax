@@ -3,6 +3,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { capacidades } from "@/lib/planes";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -61,6 +62,11 @@ export async function liquidarVendedor(tenantId: bigint, vendedorId: bigint, act
 }
 
 export async function liquidarMasivo(tenantId: bigint, actorId: bigint): Promise<Resultado<{ vendedores: number; total: number }>> {
+  // Función del plan Corporativo.
+  const planFilas = await prisma.$queryRawUnsafe<{ plan: string }[]>(`SELECT plan FROM saas.tenants WHERE id=$1::bigint`, tenantId);
+  if (!capacidades(planFilas[0]?.plan).liquidacionMasiva) {
+    return { ok: false, error: "La liquidación masiva está disponible en el plan Corporativo." };
+  }
   const todas = await estadoComisiones(tenantId);
   const pendientes = todas.filter((c) => c.pendiente > 0);
   if (pendientes.length === 0) return { ok: false, error: "No hay comisiones pendientes por liquidar." };

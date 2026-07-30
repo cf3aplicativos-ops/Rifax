@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import GanadoresVivo from "./ganadores-vivo";
 import Carrusel from "./carrusel";
 import { slidesLanding } from "@/lib/landing-slides";
+import { slidesActivos, getConfigPlataforma } from "@/lib/plataforma";
+import { PLANES } from "@/lib/planes";
 
 export const metadata: Metadata = {
   title: "RIFAX SaaS — Plataforma multi-empresa de gestión de rifas",
@@ -50,47 +52,41 @@ const pasos = [
   { n: "4", t: "Sortea y audita", d: "Ejecuta sorteos verificables y revisa la auditoría de punta a punta." },
 ];
 
-const planes = [
-  {
-    nombre: "Básico",
-    para: "Una empresa que arranca su operación",
-    precio: "$99.000",
-    periodo: "/ mes",
-    destacado: true,
-    cta: "Ingresar",
-    incluye: [
-      "Hasta 2 sedes",
-      "Hasta 5 usuarios",
-      "Rifas, ventas y cartera",
-      "Vendedores y talonarios",
-      "Sorteos verificables",
-      "Reportes y branding propio",
-      "Portal de cliente y auditoría",
-    ],
-  },
-  {
-    nombre: "Corporativo",
-    para: "Operación multi-sede a gran escala",
-    precio: "A medida",
-    periodo: "",
-    destacado: false,
-    cta: "Contáctanos",
-    incluye: [
-      "Sedes y usuarios ilimitados",
-      "Vendedores ilimitados + liquidación masiva",
-      "Portales de vendedor y cliente",
-      "Integraciones (pasarela, WhatsApp/SMS)",
-      "Conciliación con IA",
-      "SLA, soporte prioritario y capacitación",
-      "Datos totalmente aislados por empresa",
-    ],
-  },
-];
+const copClp = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+
+// Planes derivados de la matriz PLANES; el precio básico es configurable en el super-admin.
+function construirPlanes(precioBasico: number, precioCorpTexto: string) {
+  return [
+    {
+      nombre: PLANES.basico.etiqueta,
+      para: "Una empresa que arranca su operación",
+      precio: copClp.format(precioBasico),
+      periodo: "/ mes",
+      destacado: true,
+      cta: "Ingresar",
+      incluye: PLANES.basico.incluye,
+    },
+    {
+      nombre: PLANES.corporativo.etiqueta,
+      para: "Operación multi-sede a gran escala",
+      precio: precioCorpTexto,
+      periodo: "",
+      destacado: false,
+      cta: "Contáctanos",
+      incluye: PLANES.corporativo.incluye,
+    },
+  ];
+}
 
 const inputCls =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/25 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
+  const [slidesDB, config] = await Promise.all([slidesActivos(), getConfigPlataforma()]);
+  const slides = slidesDB.length > 0 ? slidesDB : slidesLanding;
+  const planes = construirPlanes(config.precioBasico, config.precioCorporativoTexto);
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* NAV */}
@@ -125,7 +121,7 @@ export default function Home() {
       </header>
 
       {/* CARRUSEL configurable (parte superior) */}
-      <Carrusel slides={slidesLanding} />
+      <Carrusel slides={slides} />
 
       {/* HERO */}
       <section className="relative overflow-hidden">

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { capacidades } from "@/lib/planes";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 const ESTADOS = ["activo", "inactivo", "bloqueado"] as const;
@@ -43,6 +44,17 @@ export async function crearUsuario(input: unknown, tenantId: bigint, actorId: bi
   if (!rol) return { ok: false, error: "El rol indicado no existe." };
   const dup = await prisma.usuarios.findFirst({ where: { tenant_id: tenantId, correo: d.correo } });
   if (dup) return { ok: false, error: "Ya existe un usuario con ese correo en tu empresa." };
+
+  // Límite de usuarios según el plan del tenant.
+  const planFilas = await prisma.$queryRawUnsafe<{ plan: string }[]>(`SELECT plan FROM saas.tenants WHERE id=$1::bigint`, tenantId);
+  const cap = capacidades(planFilas[0]?.plan);
+  if (cap.maxUsuarios != null) {
+    const actuales = await prisma.usuarios.count({ where: { tenant_id: tenantId } });
+    if (actuales >= cap.maxUsuarios) {
+      return { ok: false, error: `Tu plan ${cap.etiqueta} permite hasta ${cap.maxUsuarios} usuarios. Cambia a Corporativo para agregar más.` };
+    }
+  }
+
   if (d.sede_id) {
     const sede = await prisma.sedes.findFirst({ where: { id: d.sede_id, tenant_id: tenantId } });
     if (!sede) return { ok: false, error: "Sede inválida." };

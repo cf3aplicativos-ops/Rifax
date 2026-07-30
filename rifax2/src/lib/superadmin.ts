@@ -19,11 +19,33 @@ export const crearTenantSchema = z.object({
   admin_password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
 });
 
-export async function listarTenants() {
-  return prisma.tenants.findMany({
-    orderBy: { id: "desc" },
-    include: { _count: { select: { sedes: true, usuarios: true } } },
-  });
+export interface TenantFila {
+  id: string;
+  nombre: string;
+  slug: string;
+  estado: string;
+  plan: string;
+  max_sedes: number;
+  sedes: number;
+  usuarios: number;
+  creado_en: Date;
+}
+
+export async function listarTenants(): Promise<TenantFila[]> {
+  const filas = await prisma.$queryRawUnsafe<
+    { id: bigint; nombre: string; slug: string; estado: string; plan: string; max_sedes: number; sedes: bigint; usuarios: bigint; creado_en: Date }[]
+  >(
+    `SELECT t.id, t.nombre, t.slug, t.estado, t.plan, t.max_sedes,
+            (SELECT COUNT(*) FROM saas.sedes s WHERE s.tenant_id = t.id) AS sedes,
+            (SELECT COUNT(*) FROM saas.usuarios u WHERE u.tenant_id = t.id) AS usuarios,
+            t.creado_en
+       FROM saas.tenants t
+      ORDER BY t.id DESC`,
+  );
+  return filas.map((t) => ({
+    id: String(t.id), nombre: t.nombre, slug: t.slug, estado: t.estado, plan: t.plan,
+    max_sedes: Number(t.max_sedes), sedes: Number(t.sedes), usuarios: Number(t.usuarios), creado_en: t.creado_en,
+  }));
 }
 
 export async function crearTenant(
