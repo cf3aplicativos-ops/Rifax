@@ -19,8 +19,8 @@ export default async function CarruselPage({
   return (
     <div>
       <Link href="/panel" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a empresas</Link>
-      <PageTitle icon="empresas" className="mt-2">Carrusel de la landing</PageTitle>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Sube las fotos y textos que rotan en la parte superior de la página pública.</p>
+      <PageTitle icon="empresas" className="mt-2">Apariencia</PageTitle>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Fondo de la pantalla de inicio de sesión y carrusel de fotos de la landing.</p>
 
       {sp.creado ? <Aviso tipo="ok">Slide agregado.</Aviso> : null}
       {sp.eliminado ? <Aviso tipo="ok">Slide eliminado.</Aviso> : null}
@@ -29,8 +29,8 @@ export default async function CarruselPage({
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
       {/* Fondo de la pantalla de inicio de sesión (#1g) */}
-      <form action={guardarLoginFondoAction} className="mt-6 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Fondo de la pantalla de inicio de sesión</h2>
+      <form action={guardarLoginFondoAction} className="mt-6 rounded-2xl border-2 border-amber-300 bg-white p-6 dark:border-amber-800/60 dark:bg-slate-900">
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white"><span>🖼️</span> Fondo de la pantalla de inicio de sesión</h2>
         <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Se ajusta a la pantalla en uso con un degradado para mantener el formulario legible.</p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           {loginFondo ? (
