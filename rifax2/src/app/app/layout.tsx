@@ -11,6 +11,7 @@ const nav = [
   { href: "/app/cartera", label: "Cartera", permiso: "cartera.ver" },
   { href: "/app/reportes", label: "Reportes", permiso: "reporte.ver" },
   { href: "/app/vendedores", label: "Vendedores", permiso: "vendedor.ver" },
+  { href: "/app/comisiones", label: "Comisiones", permiso: "cartera.ver" },
   { href: "/app/notificaciones", label: "Notificaciones", permiso: "mensaje.enviar" },
   { href: "/app/usuarios", label: "Usuarios", permiso: "usuario.ver" },
   { href: "/app/sedes", label: "Sedes", permiso: "sede.ver" },

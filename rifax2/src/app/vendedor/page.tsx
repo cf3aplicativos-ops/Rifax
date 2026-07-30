@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth/rbac";
 import { getPortalVendedor } from "@/lib/portal-vendedor";
+import { comisionVendedor } from "@/lib/comisiones";
 import { money, fecha, estadoVentaClase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,7 @@ export default async function VendedorHome() {
   }
 
   const { vendedor, ventas } = portal;
+  const comision = await comisionVendedor(user.tenant.id, vendedor.id);
   const activos = vendedor.talonarios.filter((t) => t.estado !== "cerrado");
   const boletas = activos.reduce((a, t) => a + (t.numero_fin - t.numero_inicio + 1), 0);
   const recaudado = ventas.reduce((a, v) => a + (Number(v.total.toString()) - Number(v.saldo.toString())), 0);
@@ -46,6 +48,16 @@ export default async function VendedorHome() {
       <Link href="/app/ventas/nueva" className="block rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-semibold text-white shadow-lg shadow-indigo-600/25 transition hover:bg-indigo-700">
         + Registrar venta
       </Link>
+
+      {comision ? (
+        <Link href="/vendedor/comisiones" className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
+          <div>
+            <p className="text-xs text-amber-700 dark:text-amber-400">Comisión pendiente ({comision.pct}%)</p>
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{money(comision.pendiente)}</p>
+          </div>
+          <span className="text-sm text-amber-700 dark:text-amber-400">Ver detalle →</span>
+        </Link>
+      ) : null}
 
       <section>
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Mis talonarios</h2>
