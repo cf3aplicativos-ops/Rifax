@@ -12,7 +12,7 @@ const nav = [
   { href: "/app/reportes", label: "Reportes", icon: "reportes", permiso: "reporte.ver" },
   { href: "/app/vendedores", label: "Vendedores", icon: "vendedores", permiso: "vendedor.ver" },
   { href: "/app/comisiones", label: "Comisiones", icon: "comisiones", permiso: "cartera.ver" },
-  { href: "/app/notificaciones", label: "Notificaciones", icon: "notificaciones", permiso: "mensaje.enviar" },
+  { href: "/app/notificaciones", label: "Notificaciones", icon: "notificaciones", permiso: "mensaje.enviar", ocultarVendedor: true },
   { href: "/app/usuarios", label: "Usuarios", icon: "usuarios", permiso: "usuario.ver" },
   { href: "/app/sedes", label: "Sedes", icon: "sedes", permiso: "sede.ver" },
   { href: "/app/config", label: "Configuración", icon: "config", permiso: "config.gestionar" },
@@ -48,7 +48,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     `:root{--rifax-accent:${brand};--color-indigo-50:${brand}14;--color-indigo-500:${brand};--color-indigo-600:${brand};--color-indigo-700:${darken(brand, 0.12)};}` +
     (claro ? ".bg-indigo-600{color:" + fgPrimario + " !important}" : "");
 
-  const items = nav.filter((n) => n.permiso === null || user.permisos.includes(n.permiso)).map((n) => ({ href: n.href, label: n.label, icon: n.icon, exact: n.exact }));
+  const items = nav
+    .filter((n) => n.permiso === null || user.permisos.includes(n.permiso))
+    // Ítems operativos (no aplican a un vendedor) se ocultan para ese rol.
+    .filter((n) => !(user.rol === "vendedor" && "ocultarVendedor" in n && n.ocultarVendedor))
+    .map((n) => ({ href: n.href, label: n.label, icon: n.icon, exact: n.exact }));
 
   // Vigencia del plan para el aviso emergente de vencimiento (#1d).
   const vfilas = await prisma.$queryRawUnsafe<{ dias: number | null; fecha: string | null }[]>(

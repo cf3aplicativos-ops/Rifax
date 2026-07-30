@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
 import { resumenOutbox, listarOutbox } from "@/lib/outbox";
@@ -15,6 +16,8 @@ const estadoClase: Record<string, string> = {
 
 export default async function NotificacionesPage({ searchParams }: { searchParams: Promise<{ enviadas?: string; fallidas?: string }> }) {
   const user = await requirePermission("mensaje.enviar");
+  // La cola de salida es operativa de la empresa; un vendedor no la gestiona.
+  if (user.rol === "vendedor") redirect("/vendedor");
   const { enviadas, fallidas } = await searchParams;
   const [resumen, filas] = await Promise.all([resumenOutbox(user.tenant.id), listarOutbox(user.tenant.id)]);
   const puedeEnviar = hasPermission(user, "mensaje.enviar");
