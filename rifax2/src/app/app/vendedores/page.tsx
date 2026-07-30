@@ -32,7 +32,7 @@ export default async function VendedoresPage({ searchParams }: { searchParams: P
       {vendedores.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Aún no hay vendedores.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>

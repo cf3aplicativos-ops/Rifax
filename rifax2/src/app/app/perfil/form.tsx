@@ -10,7 +10,7 @@ const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-
 export default function FormPassword() {
   const [state, action, pending] = useActionState(cambiarPasswordAction, initialState);
   return (
-    <form action={action} className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <form action={action} className="mt-4 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <label htmlFor="actual" className={etiqueta}>Contraseña actual</label>
         <PasswordInput name="actual" id="actual" autoComplete="current-password" />

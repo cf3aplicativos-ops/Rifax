@@ -21,7 +21,7 @@ export default async function SedesPage({
   const alcanzoLimite = sedes.length >= user.tenant.maxSedes;
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <PageTitle icon="sedes">Sedes</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {sedes.length} de {user.tenant.maxSedes} sedes autorizadas
@@ -40,7 +40,7 @@ export default async function SedesPage({
           {sedes.map((s) => (
             <div
               key={String(s.id)}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
             >
               <div>
                 <div className="flex items-center gap-2">

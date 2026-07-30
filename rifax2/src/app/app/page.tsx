@@ -91,15 +91,15 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
 
       {/* Gráficas gerenciales */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Boletas ({boletasVendidas.toLocaleString("es-CO")} vendidas)</h2>
           <div className="mt-4"><Donut data={boletasChart} /></div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Recaudo por sede</h2>
           <div className="mt-4"><BarChart data={visibles.map((s) => ({ label: s.nombre, value: Number(s.recaudado) }))} format={money} /></div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cartera por antigüedad</h2>
           <div className="mt-4"><BarChart data={tramos.map((t) => ({ label: tramoLabel[t.tramo] ?? t.tramo, value: t.saldo }))} format={money} color="#f59e0b" /></div>
         </div>
@@ -112,11 +112,11 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="vendedores" className="h-5 w-5" /></span>
             <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Top {top.length} vendedores por ventas</h2>
           </div>
-          <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="mt-3 overflow-hidden rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
             {top.map((v, i) => {
               const medalla = ["bg-amber-400 text-slate-900", "bg-slate-300 text-slate-900", "bg-orange-400 text-slate-900"][i] ?? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300";
               return (
-                <div key={String(v.id)} className="flex items-center gap-3 border-b border-slate-100 px-4 py-3 last:border-0 dark:border-slate-800">
+                <div key={String(v.id)} className="flex items-center gap-3 border-b border-slate-200 px-4 py-3 last:border-0 dark:border-slate-700">
                   <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold ${medalla}`}>{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{v.nombre}</p>
@@ -136,7 +136,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Estado por sede</h2>
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visibles.map((s) => (
-              <div key={String(s.id)} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div key={String(s.id)} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-slate-900 dark:text-white">{s.nombre}</h3>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estadoClase[s.estado] ?? estadoClase.inactiva}`}>{s.estado}</span>
@@ -158,7 +158,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
 
 function Tarjeta({ v, l, tono }: { v: string; l: string; tono?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <p className={`text-xl font-bold ${tono ?? "text-slate-900 dark:text-white"}`}>{v}</p>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{l}</p>
     </div>

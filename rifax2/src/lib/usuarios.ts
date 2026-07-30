@@ -18,6 +18,7 @@ export const crearUsuarioSchema = z.object({
   password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
   rol_id: z.coerce.bigint(),
   sede_id: z.coerce.bigint().optional(),
+  permisos: z.array(z.coerce.bigint()).optional(), // override del rol (opcional)
 });
 
 export async function listarUsuarios(tenantId: bigint) {
@@ -31,8 +32,20 @@ export async function listarUsuarios(tenantId: bigint) {
 export async function listarRoles() {
   return prisma.roles.findMany({
     orderBy: { id: "asc" },
-    include: { _count: { select: { roles_permisos: true } } },
+    include: { _count: { select: { roles_permisos: true } }, roles_permisos: { select: { permiso_id: true } } },
   });
+}
+
+// Catálogo de permisos + permisos por rol (para el editor de permisos por usuario).
+export async function permisosYRoles() {
+  const [permisos, roles] = await Promise.all([
+    prisma.permisos.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true } }),
+    prisma.roles.findMany({ orderBy: { id: "asc" }, include: { roles_permisos: { select: { permiso_id: true } } } }),
+  ]);
+  return {
+    permisos: permisos.map((p) => ({ id: String(p.id), codigo: p.codigo })),
+    roles: roles.map((r) => ({ id: String(r.id), nombre: r.nombre, permisos: r.roles_permisos.map((rp) => String(rp.permiso_id)) })),
+  };
 }
 
 export async function crearUsuario(input: unknown, tenantId: bigint, actorId: bigint): Promise<Resultado> {
@@ -45,13 +58,19 @@ export async function crearUsuario(input: unknown, tenantId: bigint, actorId: bi
   const dup = await prisma.usuarios.findFirst({ where: { tenant_id: tenantId, correo: d.correo } });
   if (dup) return { ok: false, error: "Ya existe un usuario con ese correo en tu empresa." };
 
-  // Límite de usuarios según el plan del tenant.
-  const planFilas = await prisma.$queryRawUnsafe<{ plan: string }[]>(`SELECT plan FROM saas.tenants WHERE id=$1::bigint`, tenantId);
-  const cap = capacidades(planFilas[0]?.plan);
-  if (cap.maxUsuarios != null) {
-    const actuales = await prisma.usuarios.count({ where: { tenant_id: tenantId } });
-    if (actuales >= cap.maxUsuarios) {
-      return { ok: false, error: `Tu plan ${cap.etiqueta} permite hasta ${cap.maxUsuarios} usuarios. Cambia a Corporativo para agregar más.` };
+  // Límite de usuarios: ilimitado, cap explícito del tenant, o el del plan.
+  const tFilas = await prisma.$queryRawUnsafe<{ plan: string; usuarios_ilimitados: boolean; max_usuarios: number | null }[]>(
+    `SELECT plan, usuarios_ilimitados, max_usuarios FROM saas.tenants WHERE id=$1::bigint`, tenantId,
+  );
+  const tf = tFilas[0];
+  if (tf && !tf.usuarios_ilimitados) {
+    const cap = capacidades(tf.plan);
+    const limite = tf.max_usuarios != null ? tf.max_usuarios : cap.maxUsuarios;
+    if (limite != null) {
+      const actuales = await prisma.usuarios.count({ where: { tenant_id: tenantId } });
+      if (actuales >= limite) {
+        return { ok: false, error: `Se alcanzó el límite de ${limite} usuario(s) para esta empresa. Amplíalo desde el super-admin.` };
+      }
     }
   }
 
@@ -75,7 +94,12 @@ export async function crearUsuario(input: unknown, tenantId: bigint, actorId: bi
           estado: "activo",
         },
       });
-      await auditar(tx, { tenantId, actorId, accion: "usuario.crear", entidadTipo: "usuario", entidadId: u.id, despues: { correo: d.correo, rol: rol.nombre } });
+      // Permisos personalizados (override del rol), si se indicaron.
+      if (d.permisos && d.permisos.length > 0) {
+        const valores = d.permisos.map((pid) => `(${u.id}, ${pid})`).join(",");
+        await tx.$executeRawUnsafe(`INSERT INTO saas.usuario_permisos (usuario_id, permiso_id) VALUES ${valores} ON CONFLICT DO NOTHING`);
+      }
+      await auditar(tx, { tenantId, actorId, accion: "usuario.crear", entidadTipo: "usuario", entidadId: u.id, despues: { correo: d.correo, rol: rol.nombre, permisos_custom: d.permisos?.length ?? 0 } });
     });
     return { ok: true };
   } catch (e) {

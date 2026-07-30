@@ -1,6 +1,7 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
 import { estadoComisiones } from "@/lib/comisiones";
+import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
 import { money } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 import { liquidarVendedorAction, liquidarMasivoAction } from "./actions";
@@ -10,7 +11,10 @@ export const dynamic = "force-dynamic";
 export default async function ComisionesPage({ searchParams }: { searchParams: Promise<{ liquidado?: string; masivo?: string; error?: string }> }) {
   const user = await requirePermission("cartera.ver");
   const sp = await searchParams;
-  const comisiones = await estadoComisiones(user.tenant.id);
+  const todas = await estadoComisiones(user.tenant.id);
+  // Un vendedor solo ve su propia comisión.
+  const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
+  const comisiones = vendedorId ? todas.filter((c) => c.id === vendedorId) : todas;
   const puedeLiquidar = hasPermission(user, "pago.conciliar");
 
   const tot = comisiones.reduce(
@@ -50,7 +54,7 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
       {comisiones.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No hay vendedores.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr><th className="px-4 py-3 font-medium">Vendedor</th><th className="px-4 py-3 text-right font-medium">%</th><th className="px-4 py-3 text-right font-medium">Recaudado</th><th className="px-4 py-3 text-right font-medium">Comisión</th><th className="px-4 py-3 text-right font-medium">Liquidado</th><th className="px-4 py-3 text-right font-medium">Pendiente</th><th className="px-4 py-3" /></tr>
@@ -83,7 +87,7 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
 }
 
 function Kpi({ v, l, tono }: { v: string; l: string; tono?: string }) {
-  return <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><p className={`text-xl font-bold ${tono ?? "text-slate-900 dark:text-white"}`}>{v}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{l}</p></div>;
+  return <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><p className={`text-xl font-bold ${tono ?? "text-slate-900 dark:text-white"}`}>{v}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{l}</p></div>;
 }
 function Aviso({ tipo, children }: { tipo: "ok" | "error"; children: React.ReactNode }) {
   const c = tipo === "ok" ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300";

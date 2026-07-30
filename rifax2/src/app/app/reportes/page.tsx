@@ -42,7 +42,7 @@ export default async function ReportesPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {tarjetas.map((t) => (
-          <div key={t.l} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <div key={t.l} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
             <p className={`text-xl font-bold ${t.c}`}>{t.v}</p>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t.l}</p>
           </div>
@@ -58,7 +58,7 @@ export default async function ReportesPage() {
             {avance.map((a) => {
               const vendidas = a.pagadas + a.reservadas;
               return (
-                <div key={String(a.rifaId)} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div key={String(a.rifaId)} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
                   <div className="flex items-center justify-between">
                     <div><span className="font-mono text-sm text-slate-900 dark:text-slate-100">{a.codigo}</span><span className="ml-2 text-sm text-slate-500 dark:text-slate-400">{a.nombre}</span></div>
                     <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{money(a.recaudo)}</span>
@@ -87,7 +87,7 @@ export default async function ReportesPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400">{aud.totalEventos.toLocaleString("es-CO")} eventos de tu empresa · hash encadenado SHA-256</p>
             </div>
           </div>
-          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                 <tr><th className="px-4 py-3 font-medium">#</th><th className="px-4 py-3 font-medium">Acción</th><th className="px-4 py-3 font-medium">Entidad</th><th className="px-4 py-3 font-medium">Actor</th><th className="px-4 py-3 font-medium">Fecha</th><th className="px-4 py-3 font-medium">Hash</th></tr>

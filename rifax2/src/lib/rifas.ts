@@ -28,9 +28,14 @@ export async function sedesOperables(tenantId: bigint, sedeId: bigint | null) {
   });
 }
 
-export async function listarRifas(tenantId: bigint, sedeId: bigint | null) {
+export async function listarRifas(tenantId: bigint, sedeId: bigint | null, vendedorId?: bigint | null) {
   return prisma.rifas.findMany({
-    where: { tenant_id: tenantId, ...(sedeId ? { sede_id: sedeId } : {}) },
+    where: {
+      tenant_id: tenantId,
+      ...(sedeId ? { sede_id: sedeId } : {}),
+      // Un vendedor solo ve las rifas donde tiene talonarios.
+      ...(vendedorId ? { talonarios: { some: { vendedor_id: vendedorId } } } : {}),
+    },
     orderBy: { id: "desc" },
     include: { sedes: { select: { nombre: true } } },
   });

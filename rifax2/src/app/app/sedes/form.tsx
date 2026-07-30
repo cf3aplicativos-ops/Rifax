@@ -15,7 +15,7 @@ export default function FormSede(_props: { action?: unknown }) {
   return (
     <form
       action={action}
-      className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+      className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
     >
       <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nueva sede</h2>
       <div>

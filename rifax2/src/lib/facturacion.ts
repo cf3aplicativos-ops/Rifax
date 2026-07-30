@@ -97,10 +97,23 @@ export async function generarFacturacionMasiva(periodo: string): Promise<Resulta
 }
 
 export async function marcarFacturaPagada(facturaId: bigint): Promise<Resultado> {
-  await prisma.$executeRawUnsafe(
-    `UPDATE saas.facturas SET estado = 'pagada', pagada_en = now() WHERE id = $1::bigint AND estado <> 'anulada'`,
-    facturaId,
-  );
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(
+      `UPDATE saas.facturas SET estado = 'pagada', pagada_en = now() WHERE id = $1::bigint AND estado <> 'anulada'`,
+      facturaId,
+    );
+    // Al recibir el pago se extiende la vigencia del tenant según su periodicidad
+    // de pago (esto también suspende el aviso de vencimiento).
+    await tx.$executeRawUnsafe(
+      `UPDATE saas.tenants t SET fecha_vencimiento = (
+           GREATEST(COALESCE(t.fecha_vencimiento, CURRENT_DATE), CURRENT_DATE)
+           + (CASE t.periodicidad_pago WHEN 'anual' THEN '1 year' WHEN 'semestral' THEN '6 months' ELSE '1 month' END)::interval
+         )::date
+         FROM saas.facturas f
+        WHERE f.id = $1::bigint AND t.id = f.tenant_id`,
+      facturaId,
+    );
+  });
   return { ok: true };
 }
 

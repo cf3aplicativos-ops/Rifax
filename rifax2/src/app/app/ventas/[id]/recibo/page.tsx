@@ -42,7 +42,7 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Recibo (ancho tipo ticket 80mm) */}
-      <div className="mx-auto max-w-[320px] rounded-lg border border-slate-200 bg-white p-5 text-slate-900 dark:border-slate-700">
+      <div className="mx-auto max-w-[320px] rounded-lg border border-slate-300 bg-white p-5 text-slate-900 dark:border-slate-700">
         <div className="text-center">
           {branding.logoUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */

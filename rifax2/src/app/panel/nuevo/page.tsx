@@ -24,9 +24,11 @@ function slugify(s: string) {
 export default function NuevoTenantPage() {
   const [state, action, pending] = useActionState(crearTenantAction, initialState);
   const [slug, setSlug] = useState("");
+  const [sedesIlim, setSedesIlim] = useState(false);
+  const [usuariosIlim, setUsuariosIlim] = useState(false);
 
   return (
-    <div className="max-w-xl">
+    <div className="mx-auto max-w-2xl">
       <Link href="/panel" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a empresas
       </Link>
@@ -37,7 +39,7 @@ export default function NuevoTenantPage() {
 
       <form
         action={action}
-        className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+        className="mt-6 space-y-5 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
@@ -65,15 +67,73 @@ export default function NuevoTenantPage() {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="max_sedes" className={etiqueta}>Sedes autorizadas</label>
-          <input id="max_sedes" name="max_sedes" type="number" min={1} defaultValue={1} required className={`${campo} w-32`} />
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-            El admin de la empresa solo podrá crear este número de sedes. Podrás ampliarlo después.
-          </p>
-        </div>
+        {/* Plan y límites */}
+        <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">
+          <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Plan y límites</legend>
+          <div>
+            <label htmlFor="plan" className={etiqueta}>Plan</label>
+            <select id="plan" name="plan" defaultValue="basico" className={campo}>
+              <option value="basico">Básico</option>
+              <option value="corporativo">Corporativo</option>
+            </select>
+          </div>
 
-        <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+          <div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" name="sedes_ilimitadas" checked={sedesIlim} onChange={(e) => setSedesIlim(e.target.checked)} className="rounded" />
+              Sedes ilimitadas
+            </label>
+            {!sedesIlim ? (
+              <div className="mt-2">
+                <label htmlFor="max_sedes" className={etiqueta}>Sedes autorizadas</label>
+                <input id="max_sedes" name="max_sedes" type="number" min={1} defaultValue={1} className={`${campo} w-32`} />
+              </div>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" name="usuarios_ilimitados" checked={usuariosIlim} onChange={(e) => setUsuariosIlim(e.target.checked)} className="rounded" />
+              Usuarios ilimitados
+            </label>
+            {!usuariosIlim ? (
+              <div className="mt-2">
+                <label htmlFor="max_usuarios" className={etiqueta}>Número de usuarios</label>
+                <input id="max_usuarios" name="max_usuarios" type="number" min={1} defaultValue={5} className={`${campo} w-32`} />
+              </div>
+            ) : null}
+          </div>
+        </fieldset>
+
+        {/* Vigencia y pago */}
+        <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">
+          <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Vigencia y pago</legend>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor="fecha_inicio" className={etiqueta}>Fecha de inicio</label>
+              <input id="fecha_inicio" name="fecha_inicio" type="date" className={campo} />
+            </div>
+            <div>
+              <label htmlFor="periodicidad" className={etiqueta}>Periodicidad del plan</label>
+              <select id="periodicidad" name="periodicidad" defaultValue="mensual" className={campo}>
+                <option value="mensual">Mensual</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="periodicidad_pago" className={etiqueta}>Periodicidad de pago</label>
+              <select id="periodicidad_pago" name="periodicidad_pago" defaultValue="mensual" className={campo}>
+                <option value="mensual">Mensual</option>
+                <option value="semestral">Semestral</option>
+                <option value="anual">Anual</option>
+              </select>
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">La fecha de vencimiento se calcula automáticamente según la periodicidad del plan (por defecto, desde hoy).</p>
+        </fieldset>
+
+        <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">
           <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">
             Administrador de la empresa
           </legend>

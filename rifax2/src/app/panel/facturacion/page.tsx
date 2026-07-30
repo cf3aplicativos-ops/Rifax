@@ -45,7 +45,7 @@ export default async function FacturacionPage({
 
       {/* Precio configurable + facturación masiva */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <form action={guardarPrecioAction} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <form action={guardarPrecioAction} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Precios de los planes</h2>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
@@ -61,7 +61,7 @@ export default async function FacturacionPage({
           <p className="mt-2 text-xs text-slate-400">El precio básico se usa en la landing y en la facturación automática.</p>
         </form>
 
-        <form action={generarMasivaAction} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <form action={generarMasivaAction} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Facturación masiva</h2>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Genera la factura del periodo para todas las empresas activas (básico al precio configurado; corporativo en 0 para ajustar).</p>
           <div className="mt-3 flex items-end gap-2">
@@ -79,15 +79,21 @@ export default async function FacturacionPage({
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Generar factura individual</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tenants.map((t) => (
-            <form key={t.id} action={generarIndividualAction} className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <form key={t.id} action={generarIndividualAction} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <input type="hidden" name="tenant_id" value={t.id} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{t.nombre}</p>
-                <p className="text-xs text-slate-400">Plan {t.plan}</p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">{t.nombre}</p>
+              <p className="text-xs text-slate-400">Plan {t.plan}</p>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <div>
+                  <label className="mb-1 block text-[11px] text-slate-500 dark:text-slate-400">Periodo</label>
+                  <input name="periodo" defaultValue={periodo} className={`${ctrl} w-28`} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-[11px] text-slate-500 dark:text-slate-400">Monto</label>
+                  <input name="monto" placeholder="auto" className={`${ctrl} w-24`} />
+                </div>
+                <button type="submit" className={btnSec}>Generar</button>
               </div>
-              <input name="periodo" defaultValue={periodo} className={`${ctrl} w-28`} />
-              <input name="monto" placeholder="monto" className={`${ctrl} w-24`} />
-              <button type="submit" className={btnSec}>Generar</button>
             </form>
           ))}
         </div>
@@ -99,14 +105,14 @@ export default async function FacturacionPage({
         {facturas.length === 0 ? (
           <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Aún no hay facturas.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 text-left text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <thead className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
                 <tr><th className="px-4 py-2">Empresa</th><th className="px-4 py-2">Periodo</th><th className="px-4 py-2">Monto</th><th className="px-4 py-2">Estado</th><th className="px-4 py-2">Emitida</th><th className="px-4 py-2">Acción</th></tr>
               </thead>
               <tbody>
                 {facturas.map((f) => (
-                  <tr key={f.id} className="border-b border-slate-50 last:border-0 dark:border-slate-800/60">
+                  <tr key={f.id} className="border-b border-slate-50 last:border-0 dark:border-slate-700/60">
                     <td className="px-4 py-2 font-medium text-slate-900 dark:text-white">{f.tenant}</td>
                     <td className="px-4 py-2 font-mono text-slate-600 dark:text-slate-400">{f.periodo}</td>
                     <td className="px-4 py-2 font-semibold text-slate-900 dark:text-slate-100">{money(f.monto)}</td>

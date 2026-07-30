@@ -31,7 +31,7 @@ export default function ConsultaPage() {
       <style>{"@media print{.no-print{display:none!important}aside{display:none!important}}"}</style>
       <SideNav nav={nav} brand="RIFAX" subtitle="Consulta pública" logoUrl={null} homeHref="/" mode="hamburger">
         <div className="mx-auto max-w-lg">
-          <div className="no-print rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="no-print rounded-2xl border border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="cuenta" /></span>
               <div>
@@ -62,13 +62,13 @@ export default function ConsultaPage() {
               </div>
 
               <div className="mb-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><p className="text-lg font-bold text-slate-900 dark:text-white">{money(cuenta.totalComprado)}</p><p className="text-xs text-slate-500 dark:text-slate-400">Total comprado</p></div>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"><p className="text-lg font-bold text-amber-600 dark:text-amber-400">{money(cuenta.totalSaldo)}</p><p className="text-xs text-slate-500 dark:text-slate-400">Saldo pendiente</p></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><p className="text-lg font-bold text-slate-900 dark:text-white">{money(cuenta.totalComprado)}</p><p className="text-xs text-slate-500 dark:text-slate-400">Total comprado</p></div>
+                <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><p className="text-lg font-bold text-amber-600 dark:text-amber-400">{money(cuenta.totalSaldo)}</p><p className="text-xs text-slate-500 dark:text-slate-400">Saldo pendiente</p></div>
               </div>
 
               <div className="space-y-3">
                 {cuenta.compras.map((c) => (
-                  <div key={c.codigo} className="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+                  <div key={c.codigo} className="rounded-2xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{c.codigo}</span>
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${estadoClase[c.estado] ?? estadoClase.pendiente_pago}`}>{c.estado.replace("_", " ")}</span>

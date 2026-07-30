@@ -34,7 +34,7 @@ export default async function VentaDetalle({
   const abonado = Number(venta.total.toString()) - Number(venta.saldo.toString());
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <Link href="/app/ventas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a ventas
       </Link>
@@ -85,7 +85,7 @@ export default async function VentaDetalle({
       {venta.abonos.length > 0 ? (
         <section className="mt-6">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Abonos</h2>
-          <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-slate-300 dark:divide-slate-800 dark:border-slate-700">
             {venta.abonos.map((a) => (
               <li key={String(a.id)} className="flex items-center justify-between px-4 py-2 text-sm">
                 <span className="text-slate-600 dark:text-slate-400">{fechaHora(a.registrado_en)} · {a.origen}</span>
@@ -99,7 +99,7 @@ export default async function VentaDetalle({
       {!cerrada && (puedeAbonar || puedeAnular) ? (
         <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {puedeAbonar ? (
-            <form action={registrarAbonoAction} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <form action={registrarAbonoAction} className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <input type="hidden" name="venta_id" value={String(venta.id)} />
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Registrar abono</h3>
               <input name="monto" type="number" min="1" step="0.01" required placeholder="Monto" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
@@ -113,7 +113,7 @@ export default async function VentaDetalle({
             </form>
           ) : null}
           {puedeAnular ? (
-            <form action={anularVentaAction} className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <form action={anularVentaAction} className="space-y-3 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <input type="hidden" name="venta_id" value={String(venta.id)} />
               <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Anular venta</h3>
               <input name="motivo" required placeholder="Motivo de anulación" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
@@ -128,7 +128,7 @@ export default async function VentaDetalle({
 
 function Card({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <p className="text-xs text-slate-500 dark:text-slate-400">{titulo}</p>
       <div className="mt-1">{children}</div>
     </div>

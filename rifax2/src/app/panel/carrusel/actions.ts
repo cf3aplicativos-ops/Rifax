@@ -3,9 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireSuper } from "@/lib/auth/rbac";
-import { crearSlide, eliminarSlide, toggleSlide } from "@/lib/plataforma";
+import { crearSlide, eliminarSlide, toggleSlide, guardarLoginFondo } from "@/lib/plataforma";
 
 const back = (qs: string) => redirect(`/panel/carrusel?${qs}`);
+
+export async function guardarLoginFondoAction(formData: FormData): Promise<void> {
+  await requireSuper();
+  const imagen = formData.get("imagen");
+  const quitar = formData.get("quitar") === "on";
+  const res = await guardarLoginFondo(imagen instanceof File ? imagen : null, quitar);
+  revalidatePath("/panel/carrusel");
+  revalidatePath("/login");
+  back(res.ok ? "login=1" : `error=${encodeURIComponent(res.error)}`);
+}
 
 export async function crearSlideAction(formData: FormData): Promise<void> {
   await requireSuper();

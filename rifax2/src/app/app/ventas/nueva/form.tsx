@@ -63,7 +63,7 @@ export default function FormVenta({
   }
 
   return (
-    <form action={action} className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <form action={action} className="mt-6 space-y-5 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <input type="hidden" name="idem" value={idem} />
       {esVendedor ? <input type="hidden" name="numeros" value={unicos.join(",")} /> : null}
 
@@ -140,7 +140,7 @@ export default function FormVenta({
         </p>
       ) : null}
 
-      <fieldset className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+      <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">
         <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Cliente</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>

@@ -13,6 +13,7 @@ export async function crearUsuarioAction(_prev: UsuarioFormState, formData: Form
   const user = await requirePermission("usuario.crear");
   const telefono = String(formData.get("telefono") ?? "").trim();
   const sede = String(formData.get("sede_id") ?? "").trim();
+  const permisos = formData.getAll("permisos").map((v) => String(v)).filter(Boolean);
   const res = await crearUsuario(
     {
       nombre: String(formData.get("nombre") ?? "").trim(),
@@ -21,6 +22,7 @@ export async function crearUsuarioAction(_prev: UsuarioFormState, formData: Form
       password: String(formData.get("password") ?? ""),
       rol_id: String(formData.get("rol_id") ?? ""),
       ...(sede ? { sede_id: sede } : {}),
+      ...(permisos.length > 0 ? { permisos } : {}),
     },
     user.tenant.id,
     user.id,

@@ -2,19 +2,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { PageTitle } from "@/components/icons";
 import { requireSuper } from "@/lib/auth/rbac";
-import { listarSlides } from "@/lib/plataforma";
-import { crearSlideAction, eliminarSlideAction, toggleSlideAction } from "./actions";
+import { listarSlides, getLoginFondo } from "@/lib/plataforma";
+import { crearSlideAction, eliminarSlideAction, toggleSlideAction, guardarLoginFondoAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function CarruselPage({
   searchParams,
 }: {
-  searchParams: Promise<{ creado?: string; eliminado?: string; estado?: string; error?: string }>;
+  searchParams: Promise<{ creado?: string; eliminado?: string; estado?: string; login?: string; error?: string }>;
 }) {
   await requireSuper();
   const sp = await searchParams;
-  const slides = await listarSlides();
+  const [slides, loginFondo] = await Promise.all([listarSlides(), getLoginFondo()]);
 
   return (
     <div>
@@ -25,10 +25,29 @@ export default async function CarruselPage({
       {sp.creado ? <Aviso tipo="ok">Slide agregado.</Aviso> : null}
       {sp.eliminado ? <Aviso tipo="ok">Slide eliminado.</Aviso> : null}
       {sp.estado ? <Aviso tipo="ok">Visibilidad actualizada.</Aviso> : null}
+      {sp.login ? <Aviso tipo="ok">Fondo de login actualizado.</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
+      {/* Fondo de la pantalla de inicio de sesión (#1g) */}
+      <form action={guardarLoginFondoAction} className="mt-6 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Fondo de la pantalla de inicio de sesión</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Se ajusta a la pantalla en uso con un degradado para mantener el formulario legible.</p>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          {loginFondo ? (
+            <div className="relative h-20 w-32 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
+              <Image src={loginFondo} alt="fondo login" fill unoptimized className="object-cover" />
+            </div>
+          ) : <div className="grid h-20 w-32 place-items-center rounded-lg border border-dashed border-slate-300 text-xs text-slate-400 dark:border-slate-700">sin fondo</div>}
+          <input name="imagen" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700 dark:text-slate-300" />
+          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar fondo</button>
+          {loginFondo ? (
+            <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="quitar" className="rounded" /> quitar</label>
+          ) : null}
+        </div>
+      </form>
+
       {/* Alta de slide con imagen */}
-      <form action={crearSlideAction} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+      <form action={crearSlideAction} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nueva foto del carrusel</h2>
         <div>
           <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Imagen (PNG, JPG, WEBP o SVG · máx. 2 MB)</label>
@@ -63,7 +82,7 @@ export default async function CarruselPage({
         ) : (
           <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {slides.map((s) => (
-              <div key={s.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <div key={s.id} className="overflow-hidden rounded-2xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
                 <div className="relative h-32 w-full bg-slate-100 dark:bg-slate-800">
                   {s.imagen_url ? (
                     <Image src={s.imagen_url} alt={s.titulo ?? "slide"} fill unoptimized className="object-cover" />

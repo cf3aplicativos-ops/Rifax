@@ -30,7 +30,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
       {sp.creado || sp.rol || sp.estado ? <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">Cambio aplicado.</p> : null}
       {sp.error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
 
-      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+      <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
             <tr><th className="px-4 py-3 font-medium">Usuario</th><th className="px-4 py-3 font-medium">Sede</th><th className="px-4 py-3 font-medium">Rol</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Último ingreso</th></tr>

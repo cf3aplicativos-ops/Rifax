@@ -33,7 +33,7 @@ export default function GanadoresVivo() {
   }, []);
 
   return (
-    <section className="border-t border-slate-100 bg-slate-50 py-24 dark:border-slate-900 dark:bg-slate-900/40">
+    <section className="border-t border-slate-200 bg-slate-50 py-24 dark:border-slate-900 dark:bg-slate-900/40">
       <div className="mx-auto max-w-6xl px-6">
         <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-sm font-bold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-300">
@@ -53,7 +53,7 @@ export default function GanadoresVivo() {
         <div className="mt-12">
           {cargando ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((i) => <div key={i} className="h-40 animate-pulse rounded-3xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" />)}
+              {[0, 1, 2].map((i) => <div key={i} className="h-40 animate-pulse rounded-3xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900" />)}
             </div>
           ) : lista.length === 0 ? (
             <div className="mx-auto max-w-md rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-base text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
@@ -62,7 +62,7 @@ export default function GanadoresVivo() {
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {lista.map((g, i) => (
-                <div key={i} className="flex flex-col items-center gap-4 rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900">
+                <div key={i} className="flex flex-col items-center gap-4 rounded-3xl border border-slate-300 bg-white p-8 text-center shadow-sm transition hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900">
                   <div className="grid w-full place-items-center rounded-2xl bg-[#1e293b] py-5">
                     <span className="font-mono text-5xl font-black leading-none tracking-widest text-[#f5c518] sm:text-6xl">{g.numero}</span>
                     <span className="mt-2 text-xs font-semibold uppercase tracking-widest text-slate-400">Número ganador</span>

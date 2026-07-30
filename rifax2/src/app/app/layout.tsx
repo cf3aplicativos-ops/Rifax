@@ -1,6 +1,8 @@
 import { requireUser } from "@/lib/auth/rbac";
 import { getBranding } from "@/lib/branding";
+import { prisma } from "@/lib/prisma";
 import AppShell from "./shell";
+import VencimientoAviso from "./vencimiento-aviso";
 
 const nav = [
   { href: "/app", label: "Inicio", icon: "inicio", exact: true, permiso: null },
@@ -48,9 +50,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const items = nav.filter((n) => n.permiso === null || user.permisos.includes(n.permiso)).map((n) => ({ href: n.href, label: n.label, icon: n.icon, exact: n.exact }));
 
+  // Vigencia del plan para el aviso emergente de vencimiento (#1d).
+  const vfilas = await prisma.$queryRawUnsafe<{ dias: number | null; fecha: string | null }[]>(
+    `SELECT (fecha_vencimiento - CURRENT_DATE)::int AS dias, to_char(fecha_vencimiento,'DD/MM/YYYY') AS fecha
+       FROM saas.tenants WHERE id = $1::bigint`,
+    user.tenant.id,
+  );
+  const venc = vfilas[0];
+
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">
       <style>{brandCss}</style>
+      {venc?.dias != null && venc.fecha ? <VencimientoAviso dias={Number(venc.dias)} fecha={venc.fecha} /> : null}
 
       {/* #3 Fondo: imagen fija que se ajusta a la pantalla, con gradiente degradado
           para que el contenido sea legible. */}

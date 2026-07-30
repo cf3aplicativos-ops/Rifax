@@ -22,7 +22,7 @@ export default async function NuevaVentaPage() {
     });
     if (!vend) {
       return (
-        <div className="max-w-3xl">
+        <div className="mx-auto max-w-3xl">
           <Link href="/vendedor" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver</Link>
           <PageTitle icon="nuevo" className="mt-2">Nueva venta</PageTitle>
           <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -33,7 +33,7 @@ export default async function NuevaVentaPage() {
     }
     const rifas = await rifasVentaVendedor(user.tenant.id, vend.id);
     return (
-      <div className="max-w-3xl">
+      <div className="mx-auto max-w-3xl">
         <Link href="/vendedor" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver</Link>
         <PageTitle icon="nuevo" className="mt-2">Nueva venta</PageTitle>
         {rifas.length === 0 ? (
@@ -62,7 +62,7 @@ export default async function NuevaVentaPage() {
   );
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <Link href="/app/ventas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a ventas
       </Link>

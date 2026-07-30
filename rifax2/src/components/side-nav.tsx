@@ -102,7 +102,7 @@ export default function SideNav({
   if (hamburger) {
     return (
       <div className="relative min-h-screen">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
           {TresLineas}
           <Link href={homeHref} className="flex items-center gap-2">
             {logoUrl ? (
@@ -140,7 +140,7 @@ export default function SideNav({
       </aside>
 
       {/* Topbar móvil */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/95">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/95">
         {TresLineas}
         <span className="flex items-center gap-2">
           {logoUrl ? <Image src={logoUrl} alt={brand} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" /> : <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--rifax-accent,#f5c518)] text-sm font-black text-slate-900">{brand.charAt(0).toUpperCase()}</span>}

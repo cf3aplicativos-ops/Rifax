@@ -25,9 +25,9 @@ export const crearVentaSchema = z.object({
 
 type Resultado<T> = { ok: true; data: T } | { ok: false; error: string };
 
-export async function listarVentas(tenantId: bigint, sedeId: bigint | null) {
+export async function listarVentas(tenantId: bigint, sedeId: bigint | null, vendedorId?: bigint | null) {
   return prisma.ventas.findMany({
-    where: { tenant_id: tenantId, ...(sedeId ? { sede_id: sedeId } : {}) },
+    where: { tenant_id: tenantId, ...(sedeId ? { sede_id: sedeId } : {}), ...(vendedorId ? { vendedor_id: vendedorId } : {}) },
     orderBy: { id: "desc" },
     include: { clientes: true, rifas: { select: { codigo: true } }, sedes: { select: { nombre: true } } },
     take: 100,

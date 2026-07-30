@@ -30,6 +30,31 @@ export async function guardarConfigPlataforma(precioBasico: number, precioCorpor
   return { ok: true };
 }
 
+// ---------- Fondo de la pantalla de login ----------
+export async function getLoginFondo(): Promise<string | null> {
+  try {
+    const filas = await prisma.$queryRawUnsafe<{ login_fondo_url: string | null }[]>(
+      `SELECT login_fondo_url FROM saas.plataforma_config WHERE id = 1`,
+    );
+    return filas[0]?.login_fondo_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarLoginFondo(imagen: File | null, quitar: boolean): Promise<Resultado> {
+  if (quitar) {
+    await prisma.$executeRawUnsafe(`UPDATE saas.plataforma_config SET login_fondo_url = NULL WHERE id = 1`);
+    return { ok: true };
+  }
+  if (!imagen || imagen.size === 0) return { ok: false, error: "Selecciona una imagen." };
+  if (!TIPOS_OK.includes(imagen.type)) return { ok: false, error: "Formato no soportado (usa PNG, JPG, WEBP o SVG)." };
+  if (imagen.size > LIMITE_IMG) return { ok: false, error: `La imagen supera el límite (${Math.round(LIMITE_IMG / 1024)} KB).` };
+  const b64 = Buffer.from(await imagen.arrayBuffer()).toString("base64");
+  await prisma.$executeRawUnsafe(`UPDATE saas.plataforma_config SET login_fondo_url = $1 WHERE id = 1`, `data:${imagen.type};base64,${b64}`);
+  return { ok: true };
+}
+
 // ---------- Plan del tenant ----------
 export async function cambiarPlanTenant(tenantId: bigint, plan: string, superAdminId: bigint): Promise<Resultado> {
   if (!esPlan(plan)) return { ok: false, error: "Plan inválido." };

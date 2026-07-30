@@ -2,13 +2,15 @@ import Link from "next/link";
 import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { listarCartera, resumirCartera, tramoLabel, tramoClase } from "@/lib/cartera";
+import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
 import { money } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function CarteraPage() {
   const user = await requirePermission("cartera.ver");
-  const filas = await listarCartera(user.tenant.id, user.sede?.id ?? null);
+  const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
+  const filas = await listarCartera(user.tenant.id, user.sede?.id ?? null, vendedorId);
   const resumen = resumirCartera(filas);
 
   return (
@@ -17,11 +19,11 @@ export default async function CarteraPage() {
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Ventas con saldo pendiente, por antigüedad.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{money(resumen.totalSaldo)}</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Saldo total</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <p className="text-2xl font-bold text-slate-900 dark:text-white">{resumen.cuentas}</p>
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Cuentas por cobrar</p>
         </div>
@@ -30,7 +32,7 @@ export default async function CarteraPage() {
       {filas.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">No hay saldos pendientes.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr><th className="px-4 py-3 font-medium">Venta</th><th className="px-4 py-3 font-medium">Cliente</th><th className="px-4 py-3 text-right font-medium">Saldo</th><th className="px-4 py-3 text-right font-medium">Días</th><th className="px-4 py-3 font-medium">Tramo</th></tr>

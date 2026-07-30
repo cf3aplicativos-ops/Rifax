@@ -8,6 +8,13 @@ import { hashPassword } from "@/lib/auth/password";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 
+// Devuelve el id de vendedor vinculado a un usuario (o null). Se usa para
+// acotar las páginas del panel cuando quien entra es un vendedor.
+export async function vendedorIdDeUsuario(tenantId: bigint, usuarioId: bigint): Promise<bigint | null> {
+  const v = await prisma.vendedores.findFirst({ where: { tenant_id: tenantId, usuario_id: usuarioId }, select: { id: true } });
+  return v?.id ?? null;
+}
+
 export async function getPortalVendedor(tenantId: bigint, usuarioId: bigint) {
   const vendedor = await prisma.vendedores.findFirst({
     where: { tenant_id: tenantId, usuario_id: usuarioId },
@@ -49,26 +56,22 @@ export async function rifasVentaVendedor(tenantId: bigint, vendedorId: bigint): 
     orderBy: { id: "desc" },
   });
 
-  // Agrupa los rangos por rifa.
-  const porRifa = new Map<string, { rifa: (typeof tals)[number]["rifas"]; rangos: { inicio: number; fin: number }[] }>();
+  // Agrupa los talonarios por rifa.
+  const porRifa = new Map<string, { rifa: (typeof tals)[number]["rifas"]; talonarios: bigint[] }>();
   for (const t of tals) {
     const k = String(t.rifa_id);
-    if (!porRifa.has(k)) porRifa.set(k, { rifa: t.rifas, rangos: [] });
-    porRifa.get(k)!.rangos.push({ inicio: t.numero_inicio, fin: t.numero_fin });
+    if (!porRifa.has(k)) porRifa.set(k, { rifa: t.rifas, talonarios: [] });
+    porRifa.get(k)!.talonarios.push(t.id);
   }
 
   const salida: RifaVentaVendedor[] = [];
-  for (const { rifa, rangos } of porRifa.values()) {
+  for (const { rifa, talonarios } of porRifa.values()) {
+    // Boletas realmente asignadas a los talonarios del vendedor y disponibles.
     const filas = await prisma.boletas.findMany({
-      where: {
-        tenant_id: tenantId,
-        rifa_id: rifa.id,
-        estado: "disponible",
-        OR: rangos.map((r) => ({ numero: { gte: r.inicio, lte: r.fin } })),
-      },
+      where: { tenant_id: tenantId, rifa_id: rifa.id, estado: "disponible", talonario_id: { in: talonarios } },
       select: { numero: true },
       orderBy: { numero: "asc" },
-      take: 2000,
+      take: 5000,
     });
     salida.push({
       id: String(rifa.id),
@@ -83,8 +86,8 @@ export async function rifasVentaVendedor(tenantId: bigint, vendedorId: bigint): 
   return salida;
 }
 
-// Verifica que TODOS los números estén dentro de los talonarios (no cerrados)
-// del vendedor para esa rifa. Blindaje de servidor (no confía en el cliente).
+// Verifica que TODOS los números correspondan a boletas asignadas a los
+// talonarios (no cerrados) del vendedor. Blindaje de servidor.
 export async function numerosPermitidosVendedor(
   tenantId: bigint,
   vendedorId: bigint,
@@ -92,12 +95,17 @@ export async function numerosPermitidosVendedor(
   numeros: number[],
 ): Promise<boolean> {
   if (numeros.length === 0) return false;
-  const rangos = await prisma.talonarios.findMany({
+  const tals = await prisma.talonarios.findMany({
     where: { tenant_id: tenantId, vendedor_id: vendedorId, rifa_id: rifaId, estado: { not: "cerrado" } },
-    select: { numero_inicio: true, numero_fin: true },
+    select: { id: true },
   });
-  if (rangos.length === 0) return false;
-  return numeros.every((n) => rangos.some((r) => n >= r.numero_inicio && n <= r.numero_fin));
+  if (tals.length === 0) return false;
+  const asignadas = await prisma.boletas.findMany({
+    where: { tenant_id: tenantId, rifa_id: rifaId, talonario_id: { in: tals.map((t) => t.id) }, numero: { in: numeros } },
+    select: { numero: true },
+  });
+  const set = new Set(asignadas.map((b) => b.numero));
+  return numeros.every((n) => set.has(n));
 }
 
 export async function crearAccesoVendedor(

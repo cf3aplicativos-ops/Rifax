@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarRifas } from "@/lib/rifas";
+import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
 import { money, fecha } from "@/lib/format";
 import { publicarRifaAction } from "./actions";
 
@@ -22,7 +23,8 @@ export default async function RifasPage({
 }) {
   const user = await requirePermission("rifa.ver");
   const { publicada, error } = await searchParams;
-  const rifas = await listarRifas(user.tenant.id, user.sede?.id ?? null);
+  const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
+  const rifas = await listarRifas(user.tenant.id, user.sede?.id ?? null, vendedorId);
 
   const puedeCrear = hasPermission(user, "rifa.crear");
   const puedePublicar = hasPermission(user, "rifa.publicar");
@@ -57,7 +59,7 @@ export default async function RifasPage({
           Aún no hay rifas. Crea la primera para empezar.
         </p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>

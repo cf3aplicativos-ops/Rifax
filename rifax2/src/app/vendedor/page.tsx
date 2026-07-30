@@ -70,7 +70,7 @@ export default async function VendedorHome() {
         ) : (
           <div className="mt-2 space-y-2">
             {vendedor.talonarios.map((t) => (
-              <div key={String(t.id)} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+              <div key={String(t.id)} className="flex items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
                 <div>
                   <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t.rifas.codigo}</p>
                   <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{t.numero_inicio}–{t.numero_fin} · {(t.numero_fin - t.numero_inicio + 1).toLocaleString("es-CO")} boletas</p>
@@ -89,7 +89,7 @@ export default async function VendedorHome() {
         ) : (
           <div className="mt-2 space-y-2">
             {ventas.map((v) => (
-              <Link key={String(v.id)} href={`/app/ventas/${v.id}`} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 transition hover:border-indigo-300 dark:border-slate-800 dark:bg-slate-900">
+              <Link key={String(v.id)} href={`/app/ventas/${v.id}`} className="flex items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 transition hover:border-indigo-300 dark:border-slate-700 dark:bg-slate-900">
                 <div>
                   <p className="font-mono text-xs text-indigo-600 dark:text-indigo-400">{v.codigo}</p>
                   <p className="text-sm text-slate-700 dark:text-slate-300">{v.clientes.nombre} · {fecha(v.creado_en)}</p>
@@ -109,7 +109,7 @@ export default async function VendedorHome() {
 
 function Stat({ v, l }: { v: string; l: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 text-center dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-300 bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-900">
       <p className="text-lg font-bold text-slate-900 dark:text-white">{v}</p>
       <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{l}</p>
     </div>

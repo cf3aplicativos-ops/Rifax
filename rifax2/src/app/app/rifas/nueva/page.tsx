@@ -15,7 +15,7 @@ export default async function NuevaRifaPage() {
   ]);
 
   return (
-    <div className="max-w-2xl">
+    <div className="mx-auto max-w-2xl">
       <Link href="/app/rifas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a rifas
       </Link>

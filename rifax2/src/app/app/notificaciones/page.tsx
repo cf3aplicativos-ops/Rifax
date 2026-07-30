@@ -38,7 +38,7 @@ export default async function NotificacionesPage({ searchParams }: { searchParam
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {(["pendiente", "procesando", "enviado", "fallido"] as const).map((e) => (
-          <div key={e} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <div key={e} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
             <p className="text-2xl font-bold text-slate-900 dark:text-white">{resumen[e] ?? 0}</p>
             <p className="mt-1 text-xs capitalize text-slate-500 dark:text-slate-400">{e}</p>
           </div>
@@ -48,7 +48,7 @@ export default async function NotificacionesPage({ searchParams }: { searchParam
       {filas.length === 0 ? (
         <p className="mt-8 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">La cola está vacía.</p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr><th className="px-4 py-3 font-medium">Evento</th><th className="px-4 py-3 font-medium">Canal</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 text-right font-medium">Intentos</th><th className="px-4 py-3 font-medium">Creado</th></tr>

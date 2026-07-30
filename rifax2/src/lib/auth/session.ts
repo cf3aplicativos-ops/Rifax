@@ -116,6 +116,15 @@ export async function getSession(): Promise<Sesion | null> {
   // Tenant suspendido/inactivo bloquea a todos sus usuarios.
   if (u.tenants.estado !== "activo") return null;
 
+  // Permisos efectivos: si el usuario tiene overrides propios, priman sobre el rol.
+  const overrides = await prisma.$queryRawUnsafe<{ codigo: string }[]>(
+    `SELECT p.codigo FROM saas.usuario_permisos up JOIN saas.permisos p ON p.id = up.permiso_id WHERE up.usuario_id = $1::bigint`,
+    u.id,
+  );
+  const permisos = overrides.length > 0
+    ? overrides.map((o) => o.codigo)
+    : u.roles.roles_permisos.map((rp) => rp.permisos.codigo);
+
   return {
     kind: "user",
     user: {
@@ -124,7 +133,7 @@ export async function getSession(): Promise<Sesion | null> {
       nombre: u.nombre,
       correo: u.correo,
       rol: u.roles.nombre,
-      permisos: u.roles.roles_permisos.map((rp) => rp.permisos.codigo),
+      permisos,
       tenant: {
         id: u.tenants.id,
         uuid: u.tenants.uuid,

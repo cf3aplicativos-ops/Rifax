@@ -12,7 +12,7 @@ export default function FormVendedor({ sedes }: { sedes: { id: string; nombre: s
   const [state, action, pending] = useActionState(crearVendedorAction, initialState);
 
   return (
-    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <label htmlFor="nombre" className={etiqueta}>Nombre completo</label>
         <input id="nombre" name="nombre" required minLength={3} className={campo} />

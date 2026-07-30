@@ -90,7 +90,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* NAV */}
-      <header className="sticky top-0 z-20 border-b border-slate-200/70 bg-white/80 backdrop-blur dark:border-slate-800/70 dark:bg-slate-950/80">
+      <header className="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur dark:border-slate-700/70 dark:bg-slate-950/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1e293b] text-lg font-black text-[#f5c518] shadow-lg shadow-slate-900/25">
@@ -168,7 +168,7 @@ export default async function Home() {
       <GanadoresVivo />
 
       {/* FEATURES */}
-      <section id="caracteristicas" className="border-t border-slate-100 bg-white py-20 dark:border-slate-900 dark:bg-slate-950">
+      <section id="caracteristicas" className="border-t border-slate-200 bg-white py-20 dark:border-slate-900 dark:bg-slate-950">
         <div className="mx-auto max-w-6xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight">Todo lo que tu operación necesita</h2>
@@ -180,7 +180,7 @@ export default async function Home() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/10 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-amber-800/60"
+                className="group rounded-2xl border border-slate-300 bg-white p-6 transition hover:border-amber-300 hover:shadow-lg hover:shadow-amber-500/10 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-amber-800/60"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-amber-600 transition group-hover:bg-[#1e293b] group-hover:text-[#f5c518] dark:bg-amber-950/40 dark:text-amber-300">
                   {f.icon}
@@ -218,7 +218,7 @@ export default async function Home() {
       </section>
 
       {/* SEGURIDAD / TRUST */}
-      <section id="seguridad" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
+      <section id="seguridad" className="border-t border-slate-200 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-6 lg:grid-cols-2">
           <div>
             <span className="text-sm font-semibold uppercase tracking-wide text-amber-600">Confianza</span>
@@ -243,7 +243,7 @@ export default async function Home() {
               ))}
             </ul>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 font-mono text-sm shadow-sm dark:border-slate-800 dark:bg-slate-950">
+          <div className="rounded-2xl border border-slate-300 bg-white p-6 font-mono text-sm shadow-sm dark:border-slate-700 dark:bg-slate-950">
             <p className="text-xs text-slate-400">verificación de sorteo</p>
             <pre className="mt-3 overflow-x-auto text-[13px] leading-relaxed text-slate-700 dark:text-slate-300">
 {`semilla   = a42daff7…67e5d60138
@@ -275,7 +275,7 @@ ganador   = min + (sha256(semilla) mod N)
                 className={`relative flex flex-col rounded-2xl border p-7 ${
                   p.destacado
                     ? "border-[#f5c518] bg-white shadow-xl shadow-amber-500/10 dark:border-[#f5c518] dark:bg-slate-900"
-                    : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+                    : "border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900"
                 }`}
               >
                 {p.destacado ? (
@@ -317,7 +317,7 @@ ganador   = min + (sha256(semilla) mod N)
       </section>
 
       {/* CONTACTO */}
-      <section id="contacto" className="border-t border-slate-100 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
+      <section id="contacto" className="border-t border-slate-200 bg-slate-50 py-20 dark:border-slate-900 dark:bg-slate-900/40">
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 lg:grid-cols-2">
           <div>
             <span className="text-sm font-semibold uppercase tracking-wide text-amber-600">Contacto</span>
@@ -347,7 +347,7 @@ ganador   = min + (sha256(semilla) mod N)
             action="mailto:contacto@rifax.co"
             method="post"
             encType="text/plain"
-            className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
+            className="space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900"
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -393,7 +393,7 @@ ganador   = min + (sha256(semilla) mod N)
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200 py-10 dark:border-slate-800">
+      <footer className="border-t border-slate-300 py-10 dark:border-slate-700">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 text-sm text-slate-500 sm:flex-row dark:text-slate-400">
           <div className="flex items-center gap-2">
             <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#1e293b] text-xs font-black text-[#f5c518]">R</div>

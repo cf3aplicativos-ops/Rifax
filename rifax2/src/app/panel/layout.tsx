@@ -7,7 +7,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <header className="border-b border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">

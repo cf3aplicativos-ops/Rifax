@@ -74,11 +74,12 @@ export async function cambiarEstadoVendedor(vendedorId: bigint, tenantId: bigint
 }
 
 export async function asignarTalonario(
-  datos: { rifaId: bigint; vendedorId: bigint; tipo: "consecutiva" | "aleatoria"; inicio?: number; fin?: number; cantidad?: number },
+  datos: { rifaId: bigint; vendedorId: bigint; tipo: "consecutiva" | "aleatoria" | "especificas"; inicio?: number; fin?: number; cantidad?: number; numeros?: number[] },
   tenantId: bigint,
   actorId: bigint,
 ): Promise<Resultado<{ boletas: number }>> {
   const { rifaId, vendedorId, tipo } = datos;
+  const numerosPedidos = [...new Set(datos.numeros ?? [])].filter((n) => Number.isInteger(n) && n >= 0);
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -90,8 +91,12 @@ export async function asignarTalonario(
       if (!vendedor) return { ok: false as const, error: "Vendedor no encontrado." };
       if (vendedor.estado !== "activo") return { ok: false as const, error: `El vendedor está '${vendedor.estado}'.` };
 
-      // Cupo del vendedor (aplica a ambos modos).
-      const cantidadPedida = tipo === "consecutiva" ? (datos.fin ?? 0) - (datos.inicio ?? 0) + 1 : datos.cantidad ?? 0;
+      // Cupo del vendedor (aplica a todos los modos).
+      const cantidadPedida = tipo === "consecutiva"
+        ? (datos.fin ?? 0) - (datos.inicio ?? 0) + 1
+        : tipo === "especificas"
+          ? numerosPedidos.length
+          : datos.cantidad ?? 0;
       if (cantidadPedida < 1) return { ok: false as const, error: "Indica una cantidad válida de boletas." };
       if (vendedor.cupo_max !== null) {
         const asignadas = await tx.talonarios.findMany({ where: { vendedor_id: vendedorId, estado: { not: "cerrado" } }, select: { numero_inicio: true, numero_fin: true } });
@@ -114,7 +119,7 @@ export async function asignarTalonario(
         const talonario = await tx.talonarios.create({ data: { tenant_id: tenantId, rifa_id: rifaId, vendedor_id: vendedorId, numero_inicio: inicio, numero_fin: fin, estado: "asignado", tipo: "consecutiva" } });
         marcadas = Number(await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE rifa_id=$2::bigint AND numero BETWEEN $3::int AND $4::int`, talonario.id, rifaId, inicio, fin));
         await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, tipo, rango: `${inicio}-${fin}`, boletas: marcadas } });
-      } else {
+      } else if (tipo === "aleatoria") {
         // Aleatoria: toma N boletas disponibles y sin talonario, al azar.
         const boletas = await tx.$queryRawUnsafe<{ id: bigint; numero: number }[]>(
           `SELECT id, numero FROM saas.boletas
@@ -131,6 +136,31 @@ export async function asignarTalonario(
         await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE id = ANY($2::bigint[])`, talonario.id, boletas.map((b) => b.id));
         marcadas = boletas.length;
         await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, tipo, cantidad: marcadas } });
+      } else {
+        // Específicas: los números exactos que solicitó el vendedor.
+        if (numerosPedidos.length === 0) return { ok: false as const, error: "Indica los números solicitados." };
+        if (numerosPedidos.some((n) => n < rifa.numero_min || n > rifa.numero_max)) {
+          return { ok: false as const, error: `Los números deben estar entre ${rifa.numero_min} y ${rifa.numero_max}.` };
+        }
+        const boletas = await tx.$queryRawUnsafe<{ id: bigint; numero: number; estado: string; talonario_id: bigint | null }[]>(
+          `SELECT id, numero, estado, talonario_id FROM saas.boletas
+            WHERE rifa_id=$1::bigint AND numero = ANY($2::int[]) ORDER BY numero FOR UPDATE`,
+          rifaId, numerosPedidos,
+        );
+        if (boletas.length !== numerosPedidos.length) {
+          const enc = new Set(boletas.map((b) => b.numero));
+          return { ok: false as const, error: `Números inexistentes: ${numerosPedidos.filter((n) => !enc.has(n)).join(", ")}.` };
+        }
+        const ocupadas = boletas.filter((b) => b.estado !== "disponible" || b.talonario_id !== null).map((b) => b.numero);
+        if (ocupadas.length) return { ok: false as const, error: `No disponibles o ya asignadas: ${ocupadas.join(", ")}.` };
+        inicio = Math.min(...numerosPedidos);
+        fin = Math.max(...numerosPedidos);
+        // La columna tipo solo admite consecutiva/aleatoria; una selección
+        // específica no es contigua, así que se registra como 'aleatoria'.
+        const talonario = await tx.talonarios.create({ data: { tenant_id: tenantId, rifa_id: rifaId, vendedor_id: vendedorId, numero_inicio: inicio, numero_fin: fin, estado: "asignado", tipo: "aleatoria" } });
+        await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE id = ANY($2::bigint[])`, talonario.id, boletas.map((b) => b.id));
+        marcadas = boletas.length;
+        await auditar(tx, { tenantId, actorId, accion: "talonario.asignar", entidadTipo: "talonario", entidadId: talonario.id, despues: { rifa: rifa.codigo, vendedor: vendedor.nombre, tipo: "especificas", numeros: numerosPedidos.join(","), boletas: marcadas } });
       }
 
       return { ok: true as const, data: { boletas: marcadas } };

@@ -63,11 +63,11 @@ export default async function SedeRadiografia({ params }: { params: Promise<{ id
 
       {/* Gráficas */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Boletas ({boletasVendidas.toLocaleString("es-CO")} vendidas)</h2>
           <div className="mt-4"><Donut data={boletasChart} /></div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <div className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cartera por antigüedad</h2>
           <div className="mt-4"><BarChart data={tramos.map((t) => ({ label: tramoLabel[t.tramo] ?? t.tramo, value: t.saldo }))} format={money} color="#f59e0b" /></div>
         </div>
@@ -79,7 +79,7 @@ export default async function SedeRadiografia({ params }: { params: Promise<{ id
         {top.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Aún no hay ventas de vendedores en esta sede.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                 <tr><th className="px-4 py-2 font-medium">#</th><th className="px-4 py-2 font-medium">Vendedor</th><th className="px-4 py-2 text-right font-medium">Ventas</th><th className="px-4 py-2 text-right font-medium">Recaudado</th><th className="px-4 py-2 text-right font-medium">% Part.</th></tr>
@@ -105,7 +105,7 @@ export default async function SedeRadiografia({ params }: { params: Promise<{ id
 
 function Kpi({ v, l, tono }: { v: string; l: string; tono?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
       <p className={`text-xl font-bold ${tono ?? "text-slate-900 dark:text-white"}`}>{v}</p>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{l}</p>
     </div>

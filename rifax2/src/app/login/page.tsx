@@ -1,73 +1,25 @@
-"use client";
+import { getLoginFondo } from "@/lib/plataforma";
+import LoginForm from "./login-form";
 
-import { useActionState } from "react";
-import { loginAction, type LoginState } from "./actions";
-import PasswordInput from "@/components/PasswordInput";
+export const dynamic = "force-dynamic";
 
-const initialState: LoginState = {};
-
-export default function LoginPage() {
-  const [state, action, pending] = useActionState(loginAction, initialState);
+export default async function LoginPage() {
+  const fondo = await getLoginFondo();
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1e293b] text-2xl font-black text-[#f5c518] shadow-lg shadow-slate-900/25">
-            R
-          </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            RIFA<span className="text-[#eab308]">X</span>
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Ingreso a la plataforma
-          </p>
-        </div>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-4 dark:bg-slate-950">
+      {/* Fondo configurable: imagen que se ajusta a la pantalla + degradado. */}
+      {fondo ? (
+        <>
+          <div
+            className="fixed inset-0 -z-20 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${fondo})` }}
+          />
+          <div className="fixed inset-0 -z-10 bg-gradient-to-br from-white/80 via-white/70 to-white/90 dark:from-slate-950/85 dark:via-slate-950/75 dark:to-slate-950/92" />
+        </>
+      ) : null}
 
-        <form
-          action={action}
-          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
-        >
-          <div>
-            <label htmlFor="correo" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Correo
-            </label>
-            <input
-              id="correo"
-              name="correo"
-              type="email"
-              autoComplete="username"
-              required
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-amber-400 focus:ring-2 focus:ring-amber-400/25 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Contraseña
-            </label>
-            <PasswordInput name="password" autoComplete="current-password" />
-          </div>
-
-          {state.error ? (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
-              {state.error}
-            </p>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={pending}
-            className="w-full rounded-lg bg-[#f5c518] px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm shadow-amber-500/30 transition hover:bg-[#eab308] disabled:opacity-60"
-          >
-            {pending ? "Ingresando…" : "Ingresar"}
-          </button>
-        </form>
-
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Plataforma multi-empresa de gestión de rifas
-        </p>
-      </div>
+      <LoginForm />
     </main>
   );
 }

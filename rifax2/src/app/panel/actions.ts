@@ -26,11 +26,19 @@ export async function crearTenantAction(
   formData: FormData,
 ): Promise<TenantFormState> {
   const admin = await requireSuper();
+  const usuariosIlim = formData.get("usuarios_ilimitados") === "on";
   const res = await crearTenant(
     {
       nombre: String(formData.get("nombre") ?? "").trim(),
       slug: String(formData.get("slug") ?? "").trim().toLowerCase(),
-      max_sedes: String(formData.get("max_sedes") ?? ""),
+      plan: String(formData.get("plan") ?? "basico"),
+      sedes_ilimitadas: formData.get("sedes_ilimitadas") === "on",
+      max_sedes: String(formData.get("max_sedes") ?? "1"),
+      usuarios_ilimitados: usuariosIlim,
+      ...(usuariosIlim ? {} : { max_usuarios: String(formData.get("max_usuarios") ?? "5") }),
+      periodicidad: String(formData.get("periodicidad") ?? "mensual"),
+      periodicidad_pago: String(formData.get("periodicidad_pago") ?? "mensual"),
+      fecha_inicio: String(formData.get("fecha_inicio") ?? ""),
       admin_nombre: String(formData.get("admin_nombre") ?? "").trim(),
       admin_correo: String(formData.get("admin_correo") ?? "").trim(),
       admin_password: String(formData.get("admin_password") ?? ""),

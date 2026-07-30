@@ -45,7 +45,7 @@ export default async function VendedorDetalle({
   const asignadas = vendedor.talonarios.filter((t) => t.estado !== "cerrado").reduce((a, t) => a + (t.numero_fin - t.numero_inicio + 1), 0);
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <Link href="/app/vendedores" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a vendedores</Link>
       <div className="mt-2 flex items-center gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="vendedores" /></span>
@@ -61,7 +61,7 @@ export default async function VendedorDetalle({
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
       {hasPermission(user, "usuario.crear") ? (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="mt-6 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Acceso al portal de vendedor</h2>
           {vendedor.usuario_id ? (
             <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">✓ Este vendedor ya tiene acceso al portal móvil.</p>
@@ -80,7 +80,7 @@ export default async function VendedorDetalle({
       {vendedor.talonarios.length === 0 ? (
         <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">Sin talonarios asignados.</p>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr><th className="px-4 py-3 font-medium">Rifa</th><th className="px-4 py-3 font-medium">Rango</th><th className="px-4 py-3 text-right font-medium">Boletas</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Asignado</th><th className="px-4 py-3" /></tr>

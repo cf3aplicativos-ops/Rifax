@@ -13,7 +13,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
   const [porTipo, branding] = await Promise.all([listarCatalogos(user.tenant.id), getBranding(user.tenant.id)]);
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <PageTitle icon="config">Configuración</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Personaliza las listas desplegables del aplicativo. Si no agregas opciones, se usan las
@@ -24,7 +24,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
       {sp.error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
 
       {/* BRANDING (#6) */}
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <section className="mt-6 rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Marca (logo, fondo y color)</h2>
         <form action={guardarBrandingAction} className="mt-3 space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -61,7 +61,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
           const items = porTipo.get(t.tipo) ?? [];
           const usaDefaults = items.length === 0;
           return (
-            <section key={t.tipo} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            <section key={t.tipo} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
               <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{t.titulo}</h2>
 
               <div className="mt-3 space-y-1.5">
@@ -89,7 +89,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
                 )}
               </div>
 
-              <form action={agregarItemAction} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+              <form action={agregarItemAction} className="mt-3 flex flex-wrap items-end gap-2 border-t border-slate-200 pt-3 dark:border-slate-700">
                 <input type="hidden" name="tipo" value={t.tipo} />
                 <input name="etiqueta" required placeholder="Etiqueta (visible)" className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
                 <input name="valor" required placeholder="valor_interno" className="w-40 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-mono text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />

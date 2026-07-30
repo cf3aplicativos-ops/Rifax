@@ -59,7 +59,7 @@ export default async function PanelHome({
             const cap = PLANES[(t.plan as "basico" | "corporativo")] ?? PLANES.basico;
             const sobreUsuarios = cap.maxUsuarios != null && t.usuarios > cap.maxUsuarios;
             return (
-              <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+              <div key={t.id} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -82,7 +82,7 @@ export default async function PanelHome({
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">
                   {/* Plan */}
                   <form action={cambiarPlanTenantAction} className="flex items-end gap-1">
                     <input type="hidden" name="tenant_id" value={t.id} />

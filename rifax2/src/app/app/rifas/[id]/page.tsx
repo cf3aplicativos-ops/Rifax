@@ -38,7 +38,7 @@ export default async function RifaDetalle({
   const puedeSortear = hasPermission(user, "sorteo.ejecutar");
 
   return (
-    <div className="max-w-3xl">
+    <div className="mx-auto max-w-3xl">
       <Link href="/app/rifas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a rifas</Link>
       <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-slate-900 dark:text-white">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="rifas" /></span>
@@ -64,7 +64,7 @@ export default async function RifaDetalle({
         {rifa.premios.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Aún no hay premios. Agrega al menos uno para poder sortear.</p>
         ) : (
-          <ol className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+          <ol className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-300 dark:divide-slate-800 dark:border-slate-700">
             {rifa.premios.map((p) => (
               <li key={String(p.id)} className="flex items-center justify-between px-4 py-2 text-sm">
                 <span className="text-slate-900 dark:text-slate-100"><span className="mr-2 text-slate-400">#{p.orden}</span>{p.nombre}</span>
@@ -90,7 +90,7 @@ export default async function RifaDetalle({
         {rifa.premios_anticipados.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Sin premios anticipados programados.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                 <tr><th className="px-4 py-2 font-medium">Premio</th><th className="px-4 py-2 font-medium">Fecha</th><th className="px-4 py-2 font-medium">Lotería</th><th className="px-4 py-2 text-right font-medium">Pagos req.</th><th className="px-4 py-2 font-medium">Estado</th></tr>
@@ -110,7 +110,7 @@ export default async function RifaDetalle({
           </div>
         )}
         {puedeEditar && rifa.estado !== "sorteada" ? (
-          <form action={agregarPremioAnticipadoAction} className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-200 bg-white p-4 sm:grid-cols-2 dark:border-slate-800 dark:bg-slate-900">
+          <form action={agregarPremioAnticipadoAction} className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-300 bg-white p-4 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-900">
             <input type="hidden" name="rifa_id" value={String(rifa.id)} />
             <input name="nombre" required placeholder="Nombre del premio" className={inp} />
             <select name="loteria" defaultValue="" className={inp}>
@@ -141,7 +141,7 @@ export default async function RifaDetalle({
             {sorteos.map((s) => {
               const ganador = s.ganadores[0];
               return (
-                <div key={String(s.id)} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                <div key={String(s.id)} className="rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
                   <div className="flex items-center justify-between">
                     <p className="font-medium text-slate-900 dark:text-slate-100">{s.premios?.nombre ?? "Premio"} · número ganador <span className="font-mono text-indigo-600 dark:text-indigo-400">{s.numero_ganador}</span></p>
                     <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">{s.modalidad}</span>
@@ -149,7 +149,7 @@ export default async function RifaDetalle({
                   {s.modalidad === "commit_reveal" ? (
                     <p className="mt-1 break-all font-mono text-xs text-slate-400">commit {s.commit_hash?.slice(0, 24)}… · semilla {s.semilla?.slice(0, 24)}…</p>
                   ) : s.evidencia_url ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Evidencia: {s.evidencia_url}</p> : null}
-                  <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-sm dark:border-slate-800">
+                  <div className="mt-2 flex items-center justify-between border-t border-slate-200 pt-2 text-sm dark:border-slate-700">
                     <span className="text-slate-700 dark:text-slate-300">{ganador ? (ganador.clientes ? `Ganador: ${ganador.clientes.nombre} (${ganador.clientes.telefono})` : "Boleta no vendida / sin pago") : "Sin registro de boleta"}</span>
                     {ganador && ganador.clientes && puedeSortear ? (
                       <form action={cambiarEntregaAction} className="flex items-center gap-1">
@@ -169,7 +169,7 @@ export default async function RifaDetalle({
         )}
 
         {puedeSortear && pendientes.length > 0 && rifa.estado !== "borrador" ? (
-          <form action={ejecutarSorteoAction} className="mt-4 space-y-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <form action={ejecutarSorteoAction} className="mt-4 space-y-3 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
             <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Ejecutar sorteo</h3>
             <input type="hidden" name="rifa_id" value={String(rifa.id)} />
             <select name="premio_id" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">

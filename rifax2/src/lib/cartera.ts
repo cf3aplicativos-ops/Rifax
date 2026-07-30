@@ -28,7 +28,7 @@ export const tramoClase: Record<string, string> = {
   mora_3: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
-export async function listarCartera(tenantId: bigint, sedeId: bigint | null): Promise<FilaCartera[]> {
+export async function listarCartera(tenantId: bigint, sedeId: bigint | null, vendedorId?: bigint | null): Promise<FilaCartera[]> {
   return prisma.$queryRawUnsafe<FilaCartera[]>(
     `SELECT v.id AS venta_id, v.codigo, cl.nombre AS cliente, cl.telefono,
             v.total::text AS total, v.saldo::text AS saldo,
@@ -43,10 +43,12 @@ export async function listarCartera(tenantId: bigint, sedeId: bigint | null): Pr
        JOIN saas.clientes cl ON cl.id = v.cliente_id
       WHERE v.tenant_id = $1::bigint
         AND ($2::bigint IS NULL OR v.sede_id = $2::bigint)
+        AND ($3::bigint IS NULL OR v.vendedor_id = $3::bigint)
         AND v.estado IN ('pendiente_pago','parcial') AND v.saldo > 0
       ORDER BY dias_antiguedad DESC, v.saldo DESC`,
     tenantId,
     sedeId,
+    vendedorId ?? null,
   );
 }
 

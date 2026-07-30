@@ -14,7 +14,7 @@ export default function FormRifa({ sedes, loterias }: { sedes: { id: string; nom
   const total = Math.pow(10, digitos);
 
   return (
-    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
+    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <label htmlFor="sede_id" className={etiqueta}>Sede</label>
         <select id="sede_id" name="sede_id" className={campo}>

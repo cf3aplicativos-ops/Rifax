@@ -7,13 +7,22 @@ import { hashPassword } from "@/lib/auth/password";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
+const periodicidadEnum = z.enum(["mensual", "semestral", "anual"]);
+
 export const crearTenantSchema = z.object({
   nombre: z.string().min(3, "El nombre de la empresa debe tener al menos 3 caracteres."),
   slug: z
     .string()
     .min(2, "El identificador (slug) es obligatorio.")
     .regex(/^[a-z0-9-]+$/, "El slug solo admite minúsculas, números y guiones."),
-  max_sedes: z.coerce.number().int().min(1, "Debe autorizar al menos 1 sede.").max(999),
+  plan: z.enum(["basico", "corporativo"]).default("basico"),
+  sedes_ilimitadas: z.coerce.boolean().default(false),
+  max_sedes: z.coerce.number().int().min(1).max(9999).default(1),
+  usuarios_ilimitados: z.coerce.boolean().default(false),
+  max_usuarios: z.coerce.number().int().min(1).max(99999).optional(),
+  periodicidad: periodicidadEnum.default("mensual"),
+  periodicidad_pago: periodicidadEnum.default("mensual"),
+  fecha_inicio: z.string().optional(),
   admin_nombre: z.string().min(3, "El nombre del administrador es obligatorio."),
   admin_correo: z.string().email("Correo del administrador inválido."),
   admin_password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres."),
@@ -72,10 +81,33 @@ export async function crearTenant(
           nombre: d.nombre,
           slug: d.slug,
           estado: "activo",
-          max_sedes: d.max_sedes,
+          max_sedes: d.sedes_ilimitadas ? 9999 : d.max_sedes,
           creado_por: superAdminId,
         },
       });
+      // Campos de plan y vigencia (columnas fuera del modelo Prisma).
+      const intervalo = d.periodicidad === "anual" ? "1 year" : d.periodicidad === "semestral" ? "6 months" : "1 month";
+      await tx.$executeRawUnsafe(
+        `UPDATE saas.tenants SET
+           plan = $2::text,
+           sedes_ilimitadas = $3::boolean,
+           usuarios_ilimitados = $4::boolean,
+           max_usuarios = $5,
+           periodicidad = $6::text,
+           periodicidad_pago = $7::text,
+           fecha_inicio = COALESCE($8::date, CURRENT_DATE),
+           fecha_vencimiento = (COALESCE($8::date, CURRENT_DATE) + $9::interval)::date
+         WHERE id = $1::bigint`,
+        tenant.id,
+        d.plan,
+        d.sedes_ilimitadas,
+        d.usuarios_ilimitados,
+        d.usuarios_ilimitados ? null : (d.max_usuarios ?? null),
+        d.periodicidad,
+        d.periodicidad_pago,
+        d.fecha_inicio && /^\d{4}-\d{2}-\d{2}$/.test(d.fecha_inicio) ? d.fecha_inicio : null,
+        intervalo,
+      );
       // Config de branding por defecto
       await tx.tenant_config.create({ data: { tenant_id: tenant.id } });
       // Usuario administrador del tenant (sede_id NULL = acceso a todo el tenant)

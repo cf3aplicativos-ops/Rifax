@@ -2,13 +2,16 @@ import Link from "next/link";
 import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarVentas } from "@/lib/ventas";
+import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
 import { money, fecha, estadoVentaClase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
 export default async function VentasPage() {
   const user = await requirePermission("venta.ver");
-  const ventas = await listarVentas(user.tenant.id, user.sede?.id ?? null);
+  // Un vendedor solo ve sus propias ventas.
+  const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
+  const ventas = await listarVentas(user.tenant.id, user.sede?.id ?? null, vendedorId);
   const puedeCrear = hasPermission(user, "venta.crear");
 
   return (
@@ -27,7 +30,7 @@ export default async function VentasPage() {
           Aún no hay ventas registradas.
         </p>
       ) : (
-        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
