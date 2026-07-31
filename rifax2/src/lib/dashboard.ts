@@ -37,7 +37,7 @@ export async function boletasPorEstado(tenantId: bigint, sedeId: bigint | null) 
   const filas = await prisma.$queryRawUnsafe<{ estado: string; n: bigint }[]>(
     `SELECT b.estado, COUNT(*) AS n
        FROM saas.boletas b JOIN saas.rifas r ON r.id = b.rifa_id
-      WHERE b.tenant_id = $1::bigint AND ($2::bigint IS NULL OR r.sede_id = $2::bigint)
+      WHERE b.tenant_id = $1::bigint AND ($2::bigint IS NULL OR COALESCE(b.sede_id, r.sede_id) = $2::bigint)
       GROUP BY b.estado`,
     tenantId, sedeId,
   );

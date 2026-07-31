@@ -17,6 +17,7 @@ export const crearRifaSchema = z.object({
   fecha_cierre_ventas: z.string().min(1, "Indica el cierre de ventas."),
   fecha_sorteo: z.string().min(1, "Indica la fecha del sorteo."),
   tasa_derechos: z.coerce.number().min(0).max(1).optional(),
+  compartida: z.coerce.boolean().optional().default(false),
 });
 
 /** Sedes que un usuario puede operar: la suya si está acotado, o todas las activas. */
@@ -50,6 +51,122 @@ export async function obtenerRifa(tenantId: bigint, id: bigint) {
       sedes: { select: { nombre: true } },
     },
   });
+}
+
+export async function esCompartida(tenantId: bigint, rifaId: bigint): Promise<boolean> {
+  const f = await prisma.$queryRawUnsafe<{ compartida: boolean }[]>(`SELECT compartida FROM saas.rifas WHERE id=$1::bigint AND tenant_id=$2::bigint`, rifaId, tenantId);
+  return f[0]?.compartida ?? false;
+}
+
+// ---------- Distribución de una rifa compartida entre sedes (#2, #6) ----------
+export interface DistribSede { sedeId: string; nombre: string; asignadas: number; disponibles: number; vendidas: number }
+
+export async function distribucionPorSede(tenantId: bigint, rifaId: bigint): Promise<{ sinAsignar: number; sedes: DistribSede[] }> {
+  const [sedes, sin] = await Promise.all([
+    prisma.$queryRawUnsafe<{ sede_id: bigint; nombre: string; asignadas: bigint; disponibles: bigint; vendidas: bigint }[]>(
+      `SELECT s.id AS sede_id, s.nombre,
+              COUNT(b.id) AS asignadas,
+              COUNT(b.id) FILTER (WHERE b.estado = 'disponible') AS disponibles,
+              COUNT(b.id) FILTER (WHERE b.estado IN ('reservada','pagada')) AS vendidas
+         FROM saas.sedes s
+         JOIN saas.boletas b ON b.sede_id = s.id AND b.rifa_id = $2::bigint
+        WHERE s.tenant_id = $1::bigint
+        GROUP BY s.id, s.nombre
+        ORDER BY s.nombre`,
+      tenantId, rifaId,
+    ),
+    prisma.$queryRawUnsafe<{ n: bigint }[]>(
+      `SELECT COUNT(*) AS n FROM saas.boletas WHERE tenant_id=$1::bigint AND rifa_id=$2::bigint AND sede_id IS NULL`,
+      tenantId, rifaId,
+    ),
+  ]);
+  return {
+    sinAsignar: Number(sin[0]?.n ?? 0),
+    sedes: sedes.map((s) => ({ sedeId: String(s.sede_id), nombre: s.nombre, asignadas: Number(s.asignadas), disponibles: Number(s.disponibles), vendidas: Number(s.vendidas) })),
+  };
+}
+
+// Números DISPONIBLES asignados a una sede (para mostrarlos en lista; los vendidos ya no aparecen).
+export async function boletasDisponiblesSede(tenantId: bigint, rifaId: bigint, sedeId: bigint, limite = 500): Promise<number[]> {
+  const filas = await prisma.$queryRawUnsafe<{ numero: number }[]>(
+    `SELECT numero FROM saas.boletas
+      WHERE tenant_id=$1::bigint AND rifa_id=$2::bigint AND sede_id=$3::bigint AND estado='disponible'
+      ORDER BY numero ASC LIMIT $4::int`,
+    tenantId, rifaId, sedeId, limite,
+  );
+  return filas.map((f) => f.numero);
+}
+
+// Asigna boletas (aún sin sede) a una sede por rango consecutivo, aleatorio o específicas.
+export async function asignarBoletasSede(
+  tenantId: bigint,
+  rifaId: bigint,
+  sedeId: bigint,
+  datos: { tipo: "consecutiva" | "aleatoria" | "especificas"; inicio?: number; fin?: number; cantidad?: number; numeros?: number[] },
+  actorId: bigint,
+): Promise<{ ok: true; data: { asignadas: number } } | { ok: false; error: string }> {
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { numero_min: true, numero_max: true, codigo: true } });
+  if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  const sede = await prisma.sedes.findFirst({ where: { id: sedeId, tenant_id: tenantId }, select: { nombre: true } });
+  if (!sede) return { ok: false, error: "Sede inválida." };
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      let ids: bigint[] = [];
+      if (datos.tipo === "consecutiva") {
+        const ini = datos.inicio ?? -1, fin = datos.fin ?? -1;
+        if (!Number.isInteger(ini) || !Number.isInteger(fin) || fin < ini) return { ok: false as const, error: "Rango inválido." };
+        const filas = await tx.$queryRawUnsafe<{ id: bigint }[]>(
+          `SELECT id FROM saas.boletas WHERE rifa_id=$1::bigint AND sede_id IS NULL AND estado='disponible' AND numero BETWEEN $2::int AND $3::int FOR UPDATE`,
+          rifaId, ini, fin,
+        );
+        ids = filas.map((f) => f.id);
+        if (ids.length === 0) return { ok: false as const, error: "No hay boletas sin asignar en ese rango." };
+      } else if (datos.tipo === "aleatoria") {
+        const n = datos.cantidad ?? 0;
+        if (n < 1) return { ok: false as const, error: "Indica una cantidad válida." };
+        const filas = await tx.$queryRawUnsafe<{ id: bigint }[]>(
+          `SELECT id FROM saas.boletas WHERE rifa_id=$1::bigint AND sede_id IS NULL AND estado='disponible' ORDER BY random() LIMIT $2::int FOR UPDATE SKIP LOCKED`,
+          rifaId, n,
+        );
+        ids = filas.map((f) => f.id);
+        if (ids.length < n) return { ok: false as const, error: `Solo hay ${ids.length} boletas sin asignar disponibles.` };
+      } else {
+        const nums = [...new Set(datos.numeros ?? [])].filter((x) => Number.isInteger(x) && x >= 0);
+        if (nums.length === 0) return { ok: false as const, error: "Indica los números." };
+        const filas = await tx.$queryRawUnsafe<{ id: bigint; numero: number; sede_id: bigint | null; estado: string }[]>(
+          `SELECT id, numero, sede_id, estado FROM saas.boletas WHERE rifa_id=$1::bigint AND numero = ANY($2::int[]) FOR UPDATE`,
+          rifaId, nums,
+        );
+        if (filas.length !== nums.length) {
+          const enc = new Set(filas.map((f) => f.numero));
+          return { ok: false as const, error: `Números inexistentes: ${nums.filter((n) => !enc.has(n)).join(", ")}.` };
+        }
+        const ocup = filas.filter((f) => f.sede_id !== null || f.estado !== "disponible").map((f) => f.numero);
+        if (ocup.length) return { ok: false as const, error: `Ya asignadas o no disponibles: ${ocup.join(", ")}.` };
+        ids = filas.map((f) => f.id);
+      }
+
+      await tx.$executeRawUnsafe(`UPDATE saas.boletas SET sede_id=$1::bigint WHERE id = ANY($2::bigint[])`, sedeId, ids);
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId, despues: { compartida_asignar: sede.nombre, cantidad: ids.length } });
+      return { ok: true as const, data: { asignadas: ids.length } };
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al asignar boletas." };
+  }
+}
+
+// Libera (des-asigna) las boletas DISPONIBLES de una sede (no toca las vendidas).
+export async function liberarBoletasSede(tenantId: bigint, rifaId: bigint, sedeId: bigint, actorId: bigint): Promise<{ ok: true; data: { liberadas: number } } | { ok: false; error: string }> {
+  try {
+    const n = await prisma.$executeRawUnsafe(
+      `UPDATE saas.boletas SET sede_id=NULL WHERE tenant_id=$1::bigint AND rifa_id=$2::bigint AND sede_id=$3::bigint AND estado='disponible' AND talonario_id IS NULL`,
+      tenantId, rifaId, sedeId,
+    );
+    return { ok: true, data: { liberadas: typeof n === "number" ? n : 0 } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al liberar boletas." };
+  }
 }
 
 export async function agregarPremioAnticipado(
@@ -254,6 +371,10 @@ export async function crearRifa(
     });
     const codigo = `RFX-${new Date().getFullYear()}-${String(creada.id).padStart(4, "0")}`;
     const actualizada = await tx.rifas.update({ where: { id: creada.id }, data: { codigo } });
+    // Marca de rifa compartida (columna fuera del modelo Prisma).
+    if (d.compartida) {
+      await tx.$executeRawUnsafe(`UPDATE saas.rifas SET compartida = true WHERE id = $1::bigint`, creada.id);
+    }
 
     await auditar(tx, {
       tenantId,
@@ -261,7 +382,7 @@ export async function crearRifa(
       accion: "rifa.crear",
       entidadTipo: "rifa",
       entidadId: creada.id,
-      despues: { codigo, nombre: d.nombre, sede: sede.nombre, total_boletas: numeroMax + 1 },
+      despues: { codigo, nombre: d.nombre, sede: sede.nombre, compartida: d.compartida, total_boletas: numeroMax + 1 },
     });
     return actualizada;
   }, { maxWait: 15_000, timeout: 30_000 });

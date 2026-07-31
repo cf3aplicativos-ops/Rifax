@@ -11,18 +11,30 @@ const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-
 export default function FormRifa({ sedes, loterias }: { sedes: { id: string; nombre: string }[]; loterias: { valor: string; etiqueta: string }[] }) {
   const [state, action, pending] = useActionState(crearRifaAction, initialState);
   const [digitos, setDigitos] = useState(3);
+  const [compartida, setCompartida] = useState(false);
   const total = Math.pow(10, digitos);
+  const variasSedes = sedes.length > 1;
 
   return (
     <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
-        <label htmlFor="sede_id" className={etiqueta}>Sede</label>
+        <label htmlFor="sede_id" className={etiqueta}>{compartida ? "Sede de creación (los números se reparten luego)" : "Sede"}</label>
         <select id="sede_id" name="sede_id" className={campo}>
           {sedes.map((s) => (
             <option key={s.id} value={s.id}>{s.nombre}</option>
           ))}
         </select>
       </div>
+
+      {variasSedes ? (
+        <label className="flex items-start gap-2 rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-950/40 dark:text-slate-300">
+          <input type="checkbox" name="compartida" checked={compartida} onChange={(e) => setCompartida(e.target.checked)} className="mt-0.5 rounded" />
+          <span>
+            <span className="font-medium">Para todas las sedes (compartida)</span>
+            <span className="block text-xs text-slate-500 dark:text-slate-400">Se digita una sola vez (premio mayor y anticipados). Luego, desde la rifa, repartes los números entre las sedes por rango consecutivo, aleatorio o asignación.</span>
+          </span>
+        </label>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>

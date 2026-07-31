@@ -57,7 +57,8 @@ export default async function NuevaVentaPage() {
       precio: r.precio_boleta.toString(),
       numeroMin: r.numero_min,
       numeroMax: r.numero_max,
-      sugeridos: await boletasDisponibles(user.tenant.id, r.id, 10),
+      // En rifa compartida, sugiere solo las boletas de la sede del usuario (si está acotado).
+      sugeridos: await boletasDisponibles(user.tenant.id, r.id, 10, r.compartida ? (user.sede?.id ?? null) : null),
     })),
   );
 

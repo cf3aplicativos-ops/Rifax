@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { obtenerRifa, logoRifa } from "@/lib/rifas";
+import { obtenerRifa, logoRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables } from "@/lib/rifas";
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
 import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
 import PremiosAnticipados, { type PA } from "./premios-anticipados";
+import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
 
 export const dynamic = "force-dynamic";
 const entregaOpc = ["pendiente", "contactado", "entregado", "no_reclamado"];
@@ -18,7 +19,7 @@ export default async function RifaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; asignadas?: string; liberadas?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -28,16 +29,33 @@ export default async function RifaDetalle({
 
   const rifa = await obtenerRifa(user.tenant.id, rifaId);
   if (!rifa) notFound();
-  const [sorteos, pendientes, loterias, logoUrl] = await Promise.all([
+  const [sorteos, pendientes, loterias, logoUrl, compartida] = await Promise.all([
     listarSorteos(user.tenant.id, rifaId),
     premiosPendientes(user.tenant.id, rifaId),
     opcionesDe(user.tenant.id, "loteria"),
     logoRifa(user.tenant.id, rifaId),
+    esCompartida(user.tenant.id, rifaId),
   ]);
   const loteriaLabel = (v: string | null) => loterias.find((l) => l.valor === v)?.etiqueta ?? v ?? "—";
 
   const puedeEditar = hasPermission(user, "rifa.editar");
   const puedeSortear = hasPermission(user, "sorteo.ejecutar");
+
+  // Datos de distribución por sede (solo rifas compartidas).
+  let distrib: { sedes: { id: string; nombre: string }[]; sinAsignar: number; filas: FilaSede[] } | null = null;
+  if (compartida) {
+    const [dist, sedesAll] = await Promise.all([
+      distribucionPorSede(user.tenant.id, rifaId),
+      sedesOperables(user.tenant.id, user.sede?.id ?? null),
+    ]);
+    const filas: FilaSede[] = await Promise.all(
+      dist.sedes.map(async (s) => ({
+        ...s,
+        numeros: await boletasDisponiblesSede(user.tenant.id, rifaId, BigInt(s.sedeId), 300),
+      })),
+    );
+    distrib = { sedes: sedesAll.map((s) => ({ id: String(s.id), nombre: s.nombre })), sinAsignar: dist.sinAsignar, filas };
+  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -46,6 +64,7 @@ export default async function RifaDetalle({
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="rifas" /></span>
         <span className="font-mono">{rifa.codigo}</span>
         <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">{rifa.estado}</span>
+        {compartida ? <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">compartida</span> : null}
       </h1>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {rifa.nombre} · {rifa.sedes.nombre} · {money(rifa.precio_boleta)} c/u · {rifa.total_boletas.toLocaleString("es-CO")} boletas ({rifa.numero_min}–{rifa.numero_max})
@@ -59,6 +78,8 @@ export default async function RifaDetalle({
       {sp.sorteo ? <Aviso tipo="ok">Sorteo ejecutado. Número ganador: <strong>{sp.sorteo}</strong>. {sp.ganador === "1" ? "La boleta estaba vendida y pagada." : "La boleta no tenía comprador pagado."}</Aviso> : null}
       {sp.entrega ? <Aviso tipo="ok">Estado de entrega actualizado.</Aviso> : null}
       {sp.logo ? <Aviso tipo="ok">Logo de la rifa actualizado.</Aviso> : null}
+      {sp.asignadas && sp.asignadas !== "0" ? <Aviso tipo="ok">{sp.asignadas} boleta(s) asignada(s) a la sede.</Aviso> : null}
+      {sp.liberadas ? <Aviso tipo="ok">{sp.liberadas} boleta(s) liberada(s).</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
       {/* LOGO DE LA RIFA (para el recibo) */}
@@ -153,6 +174,11 @@ export default async function RifaDetalle({
           </form>
         ) : null}
       </section>
+
+      {/* DISTRIBUCIÓN POR SEDE (rifa compartida) */}
+      {compartida && distrib ? (
+        <DistribucionSedes rifaId={String(rifa.id)} editable={puedeEditar} sedes={distrib.sedes} sinAsignar={distrib.sinAsignar} filas={distrib.filas} />
+      ) : null}
 
       {/* SORTEOS */}
       <section className="mt-10">

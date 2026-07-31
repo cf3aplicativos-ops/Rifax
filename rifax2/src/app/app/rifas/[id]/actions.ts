@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
-import { agregarPremio, agregarPremioAnticipado, editarPremioAnticipado, eliminarPremioAnticipado, eliminarPremio, guardarLogoRifa } from "@/lib/rifas";
+import { agregarPremio, agregarPremioAnticipado, editarPremioAnticipado, eliminarPremioAnticipado, eliminarPremio, guardarLogoRifa, asignarBoletasSede, liberarBoletasSede } from "@/lib/rifas";
 import { ejecutarSorteo, cambiarEntregaGanador } from "@/lib/sorteos";
 
 export async function agregarPremioAnticipadoAction(formData: FormData): Promise<void> {
@@ -77,6 +77,45 @@ export async function guardarLogoRifaAction(formData: FormData): Promise<void> {
   );
   revalidatePath(`/app/rifas/${rifaId}`);
   redirect(res.ok ? `/app/rifas/${rifaId}?logo=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+function expandirNumeros(texto: string): number[] {
+  const out = new Set<number>();
+  for (const parte of texto.split(/[\s,]+/).filter(Boolean)) {
+    const m = /^(\d+)-(\d+)$/.exec(parte);
+    if (m) { const a = Number(m[1]), b = Number(m[2]); for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.add(n); }
+    else if (/^\d+$/.test(parte)) out.add(Number(parte));
+  }
+  return [...out];
+}
+
+export async function asignarBoletasSedeAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const tipoRaw = String(formData.get("tipo") ?? "consecutiva");
+  const tipo = tipoRaw === "aleatoria" ? "aleatoria" : tipoRaw === "especificas" ? "especificas" : "consecutiva";
+  const res = await asignarBoletasSede(
+    user.tenant.id,
+    BigInt(rifaId),
+    BigInt(String(formData.get("sede_id") ?? "0")),
+    {
+      tipo,
+      ...(tipo === "consecutiva" ? { inicio: Number(formData.get("inicio")), fin: Number(formData.get("fin")) }
+        : tipo === "especificas" ? { numeros: expandirNumeros(String(formData.get("numeros") ?? "")) }
+        : { cantidad: Number(formData.get("cantidad")) }),
+    },
+    user.id,
+  );
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?asignadas=${res.data.asignadas}` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function liberarBoletasSedeAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const res = await liberarBoletasSede(user.tenant.id, BigInt(rifaId), BigInt(String(formData.get("sede_id") ?? "0")), user.id);
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?asignadas=0&liberadas=${res.data.liberadas}` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function agregarPremioAction(formData: FormData): Promise<void> {

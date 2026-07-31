@@ -46,22 +46,30 @@ export async function obtenerVenta(tenantId: bigint, id: bigint) {
   });
 }
 
-export async function boletasDisponibles(tenantId: bigint, rifaId: bigint, limite = 12) {
-  const filas = await prisma.boletas.findMany({
-    where: { tenant_id: tenantId, rifa_id: rifaId, estado: "disponible" },
-    select: { numero: true },
-    orderBy: { numero: "asc" },
-    take: limite,
-  });
+export async function boletasDisponibles(tenantId: bigint, rifaId: bigint, limite = 12, sedeId?: bigint | null) {
+  const filas = await prisma.$queryRawUnsafe<{ numero: number }[]>(
+    `SELECT numero FROM saas.boletas
+      WHERE tenant_id = $1::bigint AND rifa_id = $2::bigint AND estado = 'disponible'
+        AND ($4::bigint IS NULL OR sede_id = $4::bigint)
+      ORDER BY numero ASC LIMIT $3::int`,
+    tenantId, rifaId, limite, sedeId ?? null,
+  );
   return filas.map((f) => f.numero);
 }
 
+// Rifas activas para vender: las de la sede del usuario + las compartidas (para todas las sedes).
 export async function rifasActivas(tenantId: bigint, sedeId: bigint | null) {
-  return prisma.rifas.findMany({
-    where: { tenant_id: tenantId, estado: "activa", ...(sedeId ? { sede_id: sedeId } : {}) },
-    orderBy: { id: "desc" },
-    select: { id: true, codigo: true, nombre: true, precio_boleta: true, numero_min: true, numero_max: true, sede_id: true },
-  });
+  const filas = await prisma.$queryRawUnsafe<
+    { id: bigint; codigo: string; nombre: string; precio_boleta: string; numero_min: number; numero_max: number; sede_id: bigint; compartida: boolean }[]
+  >(
+    `SELECT id, codigo, nombre, precio_boleta::text AS precio_boleta, numero_min, numero_max, sede_id, compartida
+       FROM saas.rifas
+      WHERE tenant_id = $1::bigint AND estado = 'activa'
+        AND ($2::bigint IS NULL OR sede_id = $2::bigint OR compartida = true)
+      ORDER BY id DESC`,
+    tenantId, sedeId,
+  );
+  return filas;
 }
 
 export async function crearVenta(
@@ -87,9 +95,11 @@ export async function crearVenta(
       const rifa = await tx.rifas.findFirst({ where: { id: d.rifa_id, tenant_id: tenantId } });
       if (!rifa) return { ok: false as const, error: "Rifa no encontrada." };
       if (rifa.estado !== "activa") return { ok: false as const, error: `La rifa no está activa (estado: ${rifa.estado}).` };
+      const compRows = await tx.$queryRawUnsafe<{ compartida: boolean }[]>(`SELECT compartida FROM saas.rifas WHERE id=$1::bigint`, d.rifa_id);
+      const esCompartidaRifa = compRows[0]?.compartida ?? false;
 
-      const boletas = await tx.$queryRawUnsafe<{ id: bigint; numero: number; estado: string }[]>(
-        `SELECT id, numero, estado FROM saas.boletas
+      const boletas = await tx.$queryRawUnsafe<{ id: bigint; numero: number; estado: string; sede_id: bigint | null }[]>(
+        `SELECT id, numero, estado, sede_id FROM saas.boletas
           WHERE rifa_id = $1::bigint AND tenant_id = $2::bigint AND numero = ANY($3::int[])
           ORDER BY numero FOR UPDATE`,
         d.rifa_id,
@@ -102,6 +112,16 @@ export async function crearVenta(
       }
       const ocupadas = boletas.filter((b) => b.estado !== "disponible").map((b) => b.numero);
       if (ocupadas.length) return { ok: false as const, error: `Boletas no disponibles: ${ocupadas.join(", ")}.` };
+
+      // Sede de la venta: en rifa compartida la definen las boletas (deben ser de una
+      // misma sede ya asignada); en rifa normal, la sede de la rifa.
+      let sedeVenta = rifa.sede_id;
+      if (esCompartidaRifa) {
+        const sedes = [...new Set(boletas.map((b) => (b.sede_id === null ? null : String(b.sede_id))))];
+        if (sedes.includes(null)) return { ok: false as const, error: "Hay boletas sin asignar a una sede; asígnalas antes de vender." };
+        if (sedes.length > 1) return { ok: false as const, error: "No puedes vender boletas de distintas sedes en una misma venta." };
+        sedeVenta = boletas[0].sede_id as bigint;
+      }
 
       // Cliente (upsert por tenant+teléfono)
       let cliente = await tx.clientes.findFirst({ where: { tenant_id: tenantId, telefono: d.cliente.telefono } });
@@ -128,7 +148,7 @@ export async function crearVenta(
       const creada = await tx.ventas.create({
         data: {
           tenant_id: tenantId,
-          sede_id: rifa.sede_id,
+          sede_id: sedeVenta,
           codigo: `TMP-${randomUUID()}`,
           rifa_id: d.rifa_id,
           cliente_id: cliente.id,
