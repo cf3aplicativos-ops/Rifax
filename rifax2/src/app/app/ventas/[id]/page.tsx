@@ -2,9 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVenta } from "@/lib/ventas";
+import { estadoCliente } from "@/lib/clientes";
 import { money, fechaHora, estadoVentaClase } from "@/lib/format";
 import { registrarAbonoAction, anularVentaAction } from "../actions";
 import { Icon } from "@/components/icons";
+import Abonos, { type AbonoUI } from "./abonos";
+import ClienteEdit, { type ClienteUI } from "./cliente-edit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +16,11 @@ export default async function VentaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ abono?: string; anulada?: string; error?: string }>;
+  searchParams: Promise<{ abono?: string; anulada?: string; cliente?: string; error?: string }>;
 }) {
   const user = await requirePermission("venta.ver");
   const { id } = await params;
-  const { abono, anulada, error } = await searchParams;
+  const { abono, anulada, cliente, error } = await searchParams;
 
   let ventaId: bigint;
   try {
@@ -27,9 +30,11 @@ export default async function VentaDetalle({
   }
   const venta = await obtenerVenta(user.tenant.id, ventaId);
   if (!venta) notFound();
+  const clienteEstado = await estadoCliente(user.tenant.id, venta.cliente_id);
 
   const puedeAbonar = hasPermission(user, "pago.registrar");
   const puedeAnular = hasPermission(user, "venta.anular");
+  const puedeEditarCliente = hasPermission(user, "venta.crear");
   const cerrada = venta.estado === "anulada" || venta.estado === "pagada";
   const abonado = Number(venta.total.toString()) - Number(venta.saldo.toString());
 
@@ -49,16 +54,24 @@ export default async function VentaDetalle({
         </Link>
       </div>
 
-      {abono ? <Aviso tipo="ok">Abono registrado.</Aviso> : null}
+      {abono ? <Aviso tipo="ok">Abono actualizado.</Aviso> : null}
+      {cliente ? <Aviso tipo="ok">Datos del cliente actualizados.</Aviso> : null}
       {anulada ? <Aviso tipo="neutral">Venta anulada; sus boletas volvieron a estar disponibles.</Aviso> : null}
       {error ? <Aviso tipo="error">{error}</Aviso> : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Card titulo="Cliente">
-          <p className="text-slate-900 dark:text-slate-100">{venta.clientes.nombre}</p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{venta.clientes.telefono}</p>
-          {venta.clientes.correo ? <p className="text-sm text-slate-500 dark:text-slate-400">{venta.clientes.correo}</p> : null}
-        </Card>
+        <ClienteEdit
+          ventaId={String(venta.id)}
+          editable={puedeEditarCliente}
+          cliente={{
+            id: String(venta.cliente_id),
+            nombre: venta.clientes.nombre,
+            telefono: venta.clientes.telefono,
+            correo: venta.clientes.correo ?? null,
+            documento: venta.clientes.documento ?? null,
+            estado: clienteEstado,
+          } satisfies ClienteUI}
+        />
         <Card titulo="Rifa">
           <p className="text-slate-900 dark:text-slate-100">{venta.rifas.codigo}</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">{venta.rifas.nombre}</p>
@@ -82,19 +95,17 @@ export default async function VentaDetalle({
         </div>
       </section>
 
-      {venta.abonos.length > 0 ? (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Abonos</h2>
-          <ul className="mt-2 divide-y divide-slate-200 rounded-xl border border-slate-300 dark:divide-slate-800 dark:border-slate-700">
-            {venta.abonos.map((a) => (
-              <li key={String(a.id)} className="flex items-center justify-between px-4 py-2 text-sm">
-                <span className="text-slate-600 dark:text-slate-400">{fechaHora(a.registrado_en)} · {a.origen}</span>
-                <span className="font-medium text-slate-900 dark:text-slate-100">{money(a.monto)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <Abonos
+        ventaId={String(venta.id)}
+        editable={puedeAbonar && venta.estado !== "anulada"}
+        lista={venta.abonos.map((a): AbonoUI => ({
+          id: String(a.id),
+          fecha: fechaHora(a.registrado_en),
+          origen: a.origen,
+          monto: a.monto.toString(),
+          montoTexto: money(a.monto),
+        }))}
+      />
 
       {!cerrada && (puedeAbonar || puedeAnular) ? (
         <section className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">

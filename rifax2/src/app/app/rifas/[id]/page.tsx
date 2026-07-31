@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { obtenerRifa } from "@/lib/rifas";
+import { obtenerRifa, logoRifa } from "@/lib/rifas";
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
-import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction } from "./actions";
+import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
+import PremiosAnticipados, { type PA } from "./premios-anticipados";
 
 export const dynamic = "force-dynamic";
 const entregaOpc = ["pendiente", "contactado", "entregado", "no_reclamado"];
@@ -17,7 +18,7 @@ export default async function RifaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -27,10 +28,11 @@ export default async function RifaDetalle({
 
   const rifa = await obtenerRifa(user.tenant.id, rifaId);
   if (!rifa) notFound();
-  const [sorteos, pendientes, loterias] = await Promise.all([
+  const [sorteos, pendientes, loterias, logoUrl] = await Promise.all([
     listarSorteos(user.tenant.id, rifaId),
     premiosPendientes(user.tenant.id, rifaId),
     opcionesDe(user.tenant.id, "loteria"),
+    logoRifa(user.tenant.id, rifaId),
   ]);
   const loteriaLabel = (v: string | null) => loterias.find((l) => l.valor === v)?.etiqueta ?? v ?? "—";
 
@@ -56,7 +58,26 @@ export default async function RifaDetalle({
       {sp.anticipado ? <Aviso tipo="ok">Premio anticipado programado.</Aviso> : null}
       {sp.sorteo ? <Aviso tipo="ok">Sorteo ejecutado. Número ganador: <strong>{sp.sorteo}</strong>. {sp.ganador === "1" ? "La boleta estaba vendida y pagada." : "La boleta no tenía comprador pagado."}</Aviso> : null}
       {sp.entrega ? <Aviso tipo="ok">Estado de entrega actualizado.</Aviso> : null}
+      {sp.logo ? <Aviso tipo="ok">Logo de la rifa actualizado.</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
+
+      {/* LOGO DE LA RIFA (para el recibo) */}
+      {puedeEditar ? (
+        <section className="mt-6 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Logo de la rifa</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Aparecerá en el recibo de caja. Si no defines uno, se usa el logo de la empresa.</p>
+          <form action={guardarLogoRifaAction} className="mt-3 flex flex-wrap items-center gap-4">
+            <input type="hidden" name="rifa_id" value={String(rifa.id)} />
+            {logoUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={logoUrl} alt="logo rifa" className="h-16 w-16 rounded-lg border border-slate-300 object-contain p-1 dark:border-slate-700" />
+            ) : <div className="grid h-16 w-16 place-items-center rounded-lg border border-dashed border-slate-300 text-[10px] text-slate-400 dark:border-slate-700">sin logo</div>}
+            <input name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700 dark:text-slate-300" />
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar logo</button>
+            {logoUrl ? <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="quitar" className="rounded" /> quitar</label> : null}
+          </form>
+        </section>
+      ) : null}
 
       {/* PREMIOS */}
       <section className="mt-8">
@@ -66,9 +87,18 @@ export default async function RifaDetalle({
         ) : (
           <ol className="mt-3 divide-y divide-slate-200 rounded-xl border border-slate-300 dark:divide-slate-800 dark:border-slate-700">
             {rifa.premios.map((p) => (
-              <li key={String(p.id)} className="flex items-center justify-between px-4 py-2 text-sm">
+              <li key={String(p.id)} className="flex items-center justify-between gap-3 px-4 py-2 text-sm">
                 <span className="text-slate-900 dark:text-slate-100"><span className="mr-2 text-slate-400">#{p.orden}</span>{p.nombre}</span>
-                <span className="text-slate-500 dark:text-slate-400">{p.valor_estimado ? money(p.valor_estimado) : ""}</span>
+                <span className="flex items-center gap-3">
+                  <span className="text-slate-500 dark:text-slate-400">{p.valor_estimado ? money(p.valor_estimado) : ""}</span>
+                  {puedeEditar && rifa.estado !== "sorteada" ? (
+                    <form action={eliminarPremioAction}>
+                      <input type="hidden" name="rifa_id" value={String(rifa.id)} />
+                      <input type="hidden" name="premio_id" value={String(p.id)} />
+                      <button type="submit" className="rounded-md border border-red-300 px-2 py-0.5 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">Eliminar</button>
+                    </form>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ol>
@@ -87,28 +117,21 @@ export default async function RifaDetalle({
       <section className="mt-10">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Premios anticipados</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400">Se juegan en fechas previas al sorteo mayor, con su propia lotería.</p>
-        {rifa.premios_anticipados.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Sin premios anticipados programados.</p>
-        ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-                <tr><th className="px-4 py-2 font-medium">Premio</th><th className="px-4 py-2 font-medium">Fecha</th><th className="px-4 py-2 font-medium">Lotería</th><th className="px-4 py-2 text-right font-medium">Pagos req.</th><th className="px-4 py-2 font-medium">Estado</th></tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
-                {rifa.premios_anticipados.map((pa) => (
-                  <tr key={String(pa.id)}>
-                    <td className="px-4 py-2 text-slate-900 dark:text-slate-100">{pa.nombre}{pa.valor_estimado ? <span className="ml-1 text-xs text-slate-400">({money(pa.valor_estimado)})</span> : null}</td>
-                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{fecha(pa.fecha_juego)}</td>
-                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{loteriaLabel(pa.loteria)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-slate-600 dark:text-slate-400">{pa.pagos_requeridos}</td>
-                    <td className="px-4 py-2"><span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">{pa.estado}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <PremiosAnticipados
+          rifaId={String(rifa.id)}
+          editable={puedeEditar && rifa.estado !== "sorteada"}
+          loterias={loterias}
+          lista={rifa.premios_anticipados.map((pa): PA => ({
+            id: String(pa.id),
+            nombre: pa.nombre,
+            loteria: pa.loteria,
+            fechaISO: new Date(pa.fecha_juego).toISOString().slice(0, 10),
+            fechaTexto: fecha(pa.fecha_juego),
+            pagos: pa.pagos_requeridos,
+            valor: pa.valor_estimado ? money(pa.valor_estimado) : null,
+            estado: pa.estado,
+          }))}
+        />
         {puedeEditar && rifa.estado !== "sorteada" ? (
           <form action={agregarPremioAnticipadoAction} className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-slate-300 bg-white p-4 sm:grid-cols-2 dark:border-slate-700 dark:bg-slate-900">
             <input type="hidden" name="rifa_id" value={String(rifa.id)} />

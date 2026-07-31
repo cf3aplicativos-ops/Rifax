@@ -241,6 +241,83 @@ export async function registrarAbono(
   }
 }
 
+// Recalcula saldo/estado de una venta a partir de sus abonos y ajusta el estado
+// de sus boletas (pagada ↔ reservada). No toca ventas anuladas.
+async function recalcularVenta(tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0], ventaId: bigint): Promise<string> {
+  const filas = await tx.$queryRawUnsafe<{ estado: string }[]>(
+    `UPDATE saas.ventas v SET
+        saldo = GREATEST(v.total - COALESCE((SELECT SUM(a.monto) FROM saas.abonos a WHERE a.venta_id = v.id), 0), 0),
+        estado = CASE
+                   WHEN v.estado = 'anulada' THEN 'anulada'
+                   WHEN v.total - COALESCE((SELECT SUM(a.monto) FROM saas.abonos a WHERE a.venta_id = v.id), 0) <= 0 THEN 'pagada'
+                   WHEN COALESCE((SELECT SUM(a.monto) FROM saas.abonos a WHERE a.venta_id = v.id), 0) > 0 THEN 'parcial'
+                   ELSE 'pendiente_pago'
+                 END
+      WHERE v.id = $1::bigint
+      RETURNING estado`,
+    ventaId,
+  );
+  const estado = filas[0]?.estado ?? "pendiente_pago";
+  if (estado === "pagada") {
+    await tx.$executeRawUnsafe(`UPDATE saas.boletas SET estado='pagada', actualizado_en=now() WHERE venta_id=$1::bigint AND estado<>'pagada'`, ventaId);
+  } else if (estado === "parcial" || estado === "pendiente_pago") {
+    // Si dejó de estar pagada, las boletas vuelven a 'reservada' (siguen ligadas a la venta).
+    await tx.$executeRawUnsafe(`UPDATE saas.boletas SET estado='reservada', actualizado_en=now() WHERE venta_id=$1::bigint AND estado='pagada'`, ventaId);
+  }
+  return estado;
+}
+
+export async function editarAbono(
+  tenantId: bigint,
+  abonoId: bigint,
+  datos: { monto: number | string; origen?: string },
+  actorId: bigint,
+): Promise<Resultado<{ estado: string }>> {
+  if (!(Number(datos.monto) > 0)) return { ok: false, error: "El monto debe ser positivo." };
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const filas = await tx.$queryRawUnsafe<{ id: bigint; venta_id: bigint; venta_estado: string }[]>(
+        `SELECT a.id, a.venta_id, v.estado AS venta_estado
+           FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id
+          WHERE a.id = $1::bigint AND a.tenant_id = $2::bigint FOR UPDATE`,
+        abonoId, tenantId,
+      );
+      const a = filas[0];
+      if (!a) return { ok: false as const, error: "Abono no encontrado." };
+      if (a.venta_estado === "anulada") return { ok: false as const, error: "La venta está anulada." };
+      const origenOk = ["pasarela", "comprobante", "efectivo", "ajuste"].includes(String(datos.origen)) ? String(datos.origen) : "efectivo";
+      await tx.$executeRawUnsafe(`UPDATE saas.abonos SET monto=$2::numeric, origen=$3::text WHERE id=$1::bigint`, abonoId, String(datos.monto), origenOk);
+      const estado = await recalcularVenta(tx, a.venta_id);
+      await auditar(tx, { tenantId, actorId, accion: "pago.abono", entidadTipo: "abono", entidadId: abonoId, despues: { editado: true, monto: String(datos.monto), origen: origenOk } });
+      return { ok: true as const, data: { estado } };
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al editar el abono." };
+  }
+}
+
+export async function eliminarAbono(tenantId: bigint, abonoId: bigint, actorId: bigint): Promise<Resultado<{ estado: string }>> {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const filas = await tx.$queryRawUnsafe<{ id: bigint; venta_id: bigint; venta_estado: string }[]>(
+        `SELECT a.id, a.venta_id, v.estado AS venta_estado
+           FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id
+          WHERE a.id = $1::bigint AND a.tenant_id = $2::bigint FOR UPDATE`,
+        abonoId, tenantId,
+      );
+      const a = filas[0];
+      if (!a) return { ok: false as const, error: "Abono no encontrado." };
+      if (a.venta_estado === "anulada") return { ok: false as const, error: "La venta está anulada." };
+      await tx.$executeRawUnsafe(`DELETE FROM saas.abonos WHERE id=$1::bigint`, abonoId);
+      const estado = await recalcularVenta(tx, a.venta_id);
+      await auditar(tx, { tenantId, actorId, accion: "pago.abono", entidadTipo: "abono", entidadId: abonoId, despues: { eliminado: true } });
+      return { ok: true as const, data: { estado } };
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el abono." };
+  }
+}
+
 export async function anularVenta(
   tenantId: bigint,
   ventaId: bigint,

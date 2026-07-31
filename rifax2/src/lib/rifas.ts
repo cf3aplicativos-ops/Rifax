@@ -110,6 +110,96 @@ export async function agregarPremio(
   }
 }
 
+// Logo propio de la rifa (para el recibo). Se guarda como data URI.
+const TIPOS_LOGO = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+export async function guardarLogoRifa(tenantId: bigint, rifaId: bigint, file: File | null, quitar: boolean, actorId: bigint): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { id: true, codigo: true } });
+  if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  if (quitar) {
+    await prisma.$executeRawUnsafe(`UPDATE saas.rifas SET logo_url=NULL WHERE id=$1::bigint`, rifaId);
+    return { ok: true };
+  }
+  if (!file || file.size === 0) return { ok: false, error: "Selecciona una imagen." };
+  if (!TIPOS_LOGO.includes(file.type)) return { ok: false, error: "Formato no soportado (PNG, JPG, WEBP o SVG)." };
+  if (file.size > 400 * 1024) return { ok: false, error: "La imagen supera 400 KB." };
+  const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe(`UPDATE saas.rifas SET logo_url=$1 WHERE id=$2::bigint`, `data:${file.type};base64,${b64}`, rifaId);
+    await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId, despues: { logo: true } });
+  });
+  return { ok: true };
+}
+
+export async function logoRifa(tenantId: bigint, rifaId: bigint): Promise<string | null> {
+  const filas = await prisma.$queryRawUnsafe<{ logo_url: string | null }[]>(`SELECT logo_url FROM saas.rifas WHERE id=$1::bigint AND tenant_id=$2::bigint`, rifaId, tenantId);
+  return filas[0]?.logo_url ?? null;
+}
+
+export async function editarPremioAnticipado(
+  tenantId: bigint,
+  premioId: bigint,
+  datos: { nombre: string; loteria?: string; fecha_juego: string; pagos_requeridos?: number; valor_estimado?: number | null },
+  actorId: bigint,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!datos.nombre?.trim()) return { ok: false, error: "El nombre del premio es obligatorio." };
+  if (!datos.fecha_juego) return { ok: false, error: "La fecha de juego es obligatoria." };
+  const pa = await prisma.premios_anticipados.findFirst({ where: { id: premioId, tenant_id: tenantId } });
+  if (!pa) return { ok: false, error: "Premio anticipado no encontrado." };
+  if (pa.estado === "jugado") return { ok: false, error: "No se puede editar un premio ya jugado." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.premios_anticipados.update({
+        where: { id: premioId },
+        data: {
+          nombre: datos.nombre.trim(),
+          loteria: datos.loteria || null,
+          fecha_juego: new Date(datos.fecha_juego),
+          pagos_requeridos: datos.pagos_requeridos && datos.pagos_requeridos >= 1 ? datos.pagos_requeridos : 1,
+          valor_estimado: datos.valor_estimado ?? null,
+        },
+      });
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "premio_anticipado", entidadId: premioId, despues: { nombre: datos.nombre.trim(), fecha: datos.fecha_juego } });
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al editar el premio anticipado." };
+  }
+}
+
+export async function eliminarPremioAnticipado(tenantId: bigint, premioId: bigint, actorId: bigint): Promise<{ ok: true } | { ok: false; error: string }> {
+  const pa = await prisma.premios_anticipados.findFirst({ where: { id: premioId, tenant_id: tenantId } });
+  if (!pa) return { ok: false, error: "Premio anticipado no encontrado." };
+  if (pa.estado === "jugado") return { ok: false, error: "No se puede eliminar un premio ya jugado." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.premios_anticipados.delete({ where: { id: premioId } });
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "premio_anticipado", entidadId: premioId, despues: { eliminado: true } });
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el premio anticipado." };
+  }
+}
+
+export async function eliminarPremio(tenantId: bigint, premioId: bigint, actorId: bigint): Promise<{ ok: true } | { ok: false; error: string }> {
+  const premio = await prisma.premios.findFirst({ where: { id: premioId }, include: { rifas: { select: { tenant_id: true, estado: true, codigo: true } } } });
+  if (!premio || premio.rifas.tenant_id !== tenantId) return { ok: false, error: "Premio no encontrado." };
+  if (["sorteada", "liquidada", "archivada"].includes(premio.rifas.estado)) {
+    return { ok: false, error: `No se pueden eliminar premios de una rifa '${premio.rifas.estado}'.` };
+  }
+  const sorteado = await prisma.sorteos.findFirst({ where: { premio_id: premioId } });
+  if (sorteado) return { ok: false, error: "No se puede eliminar un premio ya sorteado." };
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.premios.delete({ where: { id: premioId } });
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "premio", entidadId: premioId, despues: { eliminado: true } });
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el premio." };
+  }
+}
+
 export async function crearRifa(
   input: unknown,
   tenantId: bigint,

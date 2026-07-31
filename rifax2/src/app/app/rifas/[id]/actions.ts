@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
-import { agregarPremio, agregarPremioAnticipado } from "@/lib/rifas";
+import { agregarPremio, agregarPremioAnticipado, editarPremioAnticipado, eliminarPremioAnticipado, eliminarPremio, guardarLogoRifa } from "@/lib/rifas";
 import { ejecutarSorteo, cambiarEntregaGanador } from "@/lib/sorteos";
 
 export async function agregarPremioAnticipadoAction(formData: FormData): Promise<void> {
@@ -25,6 +25,58 @@ export async function agregarPremioAnticipadoAction(formData: FormData): Promise
   );
   revalidatePath(`/app/rifas/${rifaId}`);
   redirect(res.ok ? `/app/rifas/${rifaId}?anticipado=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function editarPremioAnticipadoAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const valor = String(formData.get("valor_estimado") ?? "").trim();
+  const pagos = String(formData.get("pagos_requeridos") ?? "").trim();
+  const res = await editarPremioAnticipado(
+    user.tenant.id,
+    BigInt(String(formData.get("premio_id") ?? "0")),
+    {
+      nombre: String(formData.get("nombre") ?? ""),
+      loteria: String(formData.get("loteria") ?? "") || undefined,
+      fecha_juego: String(formData.get("fecha_juego") ?? ""),
+      pagos_requeridos: pagos ? Number(pagos) : 1,
+      valor_estimado: valor ? Number(valor) : null,
+    },
+    user.id,
+  );
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?anticipado=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function eliminarPremioAnticipadoAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const res = await eliminarPremioAnticipado(user.tenant.id, BigInt(String(formData.get("premio_id") ?? "0")), user.id);
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?anticipado=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function eliminarPremioAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const res = await eliminarPremio(user.tenant.id, BigInt(String(formData.get("premio_id") ?? "0")), user.id);
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?premio=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function guardarLogoRifaAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.editar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const imagen = formData.get("logo");
+  const res = await guardarLogoRifa(
+    user.tenant.id,
+    BigInt(rifaId),
+    imagen instanceof File ? imagen : null,
+    formData.get("quitar") === "on",
+    user.id,
+  );
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?logo=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function agregarPremioAction(formData: FormData): Promise<void> {

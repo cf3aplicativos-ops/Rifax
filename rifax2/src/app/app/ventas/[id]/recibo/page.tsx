@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { getBranding } from "@/lib/branding";
+import { logoRifa } from "@/lib/rifas";
 import { money, fechaHora } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 
@@ -28,6 +29,8 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
     getBranding(user.tenant.id),
   ]);
   if (!venta) notFound();
+  // Logo propio de la rifa; si no tiene, se usa el de la empresa.
+  const rifaLogo = (await logoRifa(user.tenant.id, venta.rifa_id)) ?? branding.logoUrl;
 
   const abonado = Number(venta.total.toString()) - Number(venta.saldo.toString());
 
@@ -44,9 +47,9 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
       {/* Recibo (ancho tipo ticket 80mm) */}
       <div className="mx-auto max-w-[320px] rounded-lg border border-slate-300 bg-white p-5 text-slate-900 dark:border-slate-700">
         <div className="text-center">
-          {branding.logoUrl ? (
+          {rifaLogo ? (
             /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={branding.logoUrl} alt="logo" className="mx-auto mb-2 h-12 w-12 object-contain" />
+            <img src={rifaLogo} alt="logo" className="mx-auto mb-2 h-14 w-14 object-contain" />
           ) : null}
           <p className="text-base font-bold">{venta.tenants.nombre}</p>
           <p className="text-xs text-slate-600">{venta.sedes.nombre}</p>

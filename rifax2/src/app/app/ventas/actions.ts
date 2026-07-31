@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
-import { crearVenta, registrarAbono, anularVenta } from "@/lib/ventas";
+import { crearVenta, registrarAbono, anularVenta, editarAbono, eliminarAbono } from "@/lib/ventas";
+import { actualizarCliente, cambiarEstadoCliente } from "@/lib/clientes";
 import { numerosPermitidosVendedor } from "@/lib/portal-vendedor";
 
 export interface VentaFormState {
@@ -73,6 +74,53 @@ export async function registrarAbonoAction(formData: FormData): Promise<void> {
   );
   revalidatePath(`/app/ventas/${ventaId}`);
   redirect(res.ok ? `/app/ventas/${ventaId}?abono=ok` : `/app/ventas/${ventaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function editarAbonoAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("pago.registrar");
+  const ventaId = BigInt(String(formData.get("venta_id") ?? "0"));
+  const res = await editarAbono(
+    user.tenant.id,
+    BigInt(String(formData.get("abono_id") ?? "0")),
+    { monto: String(formData.get("monto") ?? "0"), origen: String(formData.get("origen") ?? "efectivo") },
+    user.id,
+  );
+  revalidatePath(`/app/ventas/${ventaId}`);
+  redirect(res.ok ? `/app/ventas/${ventaId}?abono=ok` : `/app/ventas/${ventaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function eliminarAbonoAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("pago.registrar");
+  const ventaId = BigInt(String(formData.get("venta_id") ?? "0"));
+  const res = await eliminarAbono(user.tenant.id, BigInt(String(formData.get("abono_id") ?? "0")), user.id);
+  revalidatePath(`/app/ventas/${ventaId}`);
+  redirect(res.ok ? `/app/ventas/${ventaId}?abono=ok` : `/app/ventas/${ventaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function editarClienteAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("venta.crear");
+  const ventaId = String(formData.get("venta_id") ?? "0");
+  const res = await actualizarCliente(
+    user.tenant.id,
+    BigInt(String(formData.get("cliente_id") ?? "0")),
+    {
+      nombre: String(formData.get("nombre") ?? ""),
+      telefono: String(formData.get("telefono") ?? ""),
+      correo: String(formData.get("correo") ?? ""),
+      documento: String(formData.get("documento") ?? ""),
+    },
+    user.id,
+  );
+  revalidatePath(`/app/ventas/${ventaId}`);
+  redirect(res.ok ? `/app/ventas/${ventaId}?cliente=1` : `/app/ventas/${ventaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function cambiarEstadoClienteAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("venta.crear");
+  const ventaId = String(formData.get("venta_id") ?? "0");
+  const res = await cambiarEstadoCliente(user.tenant.id, BigInt(String(formData.get("cliente_id") ?? "0")), String(formData.get("estado") ?? ""), user.id);
+  revalidatePath(`/app/ventas/${ventaId}`);
+  redirect(res.ok ? `/app/ventas/${ventaId}?cliente=1` : `/app/ventas/${ventaId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function anularVentaAction(formData: FormData): Promise<void> {
