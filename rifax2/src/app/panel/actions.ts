@@ -28,6 +28,16 @@ export async function crearTenantAction(
 ): Promise<TenantFormState> {
   const admin = await requireSuper();
   const usuariosIlim = formData.get("usuarios_ilimitados") === "on";
+  // Logo opcional de la empresa (se muestra a la izquierda, en el menú).
+  let logoUrl: string | null = null;
+  const logo = formData.get("logo");
+  if (logo instanceof File && logo.size > 0) {
+    if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(logo.type)) {
+      return { error: "Logo: formato no soportado (PNG, JPG, WEBP o SVG)." };
+    }
+    if (logo.size > 400 * 1024) return { error: "Logo: la imagen supera 400 KB." };
+    logoUrl = `data:${logo.type};base64,${Buffer.from(await logo.arrayBuffer()).toString("base64")}`;
+  }
   const res = await crearTenant(
     {
       nombre: String(formData.get("nombre") ?? "").trim(),
@@ -45,6 +55,7 @@ export async function crearTenantAction(
       admin_password: String(formData.get("admin_password") ?? ""),
     },
     admin.id,
+    logoUrl,
   );
   if (!res.ok) return { error: res.error };
   revalidatePath("/panel");

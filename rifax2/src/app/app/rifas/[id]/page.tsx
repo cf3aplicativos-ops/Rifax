@@ -73,6 +73,12 @@ export default async function RifaDetalle({
         Premio mayor con <span className="font-medium text-slate-700 dark:text-slate-300">{loteriaLabel(rifa.loteria)}</span> · sorteo {fecha(rifa.fecha_sorteo)}
       </p>
 
+      {puedeEditar ? (
+        <Link href={`/app/rifas/${rifa.id}/importar`} className="mt-3 inline-flex items-center gap-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          ⬆ Importar (carga masiva)
+        </Link>
+      ) : null}
+
       {sp.premio ? <Aviso tipo="ok">Premio agregado.</Aviso> : null}
       {sp.anticipado ? <Aviso tipo="ok">Premio anticipado programado.</Aviso> : null}
       {sp.sorteo ? <Aviso tipo="ok">Sorteo ejecutado. Número ganador: <strong>{sp.sorteo}</strong>. {sp.ganador === "1" ? "La boleta estaba vendida y pagada." : "La boleta no tenía comprador pagado."}</Aviso> : null}

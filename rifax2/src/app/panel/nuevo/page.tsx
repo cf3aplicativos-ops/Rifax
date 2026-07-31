@@ -102,6 +102,13 @@ export default function NuevoTenantPage() {
           </div>
         </div>
 
+        {/* Logo de la empresa (se muestra a la izquierda, en el menú) */}
+        <div>
+          <label htmlFor="logo" className={etiqueta}>Logo de la empresa <span className="text-slate-400">(opcional · PNG, JPG, WEBP o SVG, máx. 400 KB)</span></label>
+          <input id="logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700 dark:text-slate-300" />
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Aparecerá a la izquierda, en el menú lateral del aplicativo. Podrás cambiarlo después en Configuración.</p>
+        </div>
+
         {/* Plan y límites */}
         <fieldset className="space-y-4 rounded-xl border border-slate-300 p-4 dark:border-slate-700">
           <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Plan y límites</legend>

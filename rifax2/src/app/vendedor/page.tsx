@@ -49,9 +49,12 @@ export default async function VendedorHome() {
         <Stat v={money(recaudado)} l="Recaudado" />
       </div>
 
-      <Link href="/app/ventas/nueva" className="block rounded-xl bg-[#f5c518] px-4 py-3.5 text-center text-sm font-bold text-slate-900 shadow-lg shadow-amber-500/25 transition hover:bg-[#eab308]">
-        + Registrar venta
-      </Link>
+      {/* Accesos rápidos con íconos tocables */}
+      <div className="grid grid-cols-3 gap-3">
+        <Tile href="/app/ventas/nueva" icon="nuevo" label="Registrar venta" destacado />
+        <Tile href="/vendedor/comisiones" icon="comisiones" label="Mis comisiones" />
+        <Tile href="/vendedor" icon="inicio" label="Inicio" />
+      </div>
 
       {comision ? (
         <Link href="/vendedor/comisiones" className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/40">
@@ -113,5 +116,23 @@ function Stat({ v, l }: { v: string; l: string }) {
       <p className="text-lg font-bold text-slate-900 dark:text-white">{v}</p>
       <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{l}</p>
     </div>
+  );
+}
+
+function Tile({ href, icon, label, destacado }: { href: string; icon: string; label: string; destacado?: boolean }) {
+  return (
+    <Link
+      href={href}
+      className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition active:scale-95 ${
+        destacado
+          ? "border-transparent bg-[#f5c518] text-slate-900 shadow-lg shadow-amber-500/25 hover:bg-[#eab308]"
+          : "border-slate-300 bg-white text-slate-700 hover:border-amber-300 hover:bg-amber-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+      }`}
+    >
+      <span className={`grid h-11 w-11 place-items-center rounded-xl ${destacado ? "bg-slate-900/10" : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"}`}>
+        <Icon name={icon} className="h-6 w-6" />
+      </span>
+      <span className="text-xs font-semibold leading-tight">{label}</span>
+    </Link>
   );
 }

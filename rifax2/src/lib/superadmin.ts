@@ -61,6 +61,7 @@ export async function listarTenants(): Promise<TenantFila[]> {
 export async function crearTenant(
   input: unknown,
   superAdminId: bigint,
+  logoUrl: string | null = null,
 ): Promise<Resultado> {
   const parsed = crearTenantSchema.safeParse(input);
   if (!parsed.success) {
@@ -109,8 +110,8 @@ export async function crearTenant(
       // Genera el calendario de fechas de vencimiento (mensual=12, semestral=2, anual=1)
       // y sincroniza fecha_vencimiento con la próxima pendiente.
       await generarVencimientos(tx as typeof prisma, tenant.id, d.fecha_inicio ?? null, d.periodicidad);
-      // Config de branding por defecto
-      await tx.tenant_config.create({ data: { tenant_id: tenant.id } });
+      // Config de branding por defecto (con logo si se subió al crear la empresa).
+      await tx.tenant_config.create({ data: { tenant_id: tenant.id, ...(logoUrl ? { logo_url: logoUrl } : {}) } });
       // Usuario administrador del tenant (sede_id NULL = acceso a todo el tenant)
       await tx.usuarios.create({
         data: {
