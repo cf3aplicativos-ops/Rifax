@@ -53,6 +53,29 @@ export async function obtenerRifa(tenantId: bigint, id: bigint) {
   });
 }
 
+// Resumen de boletas por sede para las rifas compartidas (para la lista de rifas).
+export interface ResumenSede { sede: string; disponibles: number; total: number }
+export async function resumenSedesCompartidas(tenantId: bigint): Promise<Record<string, ResumenSede[]>> {
+  const filas = await prisma.$queryRawUnsafe<{ rifa_id: bigint; sede: string; disp: bigint; tot: bigint }[]>(
+    `SELECT b.rifa_id,
+            COALESCE(s.nombre, 'sin asignar') AS sede,
+            COUNT(*) FILTER (WHERE b.estado = 'disponible') AS disp,
+            COUNT(*) AS tot
+       FROM saas.boletas b
+       JOIN saas.rifas r ON r.id = b.rifa_id AND r.compartida = true
+       LEFT JOIN saas.sedes s ON s.id = b.sede_id
+      WHERE b.tenant_id = $1::bigint
+      GROUP BY b.rifa_id, sede
+      ORDER BY b.rifa_id, (s.nombre IS NULL), sede`,
+    tenantId,
+  );
+  const m: Record<string, ResumenSede[]> = {};
+  for (const f of filas) {
+    (m[String(f.rifa_id)] ??= []).push({ sede: f.sede, disponibles: Number(f.disp), total: Number(f.tot) });
+  }
+  return m;
+}
+
 export async function esCompartida(tenantId: bigint, rifaId: bigint): Promise<boolean> {
   const f = await prisma.$queryRawUnsafe<{ compartida: boolean }[]>(`SELECT compartida FROM saas.rifas WHERE id=$1::bigint AND tenant_id=$2::bigint`, rifaId, tenantId);
   return f[0]?.compartida ?? false;

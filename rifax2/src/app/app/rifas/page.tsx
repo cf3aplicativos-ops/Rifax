@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { listarRifas } from "@/lib/rifas";
+import { listarRifas, resumenSedesCompartidas } from "@/lib/rifas";
 import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
 import { money, fecha } from "@/lib/format";
 import { publicarRifaAction } from "./actions";
@@ -24,7 +24,10 @@ export default async function RifasPage({
   const user = await requirePermission("rifa.ver");
   const { publicada, error } = await searchParams;
   const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
-  const rifas = await listarRifas(user.tenant.id, user.sede?.id ?? null, vendedorId);
+  const [rifas, resumen] = await Promise.all([
+    listarRifas(user.tenant.id, user.sede?.id ?? null, vendedorId),
+    resumenSedesCompartidas(user.tenant.id),
+  ]);
 
   const puedeCrear = hasPermission(user, "rifa.crear");
   const puedePublicar = hasPermission(user, "rifa.publicar");
@@ -78,7 +81,20 @@ export default async function RifasPage({
                 <tr key={String(r.id)}>
                   <td className="px-4 py-3"><Link href={`/app/rifas/${r.id}`} className="font-mono text-xs text-indigo-600 hover:underline dark:text-indigo-400">{r.codigo}</Link></td>
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{r.nombre}</td>
-                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.sedes.nombre}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                    {resumen[String(r.id)] ? (
+                      <div>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">Todas las sedes</span>
+                        <div className="mt-1 space-y-0.5">
+                          {resumen[String(r.id)].map((rs) => (
+                            <p key={rs.sede} className="text-[11px] text-slate-500 dark:text-slate-400">
+                              <span className={rs.sede === "sin asignar" ? "text-amber-600 dark:text-amber-400" : ""}>{rs.sede}</span>: {rs.disponibles.toLocaleString("es-CO")} disp. / {rs.total.toLocaleString("es-CO")}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : r.sedes.nombre}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estadoClase[r.estado] ?? estadoClase.borrador}`}>
                       {r.estado}
