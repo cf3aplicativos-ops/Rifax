@@ -21,9 +21,17 @@ export default function Carrusel({ slides }: { slides: Slide[] }) {
       {slides.map((s, idx) => (
         <div
           key={idx}
-          className={`absolute inset-0 transition-opacity duration-700 ${idx === i ? "opacity-100" : "opacity-0"} ${s.imagen ? "bg-cover bg-center bg-no-repeat" : (s.gradiente ?? "bg-slate-800")}`}
-          style={s.imagen ? { backgroundImage: `url(${s.imagen})` } : undefined}
+          className={`absolute inset-0 transition-opacity duration-700 ${idx === i ? "opacity-100" : "opacity-0"} ${s.imagen ? "bg-slate-900" : (s.gradiente ?? "bg-slate-800")}`}
         >
+          {s.imagen ? (
+            <>
+              {/* Fondo difuminado que llena todo el slider… */}
+              <div className="absolute inset-0 scale-110 bg-cover bg-center blur-2xl" style={{ backgroundImage: `url(${s.imagen})` }} />
+              {/* …y la foto COMPLETA (sin recortar) encima. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.imagen} alt={s.titulo ?? "slide"} className="absolute inset-0 h-full w-full object-contain" />
+            </>
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
           {(s.titulo || s.subtitulo) ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission, requireUser } from "@/lib/auth/rbac";
 import { crearUsuario, cambiarRol, cambiarEstado, cambiarPasswordPropia } from "@/lib/usuarios";
+import { restablecerUsuarioTenant } from "@/lib/reset-password";
 
 export interface UsuarioFormState {
   error?: string;
@@ -44,6 +45,13 @@ export async function cambiarEstadoAction(formData: FormData): Promise<void> {
   const res = await cambiarEstado(BigInt(String(formData.get("usuario_id") ?? "0")), String(formData.get("estado") ?? ""), user.tenant.id, user.id);
   revalidatePath("/app/usuarios");
   redirect(res.ok ? "/app/usuarios?estado=1" : `/app/usuarios?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function restablecerUsuarioAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("usuario.editar");
+  const res = await restablecerUsuarioTenant(user.tenant.id, BigInt(String(formData.get("usuario_id") ?? "0")));
+  revalidatePath("/app/usuarios");
+  redirect(res.ok ? `/app/usuarios?pass=${encodeURIComponent(res.data!.password)}` : `/app/usuarios?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function cambiarPasswordAction(_prev: UsuarioFormState, formData: FormData): Promise<UsuarioFormState> {

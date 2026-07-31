@@ -38,11 +38,29 @@ function calcularVencimientos(inicioISO: string, periodicidad: string): string[]
 export default function NuevoTenantPage() {
   const [state, action, pending] = useActionState(crearTenantAction, initialState);
   const [slug, setSlug] = useState("");
+  const [plan, setPlan] = useState("basico");
   const [sedesIlim, setSedesIlim] = useState(false);
   const [usuariosIlim, setUsuariosIlim] = useState(false);
+  const [maxSedes, setMaxSedes] = useState("1");
+  const [maxUsuarios, setMaxUsuarios] = useState("2");
   const [fechaInicio, setFechaInicio] = useState("");
   const [periodicidad, setPeriodicidad] = useState("mensual");
   const vencimientos = calcularVencimientos(fechaInicio, periodicidad);
+
+  // Al elegir el plan se ajustan los límites por defecto:
+  //  básico → 1 sede, 2 usuarios; corporativo → sedes y usuarios ilimitados.
+  function cambiarPlan(p: string) {
+    setPlan(p);
+    if (p === "corporativo") {
+      setSedesIlim(true);
+      setUsuariosIlim(true);
+    } else {
+      setSedesIlim(false);
+      setUsuariosIlim(false);
+      setMaxSedes("1");
+      setMaxUsuarios("2");
+    }
+  }
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -89,9 +107,9 @@ export default function NuevoTenantPage() {
           <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Plan y límites</legend>
           <div>
             <label htmlFor="plan" className={etiqueta}>Plan</label>
-            <select id="plan" name="plan" defaultValue="basico" className={campo}>
-              <option value="basico">Básico</option>
-              <option value="corporativo">Corporativo</option>
+            <select id="plan" name="plan" value={plan} onChange={(e) => cambiarPlan(e.target.value)} className={campo}>
+              <option value="basico">Básico (1 sede · 2 usuarios)</option>
+              <option value="corporativo">Corporativo (sedes y usuarios ilimitados)</option>
             </select>
           </div>
 
@@ -103,7 +121,7 @@ export default function NuevoTenantPage() {
             {!sedesIlim ? (
               <div className="mt-2">
                 <label htmlFor="max_sedes" className={etiqueta}>Sedes autorizadas</label>
-                <input id="max_sedes" name="max_sedes" type="number" min={1} defaultValue={1} className={`${campo} w-32`} />
+                <input id="max_sedes" name="max_sedes" type="number" min={1} value={maxSedes} onChange={(e) => setMaxSedes(e.target.value)} className={`${campo} w-32`} />
               </div>
             ) : null}
           </div>
@@ -113,12 +131,13 @@ export default function NuevoTenantPage() {
               <input type="checkbox" name="usuarios_ilimitados" checked={usuariosIlim} onChange={(e) => setUsuariosIlim(e.target.checked)} className="rounded" />
               Usuarios ilimitados
             </label>
-            {!usuariosIlim ? (
-              <div className="mt-2">
-                <label htmlFor="max_usuarios" className={etiqueta}>Número de usuarios</label>
-                <input id="max_usuarios" name="max_usuarios" type="number" min={1} defaultValue={5} className={`${campo} w-32`} />
-              </div>
-            ) : null}
+            {/* El número de usuarios se muestra SIEMPRE (también en Corporativo). */}
+            <div className="mt-2">
+              <label htmlFor="max_usuarios" className={etiqueta}>
+                Número de usuarios {usuariosIlim ? <span className="text-slate-400">(cupo opcional; ilimitado)</span> : null}
+              </label>
+              <input id="max_usuarios" name="max_usuarios" type="number" min={1} value={maxUsuarios} onChange={(e) => setMaxUsuarios(e.target.value)} className={`${campo} w-32`} />
+            </div>
           </div>
         </fieldset>
 

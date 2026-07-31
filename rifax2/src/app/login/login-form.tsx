@@ -61,6 +61,12 @@ export default function LoginForm() {
         >
           {pending ? "Ingresando…" : "Ingresar"}
         </button>
+
+        <p className="text-center text-sm">
+          <a href="/login/olvide" className="font-medium text-slate-600 underline-offset-2 hover:text-slate-900 hover:underline dark:text-slate-300 dark:hover:text-white">
+            ¿Olvidaste tu contraseña?
+          </a>
+        </p>
       </form>
 
       <p className="mt-6 text-center text-xs text-slate-500 dark:text-slate-400">

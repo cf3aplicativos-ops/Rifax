@@ -21,8 +21,8 @@ export interface CapacidadesPlan {
 export const PLANES: Record<Plan, CapacidadesPlan> = {
   basico: {
     etiqueta: "Básico",
-    maxSedes: 2,
-    maxUsuarios: 5,
+    maxSedes: 1,
+    maxUsuarios: 2,
     liquidacionMasiva: false,
     integraciones: false,
     conciliacionIA: false,
@@ -30,8 +30,8 @@ export const PLANES: Record<Plan, CapacidadesPlan> = {
     portalVendedor: true,
     portalCliente: true,
     incluye: [
-      "Hasta 2 sedes",
-      "Hasta 5 usuarios",
+      "1 sede",
+      "Hasta 2 usuarios",
       "Rifas, ventas y cartera",
       "Vendedores y talonarios",
       "Sorteos verificables",
