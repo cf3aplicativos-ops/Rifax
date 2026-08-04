@@ -12,6 +12,8 @@ const nav: NavItem[] = [
 
 export default async function VendedorLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  // Tras un restablecimiento, obliga a cambiar la contraseña temporal.
+  if (user.debeCambiar) redirect("/cambiar-password");
   // Solo para rol vendedor; otros roles usan el panel /app.
   if (user.rol !== "vendedor") redirect("/app");
   const branding = await getBranding(user.tenant.id);

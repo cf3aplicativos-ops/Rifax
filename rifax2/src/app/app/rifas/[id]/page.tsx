@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { obtenerRifa, logoRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables } from "@/lib/rifas";
+import { obtenerRifa, imagenesRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables } from "@/lib/rifas";
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
-import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction } from "./actions";
+import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
 import PremiosAnticipados, { type PA } from "./premios-anticipados";
 import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
@@ -19,7 +19,7 @@ export default async function RifaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; asignadas?: string; liberadas?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -29,13 +29,15 @@ export default async function RifaDetalle({
 
   const rifa = await obtenerRifa(user.tenant.id, rifaId);
   if (!rifa) notFound();
-  const [sorteos, pendientes, loterias, logoUrl, compartida] = await Promise.all([
+  const [sorteos, pendientes, loterias, imgs, compartida] = await Promise.all([
     listarSorteos(user.tenant.id, rifaId),
     premiosPendientes(user.tenant.id, rifaId),
     opcionesDe(user.tenant.id, "loteria"),
-    logoRifa(user.tenant.id, rifaId),
+    imagenesRifa(user.tenant.id, rifaId),
     esCompartida(user.tenant.id, rifaId),
   ]);
+  const logoUrl = imgs.logo;
+  const boletaUrl = imgs.boleta;
   const loteriaLabel = (v: string | null) => loterias.find((l) => l.valor === v)?.etiqueta ?? v ?? "—";
 
   const puedeEditar = hasPermission(user, "rifa.editar");
@@ -84,6 +86,7 @@ export default async function RifaDetalle({
       {sp.sorteo ? <Aviso tipo="ok">Sorteo ejecutado. Número ganador: <strong>{sp.sorteo}</strong>. {sp.ganador === "1" ? "La boleta estaba vendida y pagada." : "La boleta no tenía comprador pagado."}</Aviso> : null}
       {sp.entrega ? <Aviso tipo="ok">Estado de entrega actualizado.</Aviso> : null}
       {sp.logo ? <Aviso tipo="ok">Logo de la rifa actualizado.</Aviso> : null}
+      {sp.boleta ? <Aviso tipo="ok">Imagen de la boleta actualizada.</Aviso> : null}
       {sp.asignadas && sp.asignadas !== "0" ? <Aviso tipo="ok">{sp.asignadas} boleta(s) asignada(s) a la sede.</Aviso> : null}
       {sp.liberadas ? <Aviso tipo="ok">{sp.liberadas} boleta(s) liberada(s).</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
@@ -103,6 +106,22 @@ export default async function RifaDetalle({
             <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar logo</button>
             {logoUrl ? <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="quitar" className="rounded" /> quitar</label> : null}
           </form>
+
+          {/* IMAGEN DE LA BOLETA (#1) */}
+          <div className="mt-5 border-t border-slate-200 pt-4 dark:border-slate-700">
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Imagen de la boleta</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">La imagen (diseño) de la boleta de esta rifa. Configurable en cualquier momento.</p>
+            <form action={guardarBoletaRifaAction} className="mt-3 flex flex-wrap items-center gap-4">
+              <input type="hidden" name="rifa_id" value={String(rifa.id)} />
+              {boletaUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={boletaUrl} alt="boleta" className="h-20 w-32 rounded-lg border border-slate-300 object-contain p-1 dark:border-slate-700" />
+              ) : <div className="grid h-20 w-32 place-items-center rounded-lg border border-dashed border-slate-300 text-[10px] text-slate-400 dark:border-slate-700">sin imagen</div>}
+              <input name="boleta" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="block text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700 dark:text-slate-300" />
+              <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar boleta</button>
+              {boletaUrl ? <label className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><input type="checkbox" name="quitar" className="rounded" /> quitar</label> : null}
+            </form>
+          </div>
         </section>
       ) : null}
 

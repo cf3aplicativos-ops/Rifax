@@ -35,6 +35,7 @@ export interface TenantUser {
   permisos: string[];
   tenant: TenantCtx;
   sede: { id: bigint; nombre: string } | null;
+  debeCambiar: boolean;
 }
 
 export type Sesion =
@@ -125,6 +126,11 @@ export async function getSession(): Promise<Sesion | null> {
     ? overrides.map((o) => o.codigo)
     : u.roles.roles_permisos.map((rp) => rp.permisos.codigo);
 
+  // ¿Debe cambiar la contraseña temporal? (columna fuera del modelo Prisma)
+  const dc = await prisma.$queryRawUnsafe<{ debe_cambiar_password: boolean }[]>(
+    `SELECT debe_cambiar_password FROM saas.usuarios WHERE id = $1::bigint`, u.id,
+  );
+
   return {
     kind: "user",
     user: {
@@ -134,6 +140,7 @@ export async function getSession(): Promise<Sesion | null> {
       correo: u.correo,
       rol: u.roles.nombre,
       permisos,
+      debeCambiar: dc[0]?.debe_cambiar_password ?? false,
       tenant: {
         id: u.tenants.id,
         uuid: u.tenants.uuid,

@@ -43,6 +43,8 @@ export async function restablecerPorCorreo(correo: string): Promise<Resultado<{ 
   if (usuario) {
     await prisma.$transaction(async (tx) => {
       await tx.usuarios.update({ where: { id: usuario.id }, data: { password_hash: hash } });
+      // Debe cambiar la contraseña temporal en el próximo ingreso.
+      await tx.$executeRawUnsafe(`UPDATE saas.usuarios SET debe_cambiar_password = true WHERE id = $1::bigint`, usuario.id);
       await tx.sesiones.updateMany({ where: { usuario_id: usuario.id, revocada: false }, data: { revocada: true } });
       await tx.$executeRawUnsafe(`UPDATE saas.reset_solicitudes SET atendida = true WHERE correo = $1::citext`, c);
     });
@@ -67,6 +69,7 @@ export async function restablecerUsuarioTenant(tenantId: bigint, usuarioId: bigi
   const hash = await hashPassword(nueva);
   await prisma.$transaction(async (tx) => {
     await tx.usuarios.update({ where: { id: u.id }, data: { password_hash: hash } });
+    await tx.$executeRawUnsafe(`UPDATE saas.usuarios SET debe_cambiar_password = true WHERE id = $1::bigint`, u.id);
     await tx.sesiones.updateMany({ where: { usuario_id: u.id, revocada: false }, data: { revocada: true } });
   });
   return { ok: true, data: { password: nueva } };

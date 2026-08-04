@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/rbac";
 import { getBranding } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
@@ -38,6 +39,8 @@ function luminancia(hex: string): number {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  // Tras un restablecimiento, obliga a cambiar la contraseña temporal.
+  if (user.debeCambiar) redirect("/cambiar-password");
   const branding = await getBranding(user.tenant.id);
   const brand = branding.colorPrimario;
   // Si el color de marca es claro (p. ej. el amarillo Rifax), el texto sobre los

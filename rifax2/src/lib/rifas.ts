@@ -66,7 +66,7 @@ export async function resumenSedesCompartidas(tenantId: bigint): Promise<Record<
        LEFT JOIN saas.sedes s ON s.id = b.sede_id
       WHERE b.tenant_id = $1::bigint
       GROUP BY b.rifa_id, sede
-      ORDER BY b.rifa_id, (s.nombre IS NULL), sede`,
+      ORDER BY b.rifa_id, sede`,
     tenantId,
   );
   const m: Record<string, ResumenSede[]> = {};
@@ -250,29 +250,47 @@ export async function agregarPremio(
   }
 }
 
-// Logo propio de la rifa (para el recibo). Se guarda como data URI.
+// Imágenes propias de la rifa (data URI): logo para el recibo y la boleta.
 const TIPOS_LOGO = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
-export async function guardarLogoRifa(tenantId: bigint, rifaId: bigint, file: File | null, quitar: boolean, actorId: bigint): Promise<{ ok: true } | { ok: false; error: string }> {
-  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { id: true, codigo: true } });
+const COLS_IMG = { logo: "logo_url", boleta: "boleta_url" } as const;
+type ImgRifa = keyof typeof COLS_IMG;
+const LIMITE_IMG_RIFA: Record<ImgRifa, number> = { logo: 400 * 1024, boleta: 1_500 * 1024 };
+
+export async function guardarImagenRifa(tenantId: bigint, rifaId: bigint, tipo: ImgRifa, file: File | null, quitar: boolean, actorId: bigint): Promise<{ ok: true } | { ok: false; error: string }> {
+  const col = COLS_IMG[tipo];
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { id: true } });
   if (!rifa) return { ok: false, error: "Rifa no encontrada." };
   if (quitar) {
-    await prisma.$executeRawUnsafe(`UPDATE saas.rifas SET logo_url=NULL WHERE id=$1::bigint`, rifaId);
+    await prisma.$executeRawUnsafe(`UPDATE saas.rifas SET ${col}=NULL WHERE id=$1::bigint`, rifaId);
     return { ok: true };
   }
   if (!file || file.size === 0) return { ok: false, error: "Selecciona una imagen." };
   if (!TIPOS_LOGO.includes(file.type)) return { ok: false, error: "Formato no soportado (PNG, JPG, WEBP o SVG)." };
-  if (file.size > 400 * 1024) return { ok: false, error: "La imagen supera 400 KB." };
+  if (file.size > LIMITE_IMG_RIFA[tipo]) return { ok: false, error: `La imagen supera ${Math.round(LIMITE_IMG_RIFA[tipo] / 1024)} KB.` };
   const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
   await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`UPDATE saas.rifas SET logo_url=$1 WHERE id=$2::bigint`, `data:${file.type};base64,${b64}`, rifaId);
-    await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId, despues: { logo: true } });
+    await tx.$executeRawUnsafe(`UPDATE saas.rifas SET ${col}=$1 WHERE id=$2::bigint`, `data:${file.type};base64,${b64}`, rifaId);
+    await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId, despues: { imagen: tipo } });
   });
   return { ok: true };
 }
 
+// Compatibilidad: helpers específicos.
+export function guardarLogoRifa(tenantId: bigint, rifaId: bigint, file: File | null, quitar: boolean, actorId: bigint) {
+  return guardarImagenRifa(tenantId, rifaId, "logo", file, quitar, actorId);
+}
+export function guardarBoletaRifa(tenantId: bigint, rifaId: bigint, file: File | null, quitar: boolean, actorId: bigint) {
+  return guardarImagenRifa(tenantId, rifaId, "boleta", file, quitar, actorId);
+}
+
+export async function imagenesRifa(tenantId: bigint, rifaId: bigint): Promise<{ logo: string | null; boleta: string | null }> {
+  const filas = await prisma.$queryRawUnsafe<{ logo_url: string | null; boleta_url: string | null }[]>(
+    `SELECT logo_url, boleta_url FROM saas.rifas WHERE id=$1::bigint AND tenant_id=$2::bigint`, rifaId, tenantId,
+  );
+  return { logo: filas[0]?.logo_url ?? null, boleta: filas[0]?.boleta_url ?? null };
+}
 export async function logoRifa(tenantId: bigint, rifaId: bigint): Promise<string | null> {
-  const filas = await prisma.$queryRawUnsafe<{ logo_url: string | null }[]>(`SELECT logo_url FROM saas.rifas WHERE id=$1::bigint AND tenant_id=$2::bigint`, rifaId, tenantId);
-  return filas[0]?.logo_url ?? null;
+  return (await imagenesRifa(tenantId, rifaId)).logo;
 }
 
 export async function editarPremioAnticipado(

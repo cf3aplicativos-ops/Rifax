@@ -158,6 +158,8 @@ export async function cambiarPasswordPropia(usuarioId: bigint, tenantId: bigint,
   const hash = await hashPassword(nueva);
   await prisma.$transaction(async (tx) => {
     await tx.usuarios.update({ where: { id: usuarioId }, data: { password_hash: hash } });
+    // Al cambiar la contraseña se levanta la obligación de cambiar la temporal.
+    await tx.$executeRawUnsafe(`UPDATE saas.usuarios SET debe_cambiar_password = false WHERE id = $1::bigint`, usuarioId);
     await tx.sesiones.updateMany({ where: { usuario_id: usuarioId, revocada: false }, data: { revocada: true } });
     await auditar(tx, { tenantId, actorId: usuarioId, accion: "usuario.password", entidadTipo: "usuario", entidadId: usuarioId, despues: { cambio: "contraseña propia" } });
   });
