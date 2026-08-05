@@ -125,5 +125,5 @@ export default async function VendedorDetalle({
 
 function Aviso({ tipo, children }: { tipo: "ok" | "error" | "neutral"; children: React.ReactNode }) {
   const c = tipo === "ok" ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : tipo === "error" ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-  return <p className={`mt-4 rounded-lg px-4 py-3 text-sm ${c}`}>{children}</p>;
+  return <p role={tipo === "error" ? "alert" : "status"} className={`mt-4 rounded-lg px-4 py-3 text-sm ${c}`}>{children}</p>;
 }

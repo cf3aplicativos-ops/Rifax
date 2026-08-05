@@ -114,5 +114,5 @@ const btnSec = "rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slat
 
 function Aviso({ tipo, children }: { tipo: "ok" | "error"; children: React.ReactNode }) {
   const clase = tipo === "ok" ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300";
-  return <p className={`mt-4 rounded-lg px-4 py-3 text-sm ${clase}`}>{children}</p>;
+  return <p role={tipo === "error" ? "alert" : "status"} className={`mt-4 rounded-lg px-4 py-3 text-sm ${clase}`}>{children}</p>;
 }

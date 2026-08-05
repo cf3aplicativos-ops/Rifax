@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
 import { generarVencimientos } from "@/lib/vencimientos";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -133,7 +134,7 @@ export async function crearTenant(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al crear el tenant." };
+    return { ok: false, error: mensajeError(e, "Error al crear el tenant.") };
   }
 }
 
@@ -211,6 +212,6 @@ export async function purgarTenant(tenantId: bigint): Promise<Resultado> {
     await prisma.$executeRawUnsafe(`SELECT saas.purgar_tenant($1::bigint)`, tenantId);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al purgar el tenant." };
+    return { ok: false, error: mensajeError(e, "Error al purgar el tenant.") };
   }
 }

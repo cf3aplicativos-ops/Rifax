@@ -3,6 +3,7 @@
 import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -70,7 +71,7 @@ export async function crearSede(
       return { ok: true as const };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al crear la sede." };
+    return { ok: false, error: mensajeError(e, "Error al crear la sede.") };
   }
 }
 

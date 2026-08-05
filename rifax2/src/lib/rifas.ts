@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { mensajeError } from "@/lib/errores";
 
 export const crearRifaSchema = z.object({
   sede_id: z.coerce.bigint(),
@@ -175,7 +176,7 @@ export async function asignarBoletasSede(
       return { ok: true as const, data: { asignadas: ids.length } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al asignar boletas." };
+    return { ok: false, error: mensajeError(e, "Error al asignar boletas.") };
   }
 }
 
@@ -188,7 +189,7 @@ export async function liberarBoletasSede(tenantId: bigint, rifaId: bigint, sedeI
     );
     return { ok: true, data: { liberadas: typeof n === "number" ? n : 0 } };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al liberar boletas." };
+    return { ok: false, error: mensajeError(e, "Error al liberar boletas.") };
   }
 }
 
@@ -220,7 +221,7 @@ export async function agregarPremioAnticipado(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al agregar el premio anticipado." };
+    return { ok: false, error: mensajeError(e, "Error al agregar el premio anticipado.") };
   }
 }
 
@@ -246,7 +247,7 @@ export async function agregarPremio(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al agregar el premio." };
+    return { ok: false, error: mensajeError(e, "Error al agregar el premio.") };
   }
 }
 
@@ -320,7 +321,7 @@ export async function editarPremioAnticipado(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al editar el premio anticipado." };
+    return { ok: false, error: mensajeError(e, "Error al editar el premio anticipado.") };
   }
 }
 
@@ -335,7 +336,7 @@ export async function eliminarPremioAnticipado(tenantId: bigint, premioId: bigin
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el premio anticipado." };
+    return { ok: false, error: mensajeError(e, "Error al eliminar el premio anticipado.") };
   }
 }
 
@@ -354,7 +355,7 @@ export async function eliminarPremio(tenantId: bigint, premioId: bigint, actorId
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el premio." };
+    return { ok: false, error: mensajeError(e, "Error al eliminar el premio.") };
   }
 }
 
@@ -476,6 +477,6 @@ export async function publicarRifa(tenantId: bigint, rifaId: bigint, actorId: bi
       { timeout: 120_000, maxWait: 10_000 },
     );
   } catch (e) {
-    return { ok: false as const, error: e instanceof Error ? e.message : "Error al publicar." };
+    return { ok: false as const, error: mensajeError(e, "Error al publicar.") };
   }
 }

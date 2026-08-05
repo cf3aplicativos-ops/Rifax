@@ -4,6 +4,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -98,7 +99,7 @@ export async function ejecutarSorteo(
       return { ok: true as const, data: { numeroGanador, conGanador } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al ejecutar el sorteo." };
+    return { ok: false, error: mensajeError(e, "Error al ejecutar el sorteo.") };
   }
 }
 

@@ -48,7 +48,7 @@ function indices(header: string[], columnas: string[]): Record<string, number> {
   return map;
 }
 
-function expandirNumeros(texto: string): number[] {
+export function expandirNumeros(texto: string): number[] {
   const out = new Set<number>();
   for (const parte of texto.split(/[\s,;]+/).filter(Boolean)) {
     const m = /^(\d+)-(\d+)$/.exec(parte);

@@ -31,7 +31,7 @@ export default function CambiarPasswordPage() {
             <PasswordInput name="nueva" autoComplete="new-password" minLength={8} />
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Mínimo 8 caracteres, distinta de la temporal.</p>
           </div>
-          {state.error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{state.error}</p> : null}
+          {state.error ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{state.error}</p> : null}
           <button type="submit" disabled={pending} className="w-full rounded-lg bg-[#f5c518] px-4 py-2.5 text-sm font-bold text-slate-900 shadow-sm shadow-amber-500/30 transition hover:bg-[#eab308] disabled:opacity-60">
             {pending ? "Guardando…" : "Cambiar contraseña"}
           </button>

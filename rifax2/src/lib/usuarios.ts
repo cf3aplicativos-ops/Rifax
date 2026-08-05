@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { capacidades } from "@/lib/planes";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 const ESTADOS = ["activo", "inactivo", "bloqueado"] as const;
@@ -103,7 +104,7 @@ export async function crearUsuario(input: unknown, tenantId: bigint, actorId: bi
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al crear el usuario." };
+    return { ok: false, error: mensajeError(e, "Error al crear el usuario.") };
   }
 }
 

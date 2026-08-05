@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { mensajeError } from "@/lib/errores";
 
 export const crearVentaSchema = z.object({
   rifa_id: z.coerce.bigint(),
@@ -188,7 +189,7 @@ export async function crearVenta(
       return { ok: true as const, data: { ventaId: creada.id, codigo, total: total.toString(), idempotente: false } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al crear la venta." };
+    return { ok: false, error: mensajeError(e, "Error al crear la venta.") };
   }
 }
 
@@ -257,7 +258,7 @@ export async function registrarAbono(
       return { ok: true as const, data: { saldo: nuevoSaldo, estado: nuevoEstado } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al registrar el abono." };
+    return { ok: false, error: mensajeError(e, "Error al registrar el abono.") };
   }
 }
 
@@ -312,7 +313,7 @@ export async function editarAbono(
       return { ok: true as const, data: { estado } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al editar el abono." };
+    return { ok: false, error: mensajeError(e, "Error al editar el abono.") };
   }
 }
 
@@ -334,7 +335,7 @@ export async function eliminarAbono(tenantId: bigint, abonoId: bigint, actorId: 
       return { ok: true as const, data: { estado } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al eliminar el abono." };
+    return { ok: false, error: mensajeError(e, "Error al eliminar el abono.") };
   }
 }
 
@@ -374,6 +375,6 @@ export async function anularVenta(
       return { ok: true as const, data: { estado: "anulada" } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al anular la venta." };
+    return { ok: false, error: mensajeError(e, "Error al anular la venta.") };
   }
 }

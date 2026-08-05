@@ -55,7 +55,8 @@ npm run dev
 | Variable                 | Uso                                        |
 | ------------------------ | ------------------------------------------ |
 | `DATABASE_URL`           | Conexión **pooled** (runtime de la app)    |
-| `DATABASE_URL_UNPOOLED`  | Conexión **directa** (Prisma CLI / DDL)    |
+| `DATABASE_URL_UNPOOLED`  | Conexión **directa** (Prisma CLI / DDL / migraciones) |
 | `JWT_SECRET`             | Firma de tokens de sesión                  |
+| `CRON_SECRET`            | Autoriza `GET /api/cron/outbox` (header `Authorization: Bearer <valor>`) |
 
 > `.env*` está en `.gitignore`: los secretos nunca se suben al repo.

@@ -19,6 +19,16 @@ export interface ComisionVendedor {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Comisión ganada = recaudado × % de comisión, redondeado a 2 decimales. */
+export function calcularComision(recaudado: number, pct: number): number {
+  return r2((recaudado * pct) / 100);
+}
+
+/** Pendiente por liquidar = comisión ganada - lo ya liquidado, redondeado a 2 decimales. */
+export function calcularPendiente(comisionGanada: number, liquidado: number): number {
+  return r2(comisionGanada - liquidado);
+}
+
 export async function estadoComisiones(tenantId: bigint): Promise<ComisionVendedor[]> {
   const filas = await prisma.$queryRawUnsafe<{ id: bigint; nombre: string; pct: string; recaudado: string; liquidado: string }[]>(
     `SELECT ve.id, ve.nombre, ve.pct_comision::text AS pct,
@@ -33,9 +43,9 @@ export async function estadoComisiones(tenantId: bigint): Promise<ComisionVended
   return filas.map((f) => {
     const pct = Number(f.pct);
     const recaudado = Number(f.recaudado);
-    const comisionGanada = r2((recaudado * pct) / 100);
+    const comisionGanada = calcularComision(recaudado, pct);
     const liquidado = Number(f.liquidado);
-    return { id: f.id, nombre: f.nombre, pct, recaudado, comisionGanada, liquidado, pendiente: r2(comisionGanada - liquidado) };
+    return { id: f.id, nombre: f.nombre, pct, recaudado, comisionGanada, liquidado, pendiente: calcularPendiente(comisionGanada, liquidado) };
   });
 }
 

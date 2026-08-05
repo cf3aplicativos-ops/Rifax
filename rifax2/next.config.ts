@@ -12,6 +12,29 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "5mb" },
   },
+  // Cabeceras de seguridad para todas las respuestas. Conservadoras: no se añade
+  // una CSP restrictiva para no romper estilos/scripts inline de Next ni la
+  // inyección del color de marca. Endurece clickjacking, sniffing y fuga de referer.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Evita que la app se embeba en iframes de terceros (clickjacking).
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Impide que el navegador "adivine" tipos MIME.
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // No filtrar la URL completa como referer hacia otros orígenes.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Forzar HTTPS (Vercel ya lo aplica; explícito por defensa en profundidad).
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          // Desactivar APIs del navegador que la app no usa.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), browsing-topics=()" },
+          { key: "X-DNS-Prefetch-Control", value: "off" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

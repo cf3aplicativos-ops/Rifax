@@ -9,6 +9,7 @@ const nav = [
   { href: "/app", label: "Inicio", icon: "inicio", exact: true, permiso: null },
   { href: "/app/rifas", label: "Rifas", icon: "rifas", permiso: "rifa.ver" },
   { href: "/app/ventas", label: "Ventas", icon: "ventas", permiso: "venta.ver" },
+  { href: "/app/traspasos", label: "Traspasos", icon: "traspaso", permiso: "boleta.traspasar", ocultarVendedor: true },
   { href: "/app/cartera", label: "Cartera", icon: "cartera", permiso: "cartera.ver" },
   { href: "/app/reportes", label: "Reportes", icon: "reportes", permiso: "reporte.ver" },
   { href: "/app/vendedores", label: "Vendedores", icon: "vendedores", permiso: "vendedor.ver" },

@@ -2,6 +2,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 
@@ -33,7 +34,7 @@ export async function actualizarCliente(
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al actualizar el cliente." };
+    return { ok: false, error: mensajeError(e, "Error al actualizar el cliente.") };
   }
 }
 

@@ -3,6 +3,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { getConfigPlataforma } from "@/lib/plataforma";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -74,7 +75,7 @@ export async function generarFacturaTenant(tenantId: bigint, periodo: string, mo
     );
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al generar la factura." };
+    return { ok: false, error: mensajeError(e, "Error al generar la factura.") };
   }
 }
 

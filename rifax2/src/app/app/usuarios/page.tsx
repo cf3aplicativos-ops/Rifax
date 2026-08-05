@@ -34,7 +34,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
           <p className="mt-2 select-all rounded-lg bg-white px-3 py-2 text-center font-mono text-lg font-bold text-slate-900 dark:bg-slate-900 dark:text-white">{sp.pass}</p>
         </div>
       ) : null}
-      {sp.error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
+      {sp.error ? <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
 
       <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
         <table className="w-full text-left text-sm">

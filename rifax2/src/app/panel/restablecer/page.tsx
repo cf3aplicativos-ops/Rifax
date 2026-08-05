@@ -31,7 +31,7 @@ export default async function RestablecerPage({
           <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400">Entrégala a la persona y pídele que la cambie al ingresar. Sus sesiones activas se cerraron.</p>
         </div>
       ) : null}
-      {sp.error ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
+      {sp.error ? <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{sp.error}</p> : null}
 
       {/* Restablecer por correo */}
       <form action={restablecerPorCorreoAction} className="mt-6 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">

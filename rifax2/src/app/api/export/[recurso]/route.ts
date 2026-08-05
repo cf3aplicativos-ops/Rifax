@@ -56,6 +56,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rec
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="rifax-${nombre}-${fecha}.csv"`,
+      // Datos sensibles (clientes, saldos): no cachear en proxies/CDN intermedios.
+      "Cache-Control": "no-store, private",
     },
   });
 }

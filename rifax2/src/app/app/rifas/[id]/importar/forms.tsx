@@ -6,7 +6,7 @@ import { importarVendedoresAction, importarVentasAction, type ImportState } from
 const initial: ImportState = {};
 
 function Resultado({ state }: { state: ImportState }) {
-  if (state.error) return <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{state.error}</p>;
+  if (state.error) return <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{state.error}</p>;
   if (!state.resultado) return null;
   const r = state.resultado;
   return (

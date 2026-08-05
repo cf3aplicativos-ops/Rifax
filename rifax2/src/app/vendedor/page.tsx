@@ -53,7 +53,7 @@ export default async function VendedorHome() {
       <div className="grid grid-cols-3 gap-3">
         <Tile href="/app/ventas/nueva" icon="nuevo" label="Registrar venta" destacado />
         <Tile href="/vendedor/comisiones" icon="comisiones" label="Mis comisiones" />
-        <Tile href="/vendedor" icon="inicio" label="Inicio" />
+        <Tile href="/vendedor/traspasos" icon="traspaso" label="Traspasos" />
       </div>
 
       {comision ? (

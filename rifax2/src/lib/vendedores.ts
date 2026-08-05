@@ -5,6 +5,7 @@ import "server-only";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
+import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -58,7 +59,7 @@ export async function crearVendedor(input: unknown, tenantId: bigint, actorId: b
     });
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al crear el vendedor." };
+    return { ok: false, error: mensajeError(e, "Error al crear el vendedor.") };
   }
 }
 
@@ -166,7 +167,7 @@ export async function asignarTalonario(
       return { ok: true as const, data: { boletas: marcadas } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al asignar el talonario." };
+    return { ok: false, error: mensajeError(e, "Error al asignar el talonario.") };
   }
 }
 
@@ -185,6 +186,6 @@ export async function cerrarTalonario(talonarioId: bigint, tenantId: bigint, act
       return { ok: true as const, data: { liberadas: Number(liberadas) } };
     });
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Error al cerrar el talonario." };
+    return { ok: false, error: mensajeError(e, "Error al cerrar el talonario.") };
   }
 }

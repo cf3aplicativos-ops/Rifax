@@ -153,5 +153,5 @@ function Aviso({ tipo, children }: { tipo: "ok" | "error" | "neutral"; children:
       : tipo === "error"
         ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
         : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
-  return <p className={`mt-4 rounded-lg px-4 py-3 text-sm ${clase}`}>{children}</p>;
+  return <p role={tipo === "error" ? "alert" : "status"} className={`mt-4 rounded-lg px-4 py-3 text-sm ${clase}`}>{children}</p>;
 }
