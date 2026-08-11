@@ -3,6 +3,7 @@ import { PageTitle } from "@/components/icons";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { listarVentas } from "@/lib/ventas";
 import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
+import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha, estadoVentaClase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,11 @@ export default async function VentasPage() {
   const user = await requirePermission("venta.ver");
   // Un vendedor solo ve sus propias ventas.
   const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
-  const ventas = await listarVentas(user.tenant.id, user.sede?.id ?? null, vendedorId);
+  const [ventas, canales] = await Promise.all([
+    listarVentas(user.tenant.id, user.sede?.id ?? null, vendedorId),
+    opcionesDe(user.tenant.id, "canal_venta"),
+  ]);
+  const etiquetaCanal = new Map(canales.map((c) => [c.valor, c.etiqueta]));
   const puedeCrear = hasPermission(user, "venta.crear");
 
   return (
@@ -39,6 +44,7 @@ export default async function VentasPage() {
                 <th className="px-4 py-3 font-medium">Boletas</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
                 <th className="px-4 py-3 font-medium">Vendedor / Punto de venta</th>
+                <th className="px-4 py-3 font-medium">Medio</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
                 <th className="px-4 py-3 text-right font-medium">Saldo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
@@ -64,6 +70,9 @@ export default async function VentasPage() {
                     ) : (
                       <span className="text-slate-500 dark:text-slate-400">Punto de venta: {v.sedes.nombre}</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium dark:bg-slate-800">{etiquetaCanal.get(v.canal) ?? v.canal}</span>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{money(v.total)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{money(v.saldo)}</td>

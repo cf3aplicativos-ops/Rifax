@@ -12,7 +12,6 @@ const money = (v: string) => cop.format(Number(v));
 const nav: NavItem[] = [
   { href: "/", label: "Inicio", icon: "inicio", exact: true },
   { href: "/consulta", label: "Estado de cuenta", icon: "cuenta" },
-  { href: "/login", label: "Ingresar (empresa)", icon: "perfil" },
 ];
 
 const estadoClase: Record<string, string> = {

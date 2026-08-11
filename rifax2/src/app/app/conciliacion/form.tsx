@@ -58,8 +58,8 @@ export default function ConciliacionForm({ vendedores }: { vendedores: { id: str
 
 function PanelExtracto() {
   const [state, action, pending] = useActionState(analizarExtractoAction, estadoAnalisisInicial);
-  const [origen, setOrigen] = useState<"texto" | "pdf">("texto");
-  const [nombrePdf, setNombrePdf] = useState<string | null>(null);
+  const [origen, setOrigen] = useState<"texto" | "csv">("texto");
+  const [nombreCsv, setNombreCsv] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
@@ -76,10 +76,10 @@ function PanelExtracto() {
           </button>
           <button
             type="button"
-            onClick={() => setOrigen("pdf")}
-            className={`flex-1 rounded-md px-2 py-1.5 font-medium transition ${origen === "pdf" ? "bg-white shadow-sm dark:bg-slate-900" : "text-slate-500 dark:text-slate-400"}`}
+            onClick={() => setOrigen("csv")}
+            className={`flex-1 rounded-md px-2 py-1.5 font-medium transition ${origen === "csv" ? "bg-white shadow-sm dark:bg-slate-900" : "text-slate-500 dark:text-slate-400"}`}
           >
-            Subir PDF
+            Subir Excel/CSV
           </button>
         </div>
 
@@ -100,22 +100,22 @@ function PanelExtracto() {
           ) : (
             <>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Sube el extracto bancario tal como lo descargaste del banco, en PDF (máximo 8MB). La IA lee el
-                texto del documento y reconoce los movimientos automáticamente.
+                Sube el extracto en CSV (máximo 5MB), con una fila por movimiento: fecha, descripción y monto. Si
+                lo tienes en Excel, guárdalo primero como CSV (Archivo → Guardar como → CSV).
               </p>
               <input
                 type="file"
-                name="pdf"
-                accept="application/pdf"
-                onChange={(e) => setNombrePdf(e.target.files?.[0]?.name ?? null)}
+                name="csv"
+                accept=".csv,.txt,text/csv"
+                onChange={(e) => setNombreCsv(e.target.files?.[0]?.name ?? null)}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm dark:border-slate-700 dark:bg-slate-950 dark:file:bg-slate-800"
               />
-              {nombrePdf ? <p className="text-xs text-slate-500 dark:text-slate-400">Archivo: {nombrePdf}</p> : null}
+              {nombreCsv ? <p className="text-xs text-slate-500 dark:text-slate-400">Archivo: {nombreCsv}</p> : null}
             </>
           )}
           {state.error ? <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">{state.error}</p> : null}
           <button type="submit" disabled={pending} className="rounded-lg bg-[var(--rifax-accent,#f5c518)] px-4 py-2 text-sm font-bold text-slate-900 disabled:opacity-60">
-            {pending ? (origen === "pdf" ? "Leyendo PDF…" : "Analizando…") : "Analizar con IA"}
+            {pending ? (origen === "csv" ? "Leyendo archivo…" : "Analizando…") : "Analizar con IA"}
           </button>
         </form>
       </div>

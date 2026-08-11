@@ -3,7 +3,7 @@
 import { requirePermission } from "@/lib/auth/rbac";
 import {
   analizarExtracto,
-  analizarExtractoPdf,
+  analizarExtractoCsv,
   analizarReporteVendedor,
   analizarComprobantes,
   aplicarConciliacion,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/conciliacion";
 
 const MAX_IMAGEN = 5 * 1024 * 1024; // 5MB
-const MAX_PDF = 8 * 1024 * 1024; // 8MB
+const MAX_CSV = 5 * 1024 * 1024; // 5MB
 
 export interface AnalisisState {
   error?: string;
@@ -20,13 +20,13 @@ export interface AnalisisState {
 
 export async function analizarExtractoAction(_prev: AnalisisState, formData: FormData): Promise<AnalisisState> {
   const user = await requirePermission("conciliacion.usar");
-  const archivo = formData.get("pdf");
+  const archivo = formData.get("csv");
 
   if (archivo instanceof File && archivo.size > 0) {
-    if (archivo.type !== "application/pdf") return { error: "El archivo debe ser un PDF." };
-    if (archivo.size > MAX_PDF) return { error: "El PDF supera 8MB." };
+    if (!/\.(csv|txt)$/i.test(archivo.name)) return { error: "El archivo debe ser un CSV (si lo tienes en Excel, usa Archivo > Guardar como > CSV)." };
+    if (archivo.size > MAX_CSV) return { error: "El archivo supera 5MB." };
     const buffer = Buffer.from(await archivo.arrayBuffer());
-    const r = await analizarExtractoPdf(user.tenant.id, buffer);
+    const r = await analizarExtractoCsv(user.tenant.id, buffer);
     return r.ok ? { sugerencias: r.data } : { error: r.error };
   }
 

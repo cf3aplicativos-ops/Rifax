@@ -40,10 +40,17 @@ export async function obtenerVendedor(tenantId: bigint, id: bigint, sedeId?: big
   });
 }
 
-export async function crearVendedor(input: unknown, tenantId: bigint, actorId: bigint): Promise<Resultado> {
+export async function crearVendedor(input: unknown, tenantId: bigint, actorId: bigint, sedeIdUsuario: bigint | null = null): Promise<Resultado> {
   const parsed = crearVendedorSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   const d = parsed.data;
+  // Un usuario acotado a una sede solo puede crear vendedores de SU sede: sin
+  // esto, un formulario manipulado (el desplegable de la UI ya lo restringe,
+  // pero eso es solo cosmético) podría crear un vendedor en otra sede del
+  // mismo tenant.
+  if (sedeIdUsuario !== null && (!d.sede_id || d.sede_id !== sedeIdUsuario)) {
+    return { ok: false, error: "Solo puedes crear vendedores de tu propia sede." };
+  }
   // La sede debe ser del mismo tenant: la FK apunta a sedes(id) sin restricción de
   // tenant, así que sin esta comprobación un sede_id de otra empresa se guardaría
   // tal cual (mismo criterio que ya aplica editarVendedor).
@@ -84,13 +91,23 @@ export const editarVendedorSchema = z.object({
   cupo_max: z.coerce.number().int().positive().optional(),
 });
 
-export async function editarVendedor(vendedorId: bigint, input: unknown, tenantId: bigint, actorId: bigint): Promise<Resultado> {
+export async function editarVendedor(vendedorId: bigint, input: unknown, tenantId: bigint, actorId: bigint, sedeIdUsuario: bigint | null = null): Promise<Resultado> {
   const parsed = editarVendedorSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   const d = parsed.data;
 
   const actual = await prisma.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId } });
   if (!actual) return { ok: false, error: "Vendedor no encontrado." };
+  // Un usuario acotado a una sede solo alcanza a los vendedores de esa sede
+  // (o sin sede fija); ni siquiera puede confirmar que un vendedor de otra
+  // sede exista (mismo mensaje que "no encontrado").
+  if (sedeIdUsuario !== null && actual.sede_id !== null && actual.sede_id !== sedeIdUsuario) {
+    return { ok: false, error: "Vendedor no encontrado." };
+  }
+  // Y no puede reasignarlo a una sede distinta de la suya.
+  if (sedeIdUsuario !== null && d.sede_id && d.sede_id !== sedeIdUsuario) {
+    return { ok: false, error: "No puedes asignar este vendedor a otra sede." };
+  }
 
   if (d.sede_id) {
     const sede = await prisma.sedes.findFirst({ where: { id: d.sede_id, tenant_id: tenantId } });
@@ -128,10 +145,13 @@ export async function editarVendedor(vendedorId: bigint, input: unknown, tenantI
   }
 }
 
-export async function cambiarEstadoVendedor(vendedorId: bigint, tenantId: bigint, estado: string, actorId: bigint): Promise<Resultado> {
+export async function cambiarEstadoVendedor(vendedorId: bigint, tenantId: bigint, estado: string, actorId: bigint, sedeIdUsuario: bigint | null = null): Promise<Resultado> {
   if (!["activo", "suspendido", "inactivo"].includes(estado)) return { ok: false, error: "Estado inválido." };
   const v = await prisma.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId } });
   if (!v) return { ok: false, error: "Vendedor no encontrado." };
+  if (sedeIdUsuario !== null && v.sede_id !== null && v.sede_id !== sedeIdUsuario) {
+    return { ok: false, error: "Vendedor no encontrado." };
+  }
   await prisma.$transaction(async (tx) => {
     await tx.vendedores.update({ where: { id: vendedorId }, data: { estado } });
     await auditar(tx, { tenantId, actorId, accion: "vendedor.editar", entidadTipo: "vendedor", entidadId: vendedorId, antes: { estado: v.estado }, despues: { estado } });
@@ -143,6 +163,7 @@ export async function asignarTalonario(
   datos: { rifaId: bigint; vendedorId: bigint; tipo: "consecutiva" | "aleatoria" | "especificas"; inicio?: number; fin?: number; cantidad?: number; numeros?: number[] },
   tenantId: bigint,
   actorId: bigint,
+  sedeIdUsuario: bigint | null = null,
 ): Promise<Resultado<{ boletas: number }>> {
   const { rifaId, vendedorId, tipo } = datos;
   const numerosPedidos = [...new Set(datos.numeros ?? [])].filter((n) => Number.isInteger(n) && n >= 0);
@@ -156,6 +177,12 @@ export async function asignarTalonario(
       const vendedor = await tx.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId } });
       if (!vendedor) return { ok: false as const, error: "Vendedor no encontrado." };
       if (vendedor.estado !== "activo") return { ok: false as const, error: `El vendedor está '${vendedor.estado}'.` };
+      // Un usuario acotado a una sede solo puede asignar talonarios a
+      // vendedores de SU sede (o sin sede fija) — no a vendedores de otra
+      // sede del mismo tenant.
+      if (sedeIdUsuario !== null && vendedor.sede_id !== null && vendedor.sede_id !== sedeIdUsuario) {
+        return { ok: false as const, error: "Vendedor no encontrado." };
+      }
 
       // `compartida` no está en el schema de Prisma (columna agregada por SQL-first).
       const compartidaRow = await tx.$queryRawUnsafe<{ compartida: boolean }[]>(`SELECT compartida FROM saas.rifas WHERE id=$1::bigint`, rifaId);
@@ -276,11 +303,43 @@ export async function asignarTalonario(
   }
 }
 
-export async function cerrarTalonario(talonarioId: bigint, tenantId: bigint, actorId: bigint): Promise<Resultado<{ liberadas: number }>> {
+// Números disponibles de una rifa para ofrecer en el desplegable de
+// "Abonados" (asignación específica): sin vender, sin talonario, y ya
+// acotados a la sede del vendedor si tiene una fija (mismo criterio que
+// usa `asignarTalonario` al validar, para no ofrecer números que luego el
+// backend rechazaría).
+export async function boletasDisponiblesParaTalonario(tenantId: bigint, rifaId: bigint, vendedorId: bigint, sedeIdUsuario: bigint | null = null): Promise<Resultado<{ numeros: number[] }>> {
+  const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { sede_id: true } });
+  if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  const vendedor = await prisma.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId }, select: { sede_id: true } });
+  if (!vendedor) return { ok: false, error: "Vendedor no encontrado." };
+  if (sedeIdUsuario !== null && vendedor.sede_id !== null && vendedor.sede_id !== sedeIdUsuario) {
+    return { ok: false, error: "Vendedor no encontrado." };
+  }
+
+  const filas = await prisma.$queryRawUnsafe<{ numero: number }[]>(
+    `SELECT numero FROM saas.boletas
+      WHERE rifa_id=$1::bigint AND estado='disponible' AND talonario_id IS NULL
+        AND ($2::bigint IS NULL OR COALESCE(sede_id, $3::bigint) = $2::bigint)
+      ORDER BY numero`,
+    rifaId, vendedor.sede_id, rifa.sede_id,
+  );
+  return { ok: true, data: { numeros: filas.map((f) => f.numero) } };
+}
+
+export async function cerrarTalonario(talonarioId: bigint, tenantId: bigint, actorId: bigint, sedeIdUsuario: bigint | null = null): Promise<Resultado<{ liberadas: number }>> {
   try {
     return await prisma.$transaction(async (tx) => {
-      const t = await tx.talonarios.findFirst({ where: { id: talonarioId, tenant_id: tenantId } });
+      const t = await tx.talonarios.findFirst({
+        where: { id: talonarioId, tenant_id: tenantId },
+        include: { vendedores: { select: { sede_id: true } } },
+      });
       if (!t) return { ok: false as const, error: "Talonario no encontrado." };
+      // Un usuario acotado a una sede solo puede cerrar talonarios de
+      // vendedores de SU sede (o sin sede fija).
+      if (sedeIdUsuario !== null && t.vendedores.sede_id !== null && t.vendedores.sede_id !== sedeIdUsuario) {
+        return { ok: false as const, error: "Talonario no encontrado." };
+      }
       if (t.estado === "cerrado") return { ok: false as const, error: "El talonario ya está cerrado." };
       const liberadas = await tx.$executeRawUnsafe(
         `UPDATE saas.boletas SET talonario_id=NULL WHERE talonario_id=$1::bigint AND estado='disponible'`,

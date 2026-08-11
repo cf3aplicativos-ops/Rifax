@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { asignarTalonarioAction } from "../actions";
 
 interface Rifa { id: string; codigo: string; nombre: string; min: number; max: number }
@@ -8,6 +8,22 @@ const inp = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-s
 
 export default function FormAsignarTalonario({ vendedorId, rifas, sedeVendedor }: { vendedorId: string; rifas: Rifa[]; sedeVendedor: string | null }) {
   const [tipo, setTipo] = useState<"consecutiva" | "aleatoria" | "especificas">("consecutiva");
+  const [rifaId, setRifaId] = useState(rifas[0]?.id ?? "");
+  const [disponibles, setDisponibles] = useState<number[]>([]);
+  const [seleccionados, setSeleccionados] = useState<number[]>([]);
+  const [cargando, setCargando] = useState(false);
+
+  useEffect(() => {
+    if (tipo !== "especificas" || !rifaId) return;
+    let cancelado = false;
+    setCargando(true);
+    setSeleccionados([]);
+    fetch(`/api/boletas/disponibles?rifaId=${rifaId}&vendedorId=${vendedorId}`)
+      .then((r) => r.json())
+      .then((data) => { if (!cancelado) setDisponibles(data.numeros ?? []); })
+      .finally(() => { if (!cancelado) setCargando(false); });
+    return () => { cancelado = true; };
+  }, [tipo, rifaId, vendedorId]);
 
   return (
     <form action={asignarTalonarioAction} className="mt-8 space-y-3 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
@@ -19,7 +35,7 @@ export default function FormAsignarTalonario({ vendedorId, rifas, sedeVendedor }
       </p>
       <input type="hidden" name="vendedor_id" value={vendedorId} />
 
-      <select name="rifa_id" className={inp}>
+      <select name="rifa_id" value={rifaId} onChange={(e) => setRifaId(e.target.value)} className={inp}>
         {rifas.map((r) => <option key={r.id} value={r.id}>{r.codigo} — {r.nombre} ({r.min}–{r.max})</option>)}
       </select>
 
@@ -34,7 +50,7 @@ export default function FormAsignarTalonario({ vendedorId, rifas, sedeVendedor }
         </label>
         <label className="flex items-center gap-1.5">
           <input type="radio" name="tipo" value="especificas" checked={tipo === "especificas"} onChange={() => setTipo("especificas")} />
-          Las que solicite
+          Abonados
         </label>
       </div>
 
@@ -50,12 +66,43 @@ export default function FormAsignarTalonario({ vendedorId, rifas, sedeVendedor }
         </div>
       ) : (
         <div>
-          <input name="numeros" required placeholder="Números solicitados, ej: 7, 15, 42, 100-110" className={inp} />
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Escribe los números exactos que pidió el vendedor. Admite rangos con guion (100-110).</p>
+          <p className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
+            Elige los números que el vendedor ya tiene abonados por sus clientes. {seleccionados.length > 0 ? <strong>{seleccionados.length} seleccionadas.</strong> : null}
+          </p>
+          {cargando ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">Cargando boletas disponibles…</p>
+          ) : disponibles.length === 0 ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No hay boletas disponibles en esta rifa para este vendedor.</p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto rounded-lg border border-slate-300 p-2 dark:border-slate-700">
+              <div className="flex flex-wrap gap-1.5">
+                {disponibles.map((n) => {
+                  const elegido = seleccionados.includes(n);
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setSeleccionados((prev) => (elegido ? prev.filter((x) => x !== n) : [...prev, n]))}
+                      className={`rounded-md px-2 py-1 font-mono text-xs transition ${elegido ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"}`}
+                    >
+                      {n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {seleccionados.map((n) => <input key={n} type="hidden" name="numeros" value={n} />)}
         </div>
       )}
 
-      <button type="submit" className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Asignar</button>
+      <button
+        type="submit"
+        disabled={tipo === "especificas" && seleccionados.length === 0}
+        className="w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Asignar
+      </button>
     </form>
   );
 }

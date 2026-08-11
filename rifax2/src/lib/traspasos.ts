@@ -58,7 +58,7 @@ export type Autorizador = ContextoParte | { tipo: "admin_tenant" };
 interface FilaBoleta {
   id: bigint; numero: number; estado: string;
   boleta_sede_id: bigint | null; talonario_id: bigint | null;
-  talon_vendedor_id: bigint | null; talon_vendedor_nombre: string | null;
+  talon_vendedor_id: bigint | null; talon_vendedor_nombre: string | null; talon_vendedor_sede_nombre: string | null;
   rifa_sede_id: bigint; compartida: boolean;
   sede_nombre: string | null; sede_efectiva_id: bigint;
 }
@@ -66,7 +66,7 @@ interface FilaBoleta {
 async function filaBoleta(tenantId: bigint, rifaId: bigint, numero: number): Promise<FilaBoleta | null> {
   const filas = await prisma.$queryRawUnsafe<FilaBoleta[]>(
     `SELECT b.id, b.numero, b.estado, b.sede_id AS boleta_sede_id, b.talonario_id,
-            t.vendedor_id AS talon_vendedor_id, vd.nombre AS talon_vendedor_nombre,
+            t.vendedor_id AS talon_vendedor_id, vd.nombre AS talon_vendedor_nombre, vs.nombre AS talon_vendedor_sede_nombre,
             r.sede_id AS rifa_sede_id, r.compartida,
             COALESCE(sb.nombre, sr.nombre) AS sede_nombre,
             COALESCE(b.sede_id, r.sede_id) AS sede_efectiva_id
@@ -74,6 +74,7 @@ async function filaBoleta(tenantId: bigint, rifaId: bigint, numero: number): Pro
        JOIN saas.rifas r ON r.id = b.rifa_id
        LEFT JOIN saas.talonarios t ON t.id = b.talonario_id
        LEFT JOIN saas.vendedores vd ON vd.id = t.vendedor_id
+       LEFT JOIN saas.sedes vs ON vs.id = vd.sede_id
        LEFT JOIN saas.sedes sb ON sb.id = b.sede_id
        LEFT JOIN saas.sedes sr ON sr.id = r.sede_id
       WHERE b.tenant_id = $1::bigint AND b.rifa_id = $2::bigint AND b.numero = $3::int`,
@@ -87,31 +88,40 @@ export interface EstadoBoleta {
   boletaId: string | null;
   resultado: "tuya" | "vendida" | "punto_de_venta" | "asignada_vendedor" | "no_disponible" | "no_existe";
   mensaje: string;
-  propietario: { tipo: "vendedor" | "sede"; id: string; nombre: string } | null;
+  propietario: { tipo: "vendedor" | "sede"; id: string; nombre: string; sedeNombre: string | null } | null;
   puedeVenderDirecto: boolean;
   puedeSolicitar: boolean;
   solicitudPendienteId: string | null;
 }
 
-export async function buscarBoleta(tenantId: bigint, rifaId: bigint, numero: number, contexto: ContextoParte | null): Promise<EstadoBoleta> {
+export async function buscarBoleta(
+  tenantId: bigint, rifaId: bigint, numero: number,
+  contextoEntrada: ContextoParte | null | Promise<ContextoParte | null>,
+): Promise<EstadoBoleta> {
   const base = { numero, boletaId: null, propietario: null, puedeVenderDirecto: false, puedeSolicitar: false, solicitudPendienteId: null };
-  const f = await filaBoleta(tenantId, rifaId, numero);
+  // La boleta y el contexto del solicitante son independientes entre sí: se
+  // piden en paralelo (en vez de uno tras otro) para no sumar la latencia de
+  // red de ambos viajes a la base de datos — la consulta de boleta por
+  // número es la más sensible al tiempo de respuesta (se dispara en vivo
+  // desde el portal del vendedor en cada búsqueda/clic).
+  const [f, contexto] = await Promise.all([filaBoleta(tenantId, rifaId, numero), Promise.resolve(contextoEntrada)]);
   if (!f) return { ...base, resultado: "no_existe", mensaje: "Ese número no existe en esta rifa." };
 
   if (f.estado === "reservada" || f.estado === "pagada") {
     // Si llegó a manos de quien la vendió por un traspaso aprobado, lo indica
     // (transparencia sobre el origen de la venta para quien la busca después).
-    const traspasoFilas = await prisma.$queryRawUnsafe<{ solicitante_tipo: string; nombre: string | null }[]>(
-      `SELECT sb.solicitante_tipo, vd.nombre
+    const traspasoFilas = await prisma.$queryRawUnsafe<{ solicitante_tipo: string; nombre: string | null; sede_nombre: string | null }[]>(
+      `SELECT sb.solicitante_tipo, vd.nombre, vs.nombre AS sede_nombre
          FROM saas.solicitudes_boleta sb
          LEFT JOIN saas.vendedores vd ON vd.id = sb.solicitante_vendedor_id
+         LEFT JOIN saas.sedes vs ON vs.id = vd.sede_id
         WHERE sb.boleta_id = $1::bigint AND sb.estado = 'aprobada'
         ORDER BY sb.resuelto_en DESC LIMIT 1`,
       f.id,
     );
     const traspaso = traspasoFilas[0];
     const mensaje = traspaso && traspaso.solicitante_tipo === "vendedor" && traspaso.nombre
-      ? `Esta boleta ya está vendida. Fue un traspaso al vendedor ${traspaso.nombre}.`
+      ? `Esta boleta ya está vendida. Fue un traspaso al vendedor ${traspaso.nombre}${traspaso.sede_nombre ? ` (sede ${traspaso.sede_nombre})` : ""}.`
       : "Esta boleta ya está vendida.";
     return { ...base, boletaId: String(f.id), resultado: "vendida", mensaje };
   }
@@ -145,8 +155,8 @@ export async function buscarBoleta(tenantId: bigint, rifaId: bigint, numero: num
   if (propietarioVendedor) {
     return {
       ...base, boletaId: String(f.id), resultado: "asignada_vendedor",
-      mensaje: `Disponible, asignada al vendedor ${f.talon_vendedor_nombre ?? "—"}.`,
-      propietario: { tipo: "vendedor", id: String(f.talon_vendedor_id), nombre: f.talon_vendedor_nombre ?? "—" },
+      mensaje: `Disponible, asignada al vendedor ${f.talon_vendedor_nombre ?? "—"}${f.talon_vendedor_sede_nombre ? ` (sede ${f.talon_vendedor_sede_nombre})` : ""}.`,
+      propietario: { tipo: "vendedor", id: String(f.talon_vendedor_id), nombre: f.talon_vendedor_nombre ?? "—", sedeNombre: f.talon_vendedor_sede_nombre },
       puedeSolicitar: contexto != null && !solicitudPendienteId,
       solicitudPendienteId,
     };
@@ -154,7 +164,7 @@ export async function buscarBoleta(tenantId: bigint, rifaId: bigint, numero: num
   return {
     ...base, boletaId: String(f.id), resultado: "punto_de_venta",
     mensaje: `Disponible en el punto de venta${f.sede_nombre ? ` (${f.sede_nombre})` : ""}.`,
-    propietario: { tipo: "sede", id: String(f.sede_efectiva_id), nombre: f.sede_nombre ?? "—" },
+    propietario: { tipo: "sede", id: String(f.sede_efectiva_id), nombre: f.sede_nombre ?? "—", sedeNombre: f.sede_nombre },
     puedeSolicitar: contexto != null && !solicitudPendienteId,
     solicitudPendienteId,
   };

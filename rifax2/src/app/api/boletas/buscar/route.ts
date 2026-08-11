@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
   let rifaIdBig: bigint;
   try { rifaIdBig = BigInt(rifaId); } catch { return NextResponse.json({ error: "Rifa inválida." }, { status: 400 }); }
 
-  const contexto = await contextoDeUsuarioParaRifa(user.tenant.id, user, rifaIdBig);
-  const estado = await buscarBoleta(user.tenant.id, rifaIdBig, numero, contexto);
+  // No se espera el contexto aquí: se pasa la promesa directamente para que
+  // `buscarBoleta` la resuelva en paralelo con la consulta de la boleta, en
+  // vez de encadenar los dos viajes a la base de datos uno tras otro.
+  const contextoPromise = contextoDeUsuarioParaRifa(user.tenant.id, user, rifaIdBig);
+  const estado = await buscarBoleta(user.tenant.id, rifaIdBig, numero, contextoPromise);
   return NextResponse.json({ ok: true, estado }, { headers: { "Cache-Control": "no-store" } });
 }

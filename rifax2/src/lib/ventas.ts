@@ -35,6 +35,66 @@ export async function ventaEnAlcance(user: TenantUser, ventaId: bigint): Promise
   return true;
 }
 
+// Registro de un abono de una venta de OTRA sede (punto 14): restringido a
+// roles de oficina (nunca vendedor, aunque tuviera el permiso por un
+// override) con el permiso explícito `pago.registrar_otra_sede`. A
+// diferencia de `ventaEnAlcance`, aquí NO se exige coincidencia de sede — es
+// justamente la excepción pedida — pero se sigue exigiendo que la venta sea
+// del mismo tenant.
+export async function ventaEnAlcanceOtraSede(user: TenantUser, ventaId: bigint): Promise<boolean> {
+  if (user.rol === "vendedor" || !user.permisos.includes("pago.registrar_otra_sede")) return false;
+  const v = await prisma.ventas.findFirst({ where: { id: ventaId, tenant_id: user.tenant.id }, select: { id: true } });
+  return !!v;
+}
+
+/** Igual que `ventaEnAlcance`, pero también admite el cruce de sede autorizado (recibo). */
+export async function ventaEnAlcanceParaRecibo(user: TenantUser, ventaId: bigint): Promise<boolean> {
+  return (await ventaEnAlcance(user, ventaId)) || (await ventaEnAlcanceOtraSede(user, ventaId));
+}
+
+export interface VentaBusquedaAbono {
+  ventaId: string; codigo: string; cliente: string; documento: string | null; telefono: string;
+  rifa: string; sede: string; total: string; saldo: string; estado: string;
+}
+
+// Búsqueda para el abono de otra sede (oficina): por código de venta, número
+// de boleta o documento del cliente — SIN filtrar por sede (a propósito, es
+// la excepción del punto 14). Se acota al tenant y devuelve lo mínimo
+// necesario para confirmar que es la venta correcta antes de cobrar.
+export async function buscarVentasParaAbono(tenantId: bigint, criterioCrudo: string): Promise<VentaBusquedaAbono[]> {
+  const criterio = criterioCrudo.trim();
+  if (!criterio) return [];
+  const numero = /^\d+$/.test(criterio) ? Number(criterio) : null;
+
+  const filas = await prisma.$queryRawUnsafe<
+    { venta_id: bigint; codigo: string; cliente: string; documento: string | null; telefono: string; rifa: string; sede: string; total: string; saldo: string; estado: string }[]
+  >(
+    `SELECT v.id AS venta_id, v.codigo, cl.nombre AS cliente, cl.documento, cl.telefono,
+            r.nombre AS rifa, s.nombre AS sede, v.total::text, v.saldo::text, v.estado
+       FROM saas.ventas v
+       JOIN saas.clientes cl ON cl.id = v.cliente_id
+       JOIN saas.rifas r ON r.id = v.rifa_id
+       JOIN saas.sedes s ON s.id = v.sede_id
+      WHERE v.tenant_id = $1::bigint
+        AND v.estado <> 'anulada'
+        AND (
+          v.codigo ILIKE $2
+          OR cl.documento = $3
+          OR ($4::int IS NOT NULL AND EXISTS (
+            SELECT 1 FROM saas.ventas_boletas vb JOIN saas.boletas b ON b.id = vb.boleta_id
+             WHERE vb.venta_id = v.id AND b.numero = $4::int
+          ))
+        )
+      ORDER BY v.creado_en DESC
+      LIMIT 20`,
+    tenantId, `%${criterio}%`, criterio, numero,
+  );
+  return filas.map((f) => ({
+    ventaId: String(f.venta_id), codigo: f.codigo, cliente: f.cliente, documento: f.documento, telefono: f.telefono,
+    rifa: f.rifa, sede: f.sede, total: f.total, saldo: f.saldo, estado: f.estado,
+  }));
+}
+
 /** ¿El abono pertenece a una venta dentro del alcance del usuario? */
 export async function abonoEnAlcance(user: TenantUser, abonoId: bigint): Promise<boolean> {
   const a = await prisma.abonos.findFirst({
@@ -143,10 +203,14 @@ export async function obtenerVenta(tenantId: bigint, id: bigint) {
   });
 }
 
+// Boletas del punto de venta (informativo, sede/oficina): disponibles y SIN
+// talonario asignado a un vendedor — en cuanto se le asigna un talonario
+// (aunque siga en estado 'disponible') pasa a ser inventario del vendedor,
+// no del punto de venta, y debe desaparecer de esta lista.
 export async function boletasDisponibles(tenantId: bigint, rifaId: bigint, limite = 12, sedeId?: bigint | null) {
   const filas = await prisma.$queryRawUnsafe<{ numero: number }[]>(
     `SELECT numero FROM saas.boletas
-      WHERE tenant_id = $1::bigint AND rifa_id = $2::bigint AND estado = 'disponible'
+      WHERE tenant_id = $1::bigint AND rifa_id = $2::bigint AND estado = 'disponible' AND talonario_id IS NULL
         AND ($4::bigint IS NULL OR sede_id = $4::bigint)
       ORDER BY numero ASC LIMIT $3::int`,
     tenantId, rifaId, limite, sedeId ?? null,

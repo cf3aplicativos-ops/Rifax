@@ -6,21 +6,6 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { crearVendedor, cambiarEstadoVendedor, editarVendedor, asignarTalonario, cerrarTalonario } from "@/lib/vendedores";
 import { crearAccesoVendedor, actualizarAccesoVendedor } from "@/lib/portal-vendedor";
 
-// Expande una lista tipo "7, 15, 42, 100-110" a un arreglo de números.
-function expandirNumeros(texto: string): number[] {
-  const out = new Set<number>();
-  for (const parte of texto.split(/[\s,]+/).filter(Boolean)) {
-    const m = /^(\d+)-(\d+)$/.exec(parte);
-    if (m) {
-      const a = Number(m[1]); const b = Number(m[2]);
-      for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.add(n);
-    } else if (/^\d+$/.test(parte)) {
-      out.add(Number(parte));
-    }
-  }
-  return [...out];
-}
-
 export async function crearAccesoVendedorAction(formData: FormData): Promise<void> {
   const user = await requirePermission("usuario.crear");
   const vendedorId = String(formData.get("vendedor_id") ?? "0");
@@ -72,6 +57,7 @@ export async function crearVendedorAction(_prev: VendedorFormState, formData: Fo
     },
     user.tenant.id,
     user.id,
+    user.sede?.id ?? null,
   );
   if (!res.ok) return { error: res.error };
   revalidatePath("/app/vendedores");
@@ -98,6 +84,7 @@ export async function editarVendedorAction(formData: FormData): Promise<void> {
     },
     user.tenant.id,
     user.id,
+    user.sede?.id ?? null,
   );
   revalidatePath(`/app/vendedores/${vendedorId}`);
   redirect(res.ok ? `/app/vendedores/${vendedorId}?editado=1` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
@@ -105,7 +92,7 @@ export async function editarVendedorAction(formData: FormData): Promise<void> {
 
 export async function cambiarEstadoVendedorAction(formData: FormData): Promise<void> {
   const user = await requirePermission("vendedor.editar");
-  const res = await cambiarEstadoVendedor(BigInt(String(formData.get("vendedor_id") ?? "0")), user.tenant.id, String(formData.get("estado") ?? ""), user.id);
+  const res = await cambiarEstadoVendedor(BigInt(String(formData.get("vendedor_id") ?? "0")), user.tenant.id, String(formData.get("estado") ?? ""), user.id, user.sede?.id ?? null);
   revalidatePath("/app/vendedores");
   redirect(res.ok ? "/app/vendedores?estado=1" : `/app/vendedores?error=${encodeURIComponent(res.error)}`);
 }
@@ -123,11 +110,12 @@ export async function asignarTalonarioAction(formData: FormData): Promise<void> 
       ...(tipo === "consecutiva"
         ? { inicio: Number(formData.get("inicio")), fin: Number(formData.get("fin")) }
         : tipo === "especificas"
-          ? { numeros: expandirNumeros(String(formData.get("numeros") ?? "")) }
+          ? { numeros: formData.getAll("numeros").map((n) => Number(n)).filter((n) => Number.isInteger(n)) }
           : { cantidad: Number(formData.get("cantidad")) }),
     },
     user.tenant.id,
     user.id,
+    user.sede?.id ?? null,
   );
   revalidatePath(`/app/vendedores/${vendedorId}`);
   redirect(res.ok ? `/app/vendedores/${vendedorId}?asignadas=${res.data?.boletas ?? 0}` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
@@ -136,7 +124,7 @@ export async function asignarTalonarioAction(formData: FormData): Promise<void> 
 export async function cerrarTalonarioAction(formData: FormData): Promise<void> {
   const user = await requirePermission("talonario.devolver");
   const vendedorId = String(formData.get("vendedor_id") ?? "0");
-  const res = await cerrarTalonario(BigInt(String(formData.get("talonario_id") ?? "0")), user.tenant.id, user.id);
+  const res = await cerrarTalonario(BigInt(String(formData.get("talonario_id") ?? "0")), user.tenant.id, user.id, user.sede?.id ?? null);
   revalidatePath(`/app/vendedores/${vendedorId}`);
   redirect(res.ok ? `/app/vendedores/${vendedorId}?liberadas=${res.data?.liberadas ?? 0}` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
 }

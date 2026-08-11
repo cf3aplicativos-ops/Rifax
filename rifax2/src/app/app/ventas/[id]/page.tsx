@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVenta, ventaEnAlcance } from "@/lib/ventas";
+import { imagenesRifa } from "@/lib/rifas";
 import { estadoCliente } from "@/lib/clientes";
 import { money, fechaHora, estadoVentaClase } from "@/lib/format";
 import { registrarAbonoAction, anularVentaAction } from "../actions";
@@ -33,6 +34,9 @@ export default async function VentaDetalle({
   // Un vendedor solo ve sus ventas; un usuario de sede, solo las de su sede.
   if (!(await ventaEnAlcance(user, ventaId))) notFound();
   const clienteEstado = await estadoCliente(user.tenant.id, venta.cliente_id);
+  // Mismo formato (fondo + número) que en "Nueva venta", para que la boleta
+  // se reconozca visualmente igual al vender y al consultarla después.
+  const boletaImagenUrl = (await imagenesRifa(user.tenant.id, venta.rifa_id)).boleta;
 
   const puedeAbonar = hasPermission(user, "pago.registrar");
   const puedeAnular = hasPermission(user, "venta.anular");
@@ -95,8 +99,13 @@ export default async function VentaDetalle({
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Boletas ({venta.ventas_boletas.length})</h2>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {venta.ventas_boletas.map((vb) => (
-            <span key={String(vb.boleta_id)} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-              {vb.boletas.numero}
+            <span
+              key={String(vb.boleta_id)}
+              className="relative inline-flex h-11 min-w-[68px] items-center justify-center overflow-hidden rounded-md bg-[#1e293b] bg-cover bg-center px-2 shadow-sm"
+              style={boletaImagenUrl ? { backgroundImage: `url(${boletaImagenUrl})` } : undefined}
+            >
+              {boletaImagenUrl ? <span className="absolute inset-0 bg-black/45" /> : null}
+              <span className="relative font-mono text-sm font-bold tracking-wide text-[#f5c518]">{vb.boletas.numero}</span>
             </span>
           ))}
         </div>

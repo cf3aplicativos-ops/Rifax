@@ -10,9 +10,9 @@ import { crearContextoPrueba, limpiarContextoPrueba, type ContextoPrueba } from 
 import { crearSede, editarSede } from "@/lib/sedes";
 import { estadoSedes } from "@/lib/dashboard";
 import { crearUsuario, editarUsuario, cambiarRol, cambiarEstado as cambiarEstadoUsuario, listarRoles } from "@/lib/usuarios";
-import { crearVendedor, editarVendedor, asignarTalonario } from "@/lib/vendedores";
+import { crearVendedor, editarVendedor, asignarTalonario, cambiarEstadoVendedor, cerrarTalonario } from "@/lib/vendedores";
 import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede } from "@/lib/rifas";
-import { crearVenta, registrarAbono, anularVenta, listarVentas } from "@/lib/ventas";
+import { crearVenta, registrarAbono, anularVenta, listarVentas, buscarVentasParaAbono, ventaEnAlcance, ventaEnAlcanceOtraSede, ventaEnAlcanceParaRecibo } from "@/lib/ventas";
 import { crearSolicitudTraspaso, resolverSolicitud, buscarBoleta, contextoDeUsuario } from "@/lib/traspasos";
 import { crearAccesoVendedor, actualizarAccesoVendedor } from "@/lib/portal-vendedor";
 import type { TenantUser } from "@/lib/auth/session";
@@ -414,6 +414,42 @@ describe("Rifas y boletas", () => {
     expect(total).toBe(18); // 10 + 3 + 5
   });
 
+  it("aislamiento de sede: un usuario acotado a OTRA sede no puede editar, cambiar estado, asignar ni cerrar talonario de un vendedor ajeno (hallazgo de auditoría)", async () => {
+    // vendedorAId pertenece a Sede QA A; simulamos un usuario acotado a Sede
+    // QA B (sedeIdUsuario = ctx.sedeBId) intentando actuar sobre él. Antes de
+    // esta corrección, la UI ocultaba la opción pero el servidor no la
+    // rechazaba (bastaba un POST manipulado).
+    const editar = await editarVendedor(
+      vendedorAId, { nombre: "QA Vendedor A", documento: "1000001", telefono: "3000000101", sede_id: String(ctx.sedeAId) },
+      ctx.tenantId, ctx.adminId, ctx.sedeBId,
+    );
+    expect(editar.ok).toBe(false);
+
+    const estado = await cambiarEstadoVendedor(vendedorAId, ctx.tenantId, "suspendido", ctx.adminId, ctx.sedeBId);
+    expect(estado.ok).toBe(false);
+    const vSinCambio = await prisma.vendedores.findUnique({ where: { id: vendedorAId } });
+    expect(vSinCambio?.estado).toBe("activo"); // el cambio no se aplicó
+
+    const asignar = await asignarTalonario({ rifaId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 60, fin: 61 }, ctx.tenantId, ctx.adminId, ctx.sedeBId);
+    expect(asignar.ok).toBe(false);
+    const sinAsignar = await prisma.boletas.count({ where: { rifa_id: rifaId, numero: { in: [60, 61] }, talonario_id: { not: null } } });
+    expect(sinAsignar).toBe(0);
+
+    const talonarioA = await prisma.talonarios.findFirst({ where: { vendedor_id: vendedorAId, rifa_id: rifaId, estado: { not: "cerrado" } } });
+    expect(talonarioA).not.toBeNull();
+    const cerrar = await cerrarTalonario(talonarioA!.id, ctx.tenantId, ctx.adminId, ctx.sedeBId);
+    expect(cerrar.ok).toBe(false);
+    const talonarioSigueAbierto = await prisma.talonarios.findUnique({ where: { id: talonarioA!.id } });
+    expect(talonarioSigueAbierto?.estado).not.toBe("cerrado");
+
+    // En cambio, un usuario de la MISMA sede (o sin sede fija) sí puede.
+    const editarOk = await editarVendedor(
+      vendedorAId, { nombre: "QA Vendedor A", documento: "1000001", telefono: "3000000102", sede_id: String(ctx.sedeAId) },
+      ctx.tenantId, ctx.adminId, ctx.sedeAId,
+    );
+    expect(editarOk.ok).toBe(true);
+  });
+
   it("rifa compartida: asignarBoletasSede y liberarBoletasSede", async () => {
     const hoy = new Date();
     const enUnaSemana = new Date(hoy.getTime() + 7 * 86_400_000);
@@ -580,6 +616,72 @@ describe("Ventas: anti-doble-venta y abonos", () => {
     const ventaRow = await prisma.ventas.findUnique({ where: { id: venta.data.ventaId } });
     expect(Number(ventaRow?.saldo)).toBe(0);
     expect(ventaRow?.estado).toBe("anulada");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 14 de la solicitud del usuario: abono de una venta de OTRA sede,
+// permitido solo desde la oficina (nunca un vendedor), vía el permiso nuevo
+// 'pago.registrar_otra_sede'.
+
+describe("Abono de venta de otra sede (oficina)", () => {
+  function usuarioFalso(rol: string, permisos: string[], sedeId: bigint | null): TenantUser {
+    return {
+      id: 0n, uuid: "qa", nombre: "QA", correo: "qa@rifax-test.local",
+      rol, permisos,
+      tenant: { id: ctx.tenantId, uuid: "qa", nombre: "QA", slug: ctx.slug, estado: "activo", maxSedes: 99 },
+      sede: sedeId ? { id: sedeId, nombre: "QA" } : null, debeCambiar: false,
+    };
+  }
+
+  it("buscarVentasParaAbono encuentra por código, por número de boleta y por documento, sin filtrar por sede", async () => {
+    const disponibles = await prisma.$queryRawUnsafe<{ numero: number }[]>(
+      `SELECT numero FROM saas.boletas WHERE rifa_id = $1::bigint AND estado = 'disponible' ORDER BY numero ASC LIMIT 1`,
+      rifaId,
+    );
+    const numero = disponibles[0].numero;
+    const venta = await crearVenta(
+      { rifa_id: String(rifaId), numeros: [numero], cliente: { nombre: "Cliente Otra Sede", telefono: "3006660000", documento: "CC-OTRASEDE-1" } },
+      ctx.tenantId, ctx.adminId,
+    );
+    expect(venta.ok).toBe(true);
+    if (!venta.ok) return;
+
+    // rifaId es de Sede QA A; buscamos como si fuéramos de Sede QA B.
+    const porCodigo = await buscarVentasParaAbono(ctx.tenantId, venta.data.codigo);
+    expect(porCodigo.some((v) => v.ventaId === String(venta.data.ventaId))).toBe(true);
+    expect(porCodigo[0]?.sede).toBe("Sede QA A");
+
+    const porBoleta = await buscarVentasParaAbono(ctx.tenantId, String(numero));
+    expect(porBoleta.some((v) => v.ventaId === String(venta.data.ventaId))).toBe(true);
+
+    const porDocumento = await buscarVentasParaAbono(ctx.tenantId, "CC-OTRASEDE-1");
+    expect(porDocumento.some((v) => v.ventaId === String(venta.data.ventaId))).toBe(true);
+
+    const sinCoincidencia = await buscarVentasParaAbono(ctx.tenantId, "no-existe-esto-nunca");
+    expect(sinCoincidencia).toHaveLength(0);
+
+    // Alcance: un cajero de OTRA sede (B) sí puede; un vendedor con el mismo
+    // permiso (override hipotético) NO puede; un cajero sin el permiso tampoco.
+    const cajeroSedeB = usuarioFalso("cajero", ["pago.registrar_otra_sede"], ctx.sedeBId);
+    expect(await ventaEnAlcanceOtraSede(cajeroSedeB, venta.data.ventaId)).toBe(true);
+    // Y `ventaEnAlcance` normal, en cambio, SÍ debe seguir rechazándolo (es la
+    // excepción explícita, no un relajamiento general del aislamiento).
+    expect(await ventaEnAlcance(cajeroSedeB, venta.data.ventaId)).toBe(false);
+    expect(await ventaEnAlcanceParaRecibo(cajeroSedeB, venta.data.ventaId)).toBe(true);
+
+    const vendedorConPermiso = usuarioFalso("vendedor", ["pago.registrar_otra_sede"], null);
+    expect(await ventaEnAlcanceOtraSede(vendedorConPermiso, venta.data.ventaId)).toBe(false);
+
+    const cajeroSinPermiso = usuarioFalso("cajero", ["pago.registrar"], ctx.sedeBId);
+    expect(await ventaEnAlcanceOtraSede(cajeroSinPermiso, venta.data.ventaId)).toBe(false);
+
+    // Registra el abono de verdad (como lo haría la acción del servidor) y
+    // confirma que el saldo baja igual que un abono normal.
+    const abono = await registrarAbono(ctx.tenantId, venta.data.ventaId, { monto: 1000, origen: "efectivo" }, ctx.adminId);
+    expect(abono.ok).toBe(true);
+    const ventaRow = await prisma.ventas.findUnique({ where: { id: venta.data.ventaId } });
+    expect(Number(ventaRow?.saldo)).toBe(Number(venta.data.total) - 1000);
   });
 });
 

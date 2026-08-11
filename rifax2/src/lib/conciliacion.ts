@@ -5,14 +5,13 @@
 // sistema hasta que un administrador revisa y confirma explícitamente
 // (ver `aplicarConciliacion`, siempre una acción separada de `analizar*`).
 import "server-only";
-import { getDocumentProxy, extractText } from "unpdf";
 import { prisma } from "@/lib/prisma";
 import { capacidades } from "@/lib/planes";
 import { preguntarJSON, iaDisponible } from "@/lib/ia";
 import { registrarAbono } from "@/lib/ventas";
 import { auditar } from "@/lib/audit";
 
-const MAX_TEXTO_PDF = 20_000; // caracteres; suficiente para varios cientos de movimientos
+const MAX_LINEAS_CSV = 5_000; // suficiente para varios cientos/miles de movimientos, evita archivos descomunales
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 type ResultadoConDatos<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -120,16 +119,19 @@ async function extraerEntradasConIA(texto: string, instruccion: string, prefijoI
   return { ok: true, data: entradas };
 }
 
-async function extraerTextoPdf(buffer: Buffer): Promise<ResultadoConDatos<string>> {
+// Decodifica un archivo CSV subido (quita el BOM de UTF-8 si lo trae, típico
+// de exportaciones de Excel) y lo acota a un número razonable de líneas.
+function extraerTextoCsv(buffer: Buffer): ResultadoConDatos<string> {
+  let texto: string;
   try {
-    const pdf = await getDocumentProxy(new Uint8Array(buffer));
-    const { text } = await extractText(pdf, { mergePages: true });
-    const limpio = text.replace(/[ \t]+/g, " ").trim();
-    if (!limpio) return { ok: false, error: "El PDF no tiene texto legible (parece ser una imagen escaneada). Pega los movimientos como texto en su lugar." };
-    return { ok: true, data: limpio.slice(0, MAX_TEXTO_PDF) };
+    texto = buffer.toString("utf-8");
+    if (texto.charCodeAt(0) === 0xfeff) texto = texto.slice(1); // BOM de UTF-8 (típico al exportar CSV desde Excel)
   } catch {
-    return { ok: false, error: "No se pudo leer el archivo PDF. Verifica que no esté dañado ni protegido con contraseña." };
+    return { ok: false, error: "No se pudo leer el archivo. Verifica que sea un CSV válido." };
   }
+  if (!texto.trim()) return { ok: false, error: "El archivo está vacío." };
+  const lineas = texto.split(/\r?\n/).slice(0, MAX_LINEAS_CSV);
+  return { ok: true, data: lineas.join("\n") };
 }
 
 // Reconoce un campo por vez sobre la línea COMPLETA (no columnas ya
@@ -190,27 +192,24 @@ export async function analizarExtracto(tenantId: bigint, texto: string): Promise
   return emparejar(entradas, candidatos);
 }
 
-// Extracto bancario subido como PDF: se extrae el texto y, como el diseño de
-// cada banco varía mucho (columnas, saltos de línea), se usa IA para
-// reconocer los movimientos en vez del parseo determinístico de líneas.
-export async function analizarExtractoPdf(tenantId: bigint, buffer: Buffer): Promise<Resultado<Sugerencia[]>> {
+// Extracto bancario subido como CSV (o Excel exportado a CSV): mismo parseo
+// determinístico que el modo "pegar texto" (parsearExtracto ya separa por
+// coma, punto y coma o tab), sin depender de IA para leer el archivo — la IA
+// solo interviene después, para emparejar cada movimiento con la cartera.
+export async function analizarExtractoCsv(tenantId: bigint, buffer: Buffer): Promise<Resultado<Sugerencia[]>> {
   const v = await verificarDisponible(tenantId);
   if (!v.ok) return v;
 
-  const texto = await extraerTextoPdf(buffer);
+  const texto = extraerTextoCsv(buffer);
   if (!texto.ok) return texto;
 
-  const entradas = await extraerEntradasConIA(
-    texto.data,
-    "Este texto fue extraído de un extracto bancario en PDF (el diseño de columnas puede haberse desordenado " +
-    "al extraer el texto). Identifica cada movimiento de pago recibido, con su descripción/remitente y monto.",
-    "pdf",
-  );
-  if (!entradas.ok) return entradas;
-  if (entradas.data.length === 0) return { ok: false, error: "No se identificaron movimientos en el PDF." };
+  const entradas = parsearExtracto(texto.data);
+  if (entradas.length === 0) {
+    return { ok: false, error: "No se reconoció ningún movimiento válido en el archivo. Debe traer, por columna, la fecha, la descripción y el monto de cada movimiento." };
+  }
 
   const candidatos = await candidatosCartera(tenantId, null);
-  return emparejar(entradas.data, candidatos);
+  return emparejar(entradas, candidatos);
 }
 
 // ---- Modo 2: reporte de vendedor (texto libre) -----------------------------

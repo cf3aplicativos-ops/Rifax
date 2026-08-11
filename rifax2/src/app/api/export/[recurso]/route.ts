@@ -7,6 +7,7 @@ import { listarVentas } from "@/lib/ventas";
 import { listarCartera } from "@/lib/cartera";
 import { avancePorRifa, verificarAuditoria, ventasPorVendedor } from "@/lib/reportes";
 import { estadoComisiones, comisionesDetalladas } from "@/lib/comisiones";
+import { opcionesDe } from "@/lib/catalogos";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +25,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ rec
   const nombre = recurso;
 
   if (recurso === "ventas") {
-    const v = await listarVentas(t, sede);
+    const [v, canales] = await Promise.all([listarVentas(t, sede), opcionesDe(t, "canal_venta")]);
+    const etiquetaCanal = new Map(canales.map((c) => [c.valor, c.etiqueta]));
     csv = toCsv(
-      ["Codigo", "Rifa", "Boletas", "Cliente", "Telefono", "Vendedor", "Sede", "Cantidad", "Total", "Saldo", "Estado", "Fecha", "Observaciones"],
-      v.map((x) => [x.codigo, x.rifas.codigo, x.boletas.join(" "), x.clientes.nombre, x.clientes.telefono, x.vendedores?.nombre ?? "Punto de venta", x.sedes.nombre, x.cantidad, x.total.toString(), x.saldo.toString(), x.estado, x.creado_en.toISOString().slice(0, 10), x.observaciones ?? ""]),
+      ["Codigo", "Rifa", "Boletas", "Cliente", "Telefono", "Vendedor", "Sede", "Medio", "Cantidad", "Total", "Saldo", "Estado", "Fecha", "Observaciones"],
+      v.map((x) => [x.codigo, x.rifas.codigo, x.boletas.join(" "), x.clientes.nombre, x.clientes.telefono, x.vendedores?.nombre ?? "Punto de venta", x.sedes.nombre, etiquetaCanal.get(x.canal) ?? x.canal, x.cantidad, x.total.toString(), x.saldo.toString(), x.estado, x.creado_en.toISOString().slice(0, 10), x.observaciones ?? ""]),
     );
   } else if (recurso === "vendedores") {
     const v = await ventasPorVendedor(t, sede);

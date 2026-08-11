@@ -234,8 +234,9 @@ corresponde cada pago recibido, en tres modalidades:
 
 - **Extracto bancario** (recomendada): se pega el listado de movimientos de
   la cuenta bancaria o de una billetera digital (fecha, descripción y
-  monto), o se **sube directamente el PDF** del extracto tal como lo entrega
-  el banco. La IA compara cada movimiento contra la cartera pendiente de
+  monto), o se **sube un archivo CSV** del extracto (si se tiene en Excel,
+  se guarda primero como CSV). Los movimientos se reconocen por columna sin
+  IA; la IA solo compara cada movimiento contra la cartera pendiente de
   toda la empresa.
 - **Reporte de vendedor**: se pega el texto que envió un vendedor (por
   ejemplo, copiado de WhatsApp) contando lo que recaudó. La IA identifica

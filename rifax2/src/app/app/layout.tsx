@@ -12,6 +12,7 @@ const nav = [
   { href: "/app/ventas", label: "Ventas", icon: "ventas", permiso: "venta.ver" },
   { href: "/app/traspasos", label: "Traspasos", icon: "traspaso", permiso: "boleta.traspasar", ocultarVendedor: true },
   { href: "/app/cartera", label: "Cartera", icon: "cartera", permiso: "cartera.ver" },
+  { href: "/app/ventas/abono-otra-sede", label: "Abonar (otra sede)", icon: "cuenta", permiso: "pago.registrar_otra_sede", ocultarVendedor: true },
   { href: "/app/conciliacion", label: "Conciliación IA", icon: "ia", permiso: "conciliacion.usar", ocultarVendedor: true },
   { href: "/app/reportes", label: "Reportes", icon: "reportes", permiso: "reporte.ver" },
   { href: "/app/vendedores", label: "Vendedores", icon: "vendedores", permiso: "vendedor.ver" },
