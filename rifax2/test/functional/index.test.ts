@@ -25,6 +25,7 @@ import { generarFacturaTenant, marcarFacturaPagada, anularFactura } from "@/lib/
 import { solicitarResetAutomatico } from "@/lib/reset-password";
 import { parseCsv, expandirNumeros, importarVendedores, importarVentas } from "@/lib/importar";
 import { TIPOS, opcionesDe, listarCatalogos, agregarItem, toggleItem } from "@/lib/catalogos";
+import { obtenerIntegraciones, guardarIntegraciones } from "@/lib/integraciones";
 import { listarCartera, resumirCartera } from "@/lib/cartera";
 import { actualizarCliente, cambiarEstadoCliente, estadoCliente } from "@/lib/clientes";
 import { resumenOutbox, listarOutbox, procesarOutbox } from "@/lib/outbox";
@@ -1236,6 +1237,78 @@ describe("Catálogos configurables (listas desplegables)", () => {
   it("rechaza un tipo de lista desconocido", async () => {
     const res = await agregarItem(ctx.tenantId, "tipo-que-no-existe", "x", "X", ctx.adminId);
     expect(res.ok).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 7 de la solicitud del usuario: credenciales de Wompi/WhatsApp/SMS por
+// empresa. Lo crítico a probar es que los secretos nunca se devuelven en
+// texto plano y que dejar un campo en blanco CONSERVA el valor anterior.
+
+describe("Integraciones (Wompi, WhatsApp, SMS)", () => {
+  it("sin configurar: todo aparece como no configurado, y guardar en blanco no crea secretos", async () => {
+    const antes = await obtenerIntegraciones(ctx.tenantId);
+    expect(antes.wompiPrivateKeyConfigurada).toBe(false);
+    expect(antes.whatsappTokenConfigurado).toBe(false);
+    expect(antes.smsApiKeyConfigurada).toBe(false);
+  });
+
+  it("guardarIntegraciones guarda los campos públicos y los secretos; obtenerIntegraciones nunca devuelve el valor del secreto", async () => {
+    const res = await guardarIntegraciones(
+      ctx.tenantId,
+      {
+        wompi_sandbox: false,
+        wompi_public_key: "pub_test_123",
+        wompi_private_key: "prv_test_secreto",
+        wompi_events_secret: "evt_secreto",
+        whatsapp_phone_number_id: "555000111",
+        whatsapp_token: "wa_token_secreto",
+        sms_remitente: "RIFAX",
+        sms_api_key: "sms_key_secreto",
+      },
+      ctx.adminId,
+    );
+    expect(res.ok).toBe(true);
+
+    const despues = await obtenerIntegraciones(ctx.tenantId);
+    expect(despues.wompiSandbox).toBe(false);
+    expect(despues.wompiPublicKey).toBe("pub_test_123"); // pública: sí se devuelve
+    expect(despues.whatsappPhoneNumberId).toBe("555000111");
+    expect(despues.smsRemitente).toBe("RIFAX");
+    expect(despues.wompiPrivateKeyConfigurada).toBe(true);
+    expect(despues.wompiEventsSecretConfigurado).toBe(true);
+    expect(despues.whatsappTokenConfigurado).toBe(true);
+    expect(despues.smsApiKeyConfigurada).toBe(true);
+    // El objeto que ve la pantalla NUNCA trae el valor real del secreto en ningún campo.
+    expect(JSON.stringify(despues)).not.toContain("secreto");
+
+    // Confirma en la fila cruda que el secreto sí quedó guardado (no se perdió).
+    const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: ctx.tenantId } });
+    expect(fila?.wompi_private_key).toBe("prv_test_secreto");
+  });
+
+  it("guardar de nuevo con los campos de secreto en blanco CONSERVA los valores anteriores", async () => {
+    const res = await guardarIntegraciones(
+      ctx.tenantId,
+      {
+        wompi_sandbox: false,
+        wompi_public_key: "pub_test_123_editada",
+        wompi_private_key: "", // en blanco: no debe borrar ni cambiar la anterior
+        wompi_events_secret: "",
+        whatsapp_phone_number_id: "555000111",
+        whatsapp_token: "",
+        sms_remitente: "RIFAX",
+        sms_api_key: "",
+      },
+      ctx.adminId,
+    );
+    expect(res.ok).toBe(true);
+
+    const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: ctx.tenantId } });
+    expect(fila?.wompi_public_key).toBe("pub_test_123_editada"); // el campo público sí cambió
+    expect(fila?.wompi_private_key).toBe("prv_test_secreto"); // el secreto se conservó
+    expect(fila?.whatsapp_token).toBe("wa_token_secreto");
+    expect(fila?.sms_api_key).toBe("sms_key_secreto");
   });
 });
 

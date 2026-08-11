@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
 import { agregarItem, toggleItem } from "@/lib/catalogos";
 import { guardarBranding } from "@/lib/branding";
+import { guardarIntegraciones } from "@/lib/integraciones";
 
 export async function guardarBrandingAction(formData: FormData): Promise<void> {
   const user = await requirePermission("config.gestionar");
@@ -23,6 +24,26 @@ export async function guardarBrandingAction(formData: FormData): Promise<void> {
   );
   revalidatePath("/app", "layout");
   redirect(res.ok ? "/app/config?ok=1" : `/app/config?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function guardarIntegracionesAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("config.gestionar");
+  const res = await guardarIntegraciones(
+    user.tenant.id,
+    {
+      wompi_sandbox: formData.get("wompi_sandbox") === "on",
+      wompi_public_key: String(formData.get("wompi_public_key") ?? ""),
+      wompi_private_key: String(formData.get("wompi_private_key") ?? ""),
+      wompi_events_secret: String(formData.get("wompi_events_secret") ?? ""),
+      whatsapp_phone_number_id: String(formData.get("whatsapp_phone_number_id") ?? ""),
+      whatsapp_token: String(formData.get("whatsapp_token") ?? ""),
+      sms_remitente: String(formData.get("sms_remitente") ?? ""),
+      sms_api_key: String(formData.get("sms_api_key") ?? ""),
+    },
+    user.id,
+  );
+  revalidatePath("/app/config");
+  redirect(res.ok ? "/app/config?ok=1#integraciones" : `/app/config?error=${encodeURIComponent(res.error)}#integraciones`);
 }
 
 export async function agregarItemAction(formData: FormData): Promise<void> {

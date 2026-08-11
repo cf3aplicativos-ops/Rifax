@@ -3,14 +3,20 @@ import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { listarCatalogos, TIPOS } from "@/lib/catalogos";
 import { getBranding } from "@/lib/branding";
-import { agregarItemAction, toggleItemAction, guardarBrandingAction } from "./actions";
+import { obtenerIntegraciones } from "@/lib/integraciones";
+import PasswordInput from "@/components/PasswordInput";
+import { agregarItemAction, toggleItemAction, guardarBrandingAction, guardarIntegracionesAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function ConfigPage({ searchParams }: { searchParams: Promise<{ ok?: string; error?: string }> }) {
   const user = await requirePermission("config.gestionar");
   const sp = await searchParams;
-  const [porTipo, branding] = await Promise.all([listarCatalogos(user.tenant.id), getBranding(user.tenant.id)]);
+  const [porTipo, branding, integraciones] = await Promise.all([
+    listarCatalogos(user.tenant.id),
+    getBranding(user.tenant.id),
+    obtenerIntegraciones(user.tenant.id),
+  ]);
 
   return (
     <div>
@@ -53,6 +59,72 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
             </div>
             <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar marca</button>
           </div>
+        </form>
+      </section>
+
+      {/* INTEGRACIONES (#7): pasarela de pagos, WhatsApp y SMS */}
+      <section id="integraciones" className="mt-6 rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Integraciones (pasarela de pagos, WhatsApp y SMS)</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Las credenciales sensibles no se vuelven a mostrar una vez guardadas. Deja el campo en blanco para
+          conservar el valor actual; escribe uno nuevo para reemplazarlo.
+        </p>
+        <form action={guardarIntegracionesAction} className="mt-4 space-y-6">
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300">Wompi (pasarela de pagos)</legend>
+            <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <input type="checkbox" name="wompi_sandbox" defaultChecked={integraciones.wompiSandbox} className="rounded" />
+              Modo de pruebas (sandbox) — desactiva cuando tengas las llaves de producción de Wompi
+            </label>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Llave pública</label>
+              <input name="wompi_public_key" defaultValue={integraciones.wompiPublicKey ?? ""} placeholder="pub_..." className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Llave privada {integraciones.wompiPrivateKeyConfigurada ? <span className="text-emerald-600 dark:text-emerald-400">(configurada)</span> : <span className="text-slate-400">(sin configurar)</span>}
+                </label>
+                <PasswordInput name="wompi_private_key" required={false} autoComplete="off" placeholder={integraciones.wompiPrivateKeyConfigurada ? "•••••••• (dejar en blanco para no cambiar)" : "prv_..."} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Secreto de eventos (webhook) {integraciones.wompiEventsSecretConfigurado ? <span className="text-emerald-600 dark:text-emerald-400">(configurado)</span> : <span className="text-slate-400">(sin configurar)</span>}
+                </label>
+                <PasswordInput name="wompi_events_secret" required={false} autoComplete="off" placeholder={integraciones.wompiEventsSecretConfigurado ? "•••••••• (dejar en blanco para no cambiar)" : "eventos secretos"} />
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300">API de WhatsApp</legend>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">ID del número de teléfono</label>
+              <input name="whatsapp_phone_number_id" defaultValue={integraciones.whatsappPhoneNumberId ?? ""} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                Token de acceso {integraciones.whatsappTokenConfigurado ? <span className="text-emerald-600 dark:text-emerald-400">(configurado)</span> : <span className="text-slate-400">(sin configurar)</span>}
+              </label>
+              <PasswordInput name="whatsapp_token" required={false} autoComplete="off" placeholder={integraciones.whatsappTokenConfigurado ? "•••••••• (dejar en blanco para no cambiar)" : "token"} />
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+            <legend className="text-sm font-semibold text-slate-700 dark:text-slate-300">SMS</legend>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Remitente</label>
+              <input name="sms_remitente" defaultValue={integraciones.smsRemitente ?? ""} placeholder="Nombre o número remitente" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">
+                API key {integraciones.smsApiKeyConfigurada ? <span className="text-emerald-600 dark:text-emerald-400">(configurada)</span> : <span className="text-slate-400">(sin configurar)</span>}
+              </label>
+              <PasswordInput name="sms_api_key" required={false} autoComplete="off" placeholder={integraciones.smsApiKeyConfigurada ? "•••••••• (dejar en blanco para no cambiar)" : "api key"} />
+            </div>
+          </fieldset>
+
+          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar integraciones</button>
         </form>
       </section>
 
