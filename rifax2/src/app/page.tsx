@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import GanadoresVivo from "./ganadores-vivo";
 import Carrusel from "./carrusel";
 import { slidesLanding } from "@/lib/landing-slides";
-import { slidesActivos, getConfigPlataforma } from "@/lib/plataforma";
+import { slidesActivos, getConfigPlataforma, type ConfigPlataforma } from "@/lib/plataforma";
 import { PLANES } from "@/lib/planes";
 
 export const metadata: Metadata = {
@@ -54,26 +54,30 @@ const pasos = [
 
 const copClp = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 
-// Planes derivados de la matriz PLANES; el precio básico es configurable en el super-admin.
-function construirPlanes(precioBasico: number, precioCorpTexto: string) {
+// Planes derivados de la matriz PLANES; precios y sedes son configurables en el super-admin.
+function construirPlanes(config: ConfigPlataforma) {
+  const sedesBasico = `${config.sedesBasico} sede${config.sedesBasico === 1 ? "" : "s"}`;
+  const sedesCorp = `${config.sedesCorporativo} sede${config.sedesCorporativo === 1 ? "" : "s"}`;
   return [
     {
       nombre: PLANES.basico.etiqueta,
       para: "Una empresa que arranca su operación",
-      precio: copClp.format(precioBasico),
+      precio: copClp.format(config.precioBasicoMensual),
       periodo: "/ mes",
+      notaPrecio: `${copClp.format(config.precioBasicoSemestral)}/mes pagando semestral · ${copClp.format(config.precioBasicoAnual)}/mes pagando anual`,
       destacado: true,
       cta: "Ingresar",
-      incluye: PLANES.basico.incluye,
+      incluye: [sedesBasico, ...PLANES.basico.incluye],
     },
     {
       nombre: PLANES.corporativo.etiqueta,
       para: "Operación multi-sede a gran escala",
-      precio: precioCorpTexto,
+      precio: config.precioCorporativoTexto,
       periodo: "",
+      notaPrecio: null,
       destacado: false,
       cta: "Contáctanos",
-      incluye: PLANES.corporativo.incluye,
+      incluye: [sedesCorp, ...PLANES.corporativo.incluye],
     },
   ];
 }
@@ -86,7 +90,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const [slidesDB, config] = await Promise.all([slidesActivos(), getConfigPlataforma()]);
   const slides = slidesDB.length > 0 ? slidesDB : slidesLanding;
-  const planes = construirPlanes(config.precioBasico, config.precioCorporativoTexto);
+  const planes = construirPlanes(config);
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* NAV */}
@@ -289,6 +293,7 @@ ganador   = min + (sha256(semilla) mod N)
                   <span className="text-4xl font-extrabold tracking-tight">{p.precio}</span>
                   {p.periodo ? <span className="text-sm text-slate-500 dark:text-slate-400"> {p.periodo}</span> : null}
                 </div>
+                {p.notaPrecio ? <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{p.notaPrecio}</p> : null}
                 <ul className="mt-6 flex-1 space-y-3 text-sm">
                   {p.incluye.map((i) => (
                     <li key={i} className="flex items-start gap-2.5">
@@ -400,7 +405,9 @@ ganador   = min + (sha256(semilla) mod N)
             <span className="font-semibold text-slate-700 dark:text-slate-300">RIFAX</span>
           </div>
           <p>© {new Date().getFullYear()} RIFAX. Plataforma multi-empresa de gestión de rifas.</p>
-          <p className="text-xs">Next.js · Prisma · Neon</p>
+          <div className="flex items-center gap-4 text-xs">
+            <a href="/manual/acerca-de.html" target="_blank" rel="noopener noreferrer" className="hover:text-slate-700 hover:underline dark:hover:text-slate-200">Acerca de</a>
+          </div>
         </div>
       </footer>
     </div>

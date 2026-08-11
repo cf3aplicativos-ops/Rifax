@@ -1,0 +1,690 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RIFAX — Características funcionales</title>
+<style>
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --text: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --accent: #f5c518;
+  --accent-ink: #1e293b;
+  --navy: #1e293b;
+  --link: #4f46e5;
+  --ok: #059669;
+  --warn: #b45309;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --surface: #111a2b;
+    --surface-2: #16213a;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --border: #223049;
+    --link: #a5b4fc;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.6;
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.9rem 1.5rem;
+  background: var(--navy);
+  color: #fff;
+}
+.topbar .mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 900;
+}
+.topbar .brand { font-weight: 800; letter-spacing: 0.02em; }
+
+.shell {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.toc {
+  position: sticky;
+  top: 1.5rem;
+  align-self: start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+  font-size: 0.86rem;
+  padding-right: 0.5rem;
+}
+.toc h4 {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin: 1.2rem 0 0.4rem;
+}
+.toc h4:first-child { margin-top: 0; }
+.toc ul { list-style: none; margin: 0; padding: 0; }
+.toc li a {
+  display: block;
+  padding: 0.28rem 0.5rem;
+  border-radius: 8px;
+  color: var(--text-muted);
+}
+.toc li a:hover { background: var(--surface-2); color: var(--text); text-decoration: none; }
+
+main { min-width: 0; }
+
+.hero { padding: 0.4rem 0 1rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+.hero h1 { font-size: 2rem; margin: 0 0 0.4rem; }
+.hero p.lead { color: var(--text-muted); font-size: 1.05rem; max-width: 60ch; }
+
+section { margin-bottom: 2.75rem; scroll-margin-top: 1.5rem; }
+section h2 {
+  font-size: 1.4rem;
+  margin: 0 0 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--accent);
+  display: inline-block;
+}
+section h3 { font-size: 1.1rem; margin: 1.6rem 0 0.6rem; color: var(--text); }
+section h4 { font-size: 0.98rem; margin: 1.1rem 0 0.4rem; color: var(--text); }
+
+p { margin: 0.6rem 0; }
+ul, ol { padding-left: 1.3rem; }
+li { margin: 0.3rem 0; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.3rem; margin: 1rem 0; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.badge.role-super { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+.badge.role-empresa { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.badge.role-vendedor { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+.badge.role-cliente { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+@media (prefers-color-scheme: dark) {
+  .badge.role-super { background: #1e1b4b; color: #c7d2fe; border-color: #312e81; }
+  .badge.role-empresa { background: #451a03; color: #fde68a; border-color: #78350f; }
+  .badge.role-vendedor { background: #052e16; color: #bbf7d0; border-color: #14532d; }
+  .badge.role-cliente { background: #082f49; color: #bae6fd; border-color: #075985; }
+}
+
+table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--text-muted); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; }
+
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; background: var(--surface-2); padding: 0.1rem 0.4rem; border-radius: 5px; }
+
+.note { border-left: 4px solid var(--link); background: var(--surface-2); padding: 0.8rem 1rem; border-radius: 0 10px 10px 0; margin: 1rem 0; }
+.note.tip { border-left-color: var(--ok); }
+.note.warn { border-left-color: var(--warn); }
+
+.steps { list-style: none; padding: 0; margin: 1.2rem 0; counter-reset: step; }
+.steps li { counter-increment: step; position: relative; padding: 0.7rem 1rem 0.7rem 3rem; margin: 0.5rem 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+.steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0.7rem;
+  top: 0.55rem;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 800;
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+}
+
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.5rem; margin: 1.2rem 0; }
+.flow .box { flex: 1 1 160px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 0.8rem 0.9rem; font-size: 0.86rem; }
+@media (max-width: 700px) { .flow { flex-direction: column; } }
+
+.result-tag { display: inline-block; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 6px; font-size: 0.82rem; }
+.result-tag.vendida { background: #fee2e2; color: #991b1b; }
+.result-tag.tuya { background: #dcfce7; color: #166534; }
+.result-tag.otro { background: #fef9c3; color: #854d0e; }
+@media (prefers-color-scheme: dark) {
+  .result-tag.vendida { background: #450a0a; color: #fecaca; }
+  .result-tag.tuya { background: #052e16; color: #bbf7d0; }
+  .result-tag.otro { background: #422006; color: #fde68a; }
+}
+
+footer.page-footer { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem 3rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid var(--border); }
+
+@media print { .toc { display: none; } .shell { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="mark">R</span>
+  <span class="brand">RIFAX — Características funcionales</span>
+</div>
+
+<div class="shell">
+  <aside class="toc">
+    <h4>Introducción</h4>
+    <ul>
+      <li><a href="#tipos-acceso">Tipos de acceso</a></li>
+    </ul>
+    <h4>1. Sitio público</h4>
+    <ul>
+      <li><a href="#sitio-publico">Página de inicio</a></li>
+    </ul>
+    <h4>2. Portal del cliente</h4>
+    <ul>
+      <li><a href="#portal-cliente">Consulta de estado de cuenta</a></li>
+    </ul>
+    <h4>3. Portal de la empresa</h4>
+    <ul>
+      <li><a href="#panel-principal">Panel principal</a></li>
+      <li><a href="#gestion-rifas">Gestión de rifas</a></li>
+      <li><a href="#carga-masiva">Carga masiva (arranque inicial)</a></li>
+      <li><a href="#sedes">Sedes</a></li>
+      <li><a href="#vendedores">Vendedores</a></li>
+      <li><a href="#ventas">Ventas</a></li>
+      <li><a href="#traspasos">Traspaso de boletas</a></li>
+      <li><a href="#cartera">Cartera</a></li>
+      <li><a href="#conciliacion-ia">Conciliación con IA</a></li>
+      <li><a href="#comisiones">Comisiones</a></li>
+      <li><a href="#reportes">Reportes</a></li>
+      <li><a href="#notificaciones">Notificaciones</a></li>
+      <li><a href="#configuracion">Configuración</a></li>
+      <li><a href="#usuarios">Usuarios internos y perfil</a></li>
+    </ul>
+    <h4>4. Portal del vendedor</h4>
+    <ul>
+      <li><a href="#portal-vendedor">App del vendedor</a></li>
+    </ul>
+    <h4>5. Panel de plataforma</h4>
+    <ul>
+      <li><a href="#panel-empresas">Empresas clientes</a></li>
+      <li><a href="#panel-facturacion">Facturación</a></li>
+      <li><a href="#panel-accesos">Recuperación de acceso</a></li>
+      <li><a href="#panel-apariencia">Apariencia pública</a></li>
+    </ul>
+    <h4>Referencia</h4>
+    <ul>
+      <li><a href="#planes">Planes comerciales</a></li>
+      <li><a href="#seguridad">Seguridad y confianza</a></li>
+    </ul>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <h1>Características funcionales de RIFAX</h1>
+      <p class="lead">Qué puede hacer la plataforma, en lenguaje sencillo y orientado a negocio — sin detalles
+      técnicos de implementación.</p>
+    </div>
+
+    <section id="tipos-acceso">
+      <h2>Tipos de acceso</h2>
+      <p>RIFAX es una plataforma para que <strong>varias empresas independientes</strong> gestionen sus rifas,
+      vendedores, ventas y cobros, cada una con su propia información totalmente separada de las demás, y con un
+      <strong>dueño de la plataforma</strong> (super-administrador) que administra a todas esas empresas como
+      clientes.</p>
+      <p>Hay tres tipos de acceso con usuario y contraseña, más un portal del cliente que no requiere cuenta:</p>
+      <div class="grid-2">
+        <div class="card">
+          <span class="badge role-super">Super-administrador</span>
+          <p>Dueño de la plataforma, administra a las empresas clientes.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-empresa">Empresa</span>
+          <p>Administrador y su equipo (gerentes, cajeros): cada empresa que usa RIFAX para vender sus rifas.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-vendedor">Vendedor</span>
+          <p>Persona que vende boletas para una empresa, con acceso a un portal simplificado pensado para el
+          celular.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-cliente">Cliente</span>
+          <p>Comprador. No necesita usuario ni contraseña; consulta su compra con su documento y teléfono.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sitio-publico">
+      <h2>1. Sitio público</h2>
+      <p><strong>Página de inicio</strong>: presenta la plataforma, sus características, los planes disponibles y
+      sus precios, un carrusel de fotos y un formulario de contacto para empresas interesadas en contratar RIFAX.</p>
+    </section>
+
+    <section id="portal-cliente">
+      <h2>2. Portal del cliente (comprador de boletas)</h2>
+      <p>No requiere crear una cuenta ni recordar ninguna contraseña.</p>
+      <div class="note">
+        <strong>Consulta de estado de cuenta</strong>: el comprador se identifica solo con su <strong>número de
+        documento y su número de teléfono</strong> (los dos deben coincidir con lo que quedó registrado en la
+        venta). Con eso puede ver todas sus compras y los números de boleta que le pertenecen, cuánto ha pagado y
+        cuánto saldo le queda pendiente por cada compra, y si alguno de sus números resultó ganador en algún
+        sorteo ya realizado — pudiendo imprimir o descargar ese resultado como comprobante.
+      </div>
+      <p>Es una consulta de <strong>solo lectura</strong>: el cliente ve su propia información, nunca la de otros
+      compradores, y no puede modificar nada desde ahí (para registrar un pago o un cambio debe hacerlo el
+      vendedor o la empresa).</p>
+    </section>
+
+    <section id="portal-empresa-intro">
+      <h2>3. Portal de la empresa (administradores, gerentes, cajeros)</h2>
+    </section>
+
+    <section id="panel-principal">
+      <h3>Panel principal</h3>
+      <p>Un resumen visual del negocio: total recaudado, cartera pendiente, ventas realizadas, rifas activas,
+      boletas vendidas frente a disponibles, recaudo por sede, cartera vencida por antigüedad, y un ranking de los
+      mejores vendedores. Se puede imprimir como informe.</p>
+    </section>
+
+    <section id="gestion-rifas">
+      <h3>Gestión de rifas</h3>
+      <ul>
+        <li>Crear una rifa indicando el rango de números, el precio de cada boleta, la lotería de referencia y la
+        fecha del sorteo.</li>
+        <li>Publicar la rifa cuando esté lista (esto habilita todas sus boletas para la venta).</li>
+        <li>Subir el <strong>logo de la rifa</strong> y una <strong>imagen personalizada de la boleta</strong> (la
+        que se imprime en el recibo del comprador).</li>
+        <li>Definir <strong>premios</strong>, incluyendo premios que se sortean antes del premio principal
+        ("premios anticipados").</li>
+        <li>Repartir la venta de una misma rifa entre <strong>varias sedes</strong> (rifas compartidas entre
+        puntos de venta) — opcional: si cada sede prefiere manejar la suya, simplemente no se marca esa opción, y
+        cada una crea su propia rifa con su propio rango de números, premio mayor y premios anticipados,
+        totalmente independiente de las demás.</li>
+        <li><strong>Realizar el sorteo</strong> de dos formas: <em>verificable en el sistema</em> (se genera un
+        número al azar de forma que cualquiera puede comprobar después que el resultado no fue manipulado), o
+        <em>con lotería externa</em> (se digita el número ganador que salió en una lotería real, adjuntando la
+        evidencia).</li>
+        <li>Después del sorteo, el sistema indica automáticamente si la boleta ganadora fue vendida y a quién, y
+        permite hacer seguimiento a la entrega del premio (pendiente, contactado, entregado, no reclamado).</li>
+        <li><strong>Editar los datos de la rifa</strong> (nombre, descripción, lotería, precio de la boleta,
+        fechas de apertura/cierre/sorteo) en cualquier momento antes de que se sortee. La sede, la cantidad de
+        dígitos y si es compartida no se pueden cambiar una vez creada, porque ya determinaron las boletas
+        generadas.</li>
+      </ul>
+    </section>
+
+    <section id="carga-masiva">
+      <h4>Carga masiva (arranque inicial de una rifa que ya se vendía por fuera del sistema)</h4>
+      <p>Pensada para cuando una empresa empieza a usar RIFAX a mitad de una rifa que ya llevaba tiempo
+      vendiéndose en papel o por fuera del sistema, y quiere dejar todo ese historial registrado sin digitarlo
+      venta por venta.</p>
+      <ol class="steps">
+        <li><strong>Descargar las plantillas</strong> (un archivo de ejemplo para vendedores y otro para ventas,
+        más una guía de instrucciones).</li>
+        <li><strong>Importar los vendedores</strong>: se sube el archivo con los vendedores que ya existían, con
+        su nombre, documento, teléfono y comisión. Los que ya estén registrados con el mismo documento se omiten
+        automáticamente, para poder repetir la carga sin duplicar nada.</li>
+        <li><strong>Importar las ventas ya realizadas</strong>: se sube el archivo con las boletas que ya se
+        habían vendido, sus compradores y lo que ya habían abonado. El sistema, de una sola vez, crea los clientes
+        que no existían todavía, reserva esas boletas para que no puedan venderse de nuevo por error, y registra
+        los pagos (abonos) ya recibidos con el saldo pendiente correspondiente.</li>
+        <li>Al terminar cada carga, se muestra un resumen: cuántas filas se procesaron, cuántas se importaron con
+        éxito, cuántas ya existían (y por eso se omitieron) y el detalle de cualquier fila con error, para poder
+        corregirla y volver a intentar solo esa parte.</li>
+      </ol>
+    </section>
+
+    <section id="sedes">
+      <h3>Sedes (puntos de venta)</h3>
+      <p>Crear y administrar las sedes de la empresa — pueden ser 1, 2 o muchas más, según lo que autorice el
+      plan — <strong>editar su nombre, dirección y teléfono</strong> en cualquier momento, activarlas o
+      desactivarlas, y ver el desempeño individual de cada una (recaudo, cartera, ventas, ranking de vendedores
+      propio).</p>
+      <div class="note tip">
+        <strong>Un administrador propio para cada sede.</strong> Al crear una sede se puede marcar la opción de
+        crear también su administrador — queda con el mismo rol de administrador, pero acotado solo a esa sede,
+        gestionando sus propias rifas, ventas y cartera de forma completamente independiente de las demás (todas
+        viven en la misma base de datos de la empresa). El administrador general que creó la empresa sigue
+        viendo todas las sedes.
+      </div>
+    </section>
+
+    <section id="vendedores">
+      <h3>Vendedores</h3>
+      <ul>
+        <li>Registrar vendedores, con su porcentaje de comisión y un cupo máximo de boletas, y asignarlos a una
+        <strong>sede</strong> específica o dejarlos sin sede fija (lo que significa que atienden <strong>todas
+        las sedes</strong>).</li>
+        <li>El listado y la ficha de cada vendedor siempre muestran a qué sede pertenece, o "Todas las sedes" si
+        no tiene una fija.</li>
+        <li>Asignarles <strong>talonarios</strong> (rangos de boletas) de las rifas activas. Si el vendedor tiene
+        una sede fija, solo se le pueden asignar boletas de esa sede (en rifas compartidas entre varias sedes, se
+        valida boleta por boleta); si está asignado a todas las sedes, se le puede asignar cualquier rango de
+        cualquier sede.</li>
+        <li>Cerrar talonarios, liberando las boletas que no se alcanzaron a vender.</li>
+        <li>Activar, suspender o inactivar vendedores.</li>
+        <li><strong>Editar los datos de un vendedor</strong> (nombre, documento, teléfono, correo, sede, comisión,
+        cupo máximo) en cualquier momento — solo puede hacerlo quien tenga permiso para ver sus datos
+        personales.</li>
+        <li>Crear el acceso al portal móvil para cada vendedor.</li>
+        <li>Los datos personales sensibles de los vendedores solo los ve quien tenga el permiso correspondiente.</li>
+      </ul>
+    </section>
+
+    <section id="ventas">
+      <h3>Ventas</h3>
+      <ul>
+        <li>Registrar una venta eligiendo la rifa, los números de boleta y los datos del comprador.</li>
+        <li><strong>Buscar una boleta puntual por su número</strong> para saber si está disponible, vendida, o
+        asignada a un vendedor o a un punto de venta específico.</li>
+        <li>Tanto el listado como el detalle de cada venta muestran <strong>quién la realizó</strong>: el nombre
+        del vendedor, o "Punto de venta" (con el nombre de la sede) si se vendió directamente sin un vendedor
+        asignado.</li>
+        <li>Ver el detalle de cada venta: boletas compradas, total, abonado, saldo pendiente e historial de
+        pagos.</li>
+        <li>Registrar abonos (pagos parciales) o anular una venta (lo que libera las boletas para que puedan
+        venderse de nuevo).</li>
+        <li>Generar un <strong>recibo imprimible</strong> de cada venta, con el logo correspondiente.</li>
+        <li>Al agregar números a una venta, si la rifa tiene una <strong>imagen de boleta</strong> cargada,
+        cada número se muestra sobre esa imagen en vez de un recuadro liso genérico — para que se vea como una
+        boleta real.</li>
+      </ul>
+    </section>
+
+    <section id="traspasos">
+      <h3>Traspaso de boletas entre vendedores o puntos de venta</h3>
+      <div class="note tip">
+        <strong>Única excepción al entorno propio de cada sede.</strong> Una empresa puede tener 1, 2 o muchas
+        sedes (sin límite fijo en el sistema, solo el que autorice su plan), y cada una puede estar en un lugar
+        distinto con su propio día a día: un usuario acotado a una sede solo ve las rifas, ventas y cartera de
+        <strong>esa</strong> sede. Los <strong>traspasos son la única excepción</strong>: la búsqueda de una
+        boleta puntual consulta <strong>toda la empresa</strong>, sin importar a qué sede pertenezca quien busca.
+      </div>
+      <p><strong>¿Quién es el "dueño" de una boleta disponible (aún no vendida)?</strong> Si está dentro de un
+      talonario asignado a un vendedor, es de ese vendedor. Si no está en ningún talonario, es del punto de venta
+      (la sede).</p>
+
+      <ol class="steps">
+        <li>Alguien (vendedor o punto de venta) busca por número una boleta que necesita vender pero que no es
+        suya.</li>
+        <li>El sistema responde con uno de estos resultados:
+          <div class="flow" style="margin-top:0.6rem;">
+            <div class="box"><span class="result-tag vendida">Vendida</span><br>No se puede pedir.</div>
+            <div class="box"><span class="result-tag tuya">Ya es tuya</span><br>Se vende directamente, sin pedir nada.</div>
+            <div class="box"><span class="result-tag otro">Asignada a otro</span><br>Hay que solicitarla (a un vendedor o al punto de venta).</div>
+          </div>
+        </li>
+        <li>Si no es suya y sigue disponible, aparece el botón <strong>Solicitar</strong>. Solo puede existir una
+        solicitud pendiente a la vez por boleta.</li>
+        <li>La solicitud le llega a quien la tiene: si es de un vendedor, le llega únicamente a ese vendedor; si
+        es del punto de venta, le llega a cualquier administrador o gerente de la empresa (no hace falta que sea
+        de esa sede en particular).</li>
+        <li>El dueño la revisa en su bandeja de <strong>Traspasos</strong> y decide:
+          <ul>
+            <li><strong>Aprobar</strong>: la boleta pasa a ser del solicitante. Antes de mover nada, el sistema
+            comprueba que siga disponible (por si alguien la vendió mientras tanto); si ya se vendió, la
+            solicitud se rechaza sola con ese motivo. Desde la aprobación, la comisión de la futura venta de esa
+            boleta es del nuevo dueño.</li>
+            <li><strong>Rechazar</strong>: puede indicar un motivo opcional. La boleta no se mueve y el
+            solicitante ve el rechazo en su bandeja de "Enviadas".</li>
+          </ul>
+        </li>
+        <li>Toda solicitud, aprobación o rechazo queda registrado en el historial de auditoría de ambas partes.</li>
+      </ol>
+
+      <div class="note tip">
+        <strong>Avisos automáticos:</strong> mientras se tiene la aplicación abierta, aparece un aviso sonoro y
+        una tarjeta emergente en tres momentos, sin tener que refrescar la página: al dueño de una boleta cuando
+        le llega una solicitud nueva; y a quien solicitó, tanto si su solicitud es aprobada (la boleta ya es
+        suya) como si es rechazada (mostrando el motivo, si el dueño lo indicó).
+      </div>
+    </section>
+
+    <section id="cartera">
+      <h3>Cartera (cuentas por cobrar)</h3>
+      <p>Lista de ventas con saldo pendiente, clasificadas automáticamente por antigüedad de mora (al día, mora
+      temprana, media y avanzada), con el total pendiente por cada categoría.</p>
+    </section>
+
+    <section id="conciliacion-ia">
+      <h3>Conciliación con IA <span class="badge role-empresa">plan Corporativo</span></h3>
+      <p>Ayuda a identificar, con inteligencia artificial, a qué venta pendiente corresponde cada pago recibido,
+      en tres modalidades:</p>
+      <ul>
+        <li><strong>Extracto bancario</strong> (recomendada): se pega el listado de movimientos de la cuenta
+        bancaria o de una billetera digital (fecha, descripción y monto), o se sube directamente el PDF del
+        extracto tal como lo entrega el banco. La IA compara cada movimiento contra la cartera pendiente de toda
+        la empresa.</li>
+        <li><strong>Reporte de vendedor</strong>: se pega el texto que envió un vendedor (por ejemplo, copiado de
+        WhatsApp) contando lo que recaudó. La IA identifica cada pago mencionado y lo compara contra la cartera
+        pendiente de ese vendedor en particular.</li>
+        <li><strong>Comprobantes de pago</strong> (imagen): se suben fotos o capturas de comprobantes de
+        transferencia. La IA lee el monto y el remitente de cada una.</li>
+      </ul>
+      <div class="note warn">
+        En los tres casos, la IA <strong>solo sugiere</strong>: para cada pago muestra la venta que probablemente
+        le corresponde, con un porcentaje de confianza y una breve explicación. <strong>Nada se registra
+        automáticamente.</strong> Un administrador revisa la lista, marca qué coincidencias son correctas y solo
+        al confirmar esa selección se registran los abonos correspondientes — igual que si se hubieran registrado
+        a mano uno por uno. Esta función requiere que la plataforma tenga configurado un proveedor de
+        inteligencia artificial.
+      </div>
+    </section>
+
+    <section id="comisiones">
+      <h3>Comisiones</h3>
+      <p>Cálculo automático de la comisión de cada vendedor sobre lo que ha recaudado, con lo ya pagado y lo
+      pendiente. Permite liquidar (pagar) la comisión de un vendedor, o de todos a la vez (esta última opción
+      está disponible en el plan Corporativo). Además del consolidado por vendedor, hay un <strong>informe
+      detallado aparte</strong>: una fila por cada venta con comisión, con el número de cada boleta — para saber
+      exactamente de qué venta sale la comisión de cada vendedor. Los dos informes se descargan por separado.</p>
+    </section>
+
+    <section id="reportes">
+      <h3>Reportes</h3>
+      <p>Reportes gerenciales de recaudo, facturación, cartera y avance de venta por cada rifa (cuántas boletas
+      están pagadas, reservadas o disponibles), con descarga en archivos compatibles con Excel. Incluye una tabla
+      de <strong>ventas por vendedor y sede</strong> (cuántas ventas, cuánto facturó y cuánto ha recaudado cada
+      uno), también descargable, y una herramienta para <strong>verificar que el historial de acciones de la
+      empresa no haya sido alterado</strong>. El listado de ventas incluye el <strong>número de cada boleta</strong>
+      vendida y una columna de <strong>observaciones</strong> que anota, cuando aplica, si una boleta llegó a
+      manos de quien la vendió por un traspaso aprobado (de qué vendedor a qué vendedor).</p>
+    </section>
+
+    <section id="notificaciones">
+      <h3>Notificaciones</h3>
+      <p>Cola de mensajes salientes de la empresa (por ejemplo avisos), con su estado (pendiente, en proceso,
+      enviado, fallido) y un botón para procesarlos manualmente. La plataforma también los procesa
+      automáticamente una vez al día.</p>
+    </section>
+
+    <section id="configuracion">
+      <h3>Configuración</h3>
+      <ul>
+        <li><strong>Marca de la empresa</strong>: logo, imagen de fondo y color propio, que se ven reflejados en
+        el portal y en los recibos.</li>
+        <li><strong>Listas desplegables personalizables</strong>: canales de venta, orígenes de los abonos,
+        canales de mensajería y loterías disponibles, según lo que use cada empresa.</li>
+      </ul>
+    </section>
+
+    <section id="usuarios">
+      <h3>Usuarios internos y perfil</h3>
+      <ul>
+        <li>Crear usuarios internos con un rol y permisos específicos, y asignarlos a una sede.</li>
+        <li>Cambiar el rol o el estado de cualquier usuario, y restablecerle la contraseña (se le genera una
+        temporal).</li>
+        <li>Editar cualquier campo de un usuario ya creado: nombre, correo, teléfono, rol, sede, permisos
+        personalizados y, si hace falta, también su contraseña — el campo se muestra siempre vacío con un
+        marcador (••••••••), sin revelar la contraseña real; si se deja en blanco no cambia, y una nueva la
+        reemplaza de inmediato y se envía por correo a la cuenta afectada, igual que con "¿Olvidaste tu
+        contraseña?".</li>
+        <li>Lo mismo aplica a un vendedor que ya tiene acceso al portal móvil: desde su ficha se le puede
+        cambiar el correo de acceso y/o la contraseña, con el mismo marcador, el mismo criterio de "en blanco
+        no cambia" y el mismo aviso automático por correo.</li>
+        <li>Cada usuario puede ver y editar su propio perfil, y cambiar su propia contraseña.</li>
+      </ul>
+      <div class="note tip">
+        <strong>Sedes independientes, un administrador general de solo consulta.</strong> Cuando una empresa
+        tiene varias sedes, cada una opera su día a día por separado (rifas, ventas, cartera, vendedores), todo
+        dentro de la misma base de datos de la empresa. El rol <strong>"auditor"</strong>, asignado a un usuario
+        sin sede fija, ve el avance de <strong>todas</strong> las sedes (panel principal, reportes y cartera
+        desglosados por sede) sin poder crear, editar, anular ni publicar nada — solo trae permisos de consulta.
+      </div>
+      <div class="note tip">
+        <strong>La primera vez</strong> que un administrador o un vendedor ingresa (cuenta recién creada, o
+        después de un restablecimiento de contraseña), el sistema lo obliga a definir una contraseña propia antes
+        de continuar. Y la opción <strong>"¿Olvidaste tu contraseña?"</strong> es automática: al escribir el
+        correo registrado, si coincide con una cuenta, el sistema genera una contraseña temporal y la envía de
+        inmediato por correo a esa misma dirección — sin esperar a que un administrador la procese manualmente.
+        La respuesta en pantalla es siempre genérica, para no revelar si el correo existe o no.
+      </div>
+      <p><strong>Instalación como app</strong>: la primera vez que se entra desde un computador, portátil, tablet
+      o celular, aparece un aviso para instalar RIFAX como acceso directo en ese dispositivo (queda como una app,
+      sin tener que abrir el navegador cada vez). Por seguridad, ningún navegador permite instalar nada sin que la
+      persona lo confirme con un toque; en iPhone/iPad, al no existir esa opción automática, se muestran las
+      instrucciones para agregarlo manualmente desde el botón de compartir de Safari.</p>
+    </section>
+
+    <section id="portal-vendedor">
+      <h2>4. Portal del vendedor (pensado para el celular)</h2>
+      <ul>
+        <li><strong>Inicio</strong>: resumen de los talonarios activos, boletas disponibles, recaudo propio y
+        accesos rápidos a registrar una venta, ver comisiones y gestionar traspasos.</li>
+        <li><strong>Registrar venta</strong>: igual que en el portal de la empresa, pero el vendedor solo ve sus
+        propias rifas y boletas asignadas.</li>
+        <li><strong>Mis comisiones</strong>: cuánto ha recaudado, cuánto le corresponde de comisión, lo ya pagado
+        y lo pendiente.</li>
+        <li><strong>Traspasos</strong>: solicitar boletas de otro vendedor o del punto de venta, y autorizar o
+        rechazar las solicitudes que otros le hagan a él.</li>
+      </ul>
+    </section>
+
+    <section id="panel-empresas">
+      <h2>5. Panel del super-administrador (dueño de la plataforma)</h2>
+      <h3>Empresas clientes</h3>
+      <ul>
+        <li>Ver el listado completo de empresas: estado (activa, suspendida, inactiva), plan contratado, sedes y
+        usuarios usados frente a los autorizados, mora pendiente y próxima fecha de pago.</li>
+        <li>Dar de alta una nueva empresa: nombre, logo, plan, fecha de inicio, periodicidad de pago (con la que
+        se genera automáticamente su calendario de vencimientos) y el usuario administrador inicial.</li>
+        <li>Editar cualquier campo de una empresa ya creada: nombre, identificador, cupos de sedes/usuarios y
+        vigencia (si cambia la periodicidad o la fecha de inicio, el calendario de vencimientos se regenera).</li>
+        <li>Cambiar el plan de una empresa o ampliar su número de sedes autorizadas.</li>
+        <li>Cambiar el estado de una empresa (al suspenderla o inactivarla, se cierra automáticamente el acceso
+        de todos sus usuarios).</li>
+        <li>Eliminar por completo una empresa y todos sus datos, mediante un proceso de confirmación en varios
+        pasos para evitar errores.</li>
+        <li>Recibe un aviso emergente cuando una o más empresas están a 5 días o menos de su fecha de
+        vencimiento (o ya vencidas), calculada desde la fecha de inicio del contrato de cada una.</li>
+      </ul>
+    </section>
+
+    <section id="panel-facturacion">
+      <h3>Facturación de la plataforma hacia sus empresas clientes</h3>
+      <ul>
+        <li>Configurar los tres precios del plan Básico (mensual, semestral, anual) y el número de sedes
+        incluidas en cada plan (Básico y Corporativo); el precio del plan Corporativo se cotiza a la medida
+        (texto libre).</li>
+        <li>Generar facturas de forma individual o masiva por periodo (el monto del plan Básico se calcula según
+        la periodicidad de pago de cada empresa).</li>
+        <li>Marcar facturas como pagadas (lo que extiende automáticamente la fecha de vencimiento de la empresa)
+        o anularlas.</li>
+        <li>Ver el historial completo de facturación y la mora acumulada por empresa.</li>
+      </ul>
+    </section>
+
+    <section id="panel-accesos">
+      <h3>Recuperación de acceso</h3>
+      <p>La opción "¿Olvidaste tu contraseña?" de la pantalla de inicio de sesión resuelve las solicitudes sola:
+      valida el correo contra la cuenta registrada y envía la contraseña temporal por correo de inmediato, sin
+      intervención del super-administrador.</p>
+    </section>
+
+    <section id="panel-apariencia">
+      <h3>Apariencia pública de la plataforma</h3>
+      <p>Administrar la imagen de fondo de la pantalla de inicio de sesión y el carrusel de fotos/textos que se
+      muestra en la página pública de inicio.</p>
+    </section>
+
+    <section id="planes">
+      <h2>6. Planes comerciales</h2>
+      <p>RIFAX ofrece dos categorías de plan para las empresas clientes (sedes y precios configurables por el
+      super-administrador; valores por defecto):</p>
+      <table>
+        <tr><th>Plan</th><th>Sedes</th><th>Usuarios</th><th>Precio</th><th>Incluye además</th></tr>
+        <tr>
+          <td><strong>Básico</strong></td>
+          <td>1 sede</td>
+          <td>Ilimitados</td>
+          <td>$180.000/mes (mensual) · $140.000/mes (semestral) · $120.000/mes (anual)</td>
+          <td>Rifas, ventas, cartera, vendedores y talonarios, sorteos verificables, reportes y branding propio,
+          portal de cliente y auditoría.</td>
+        </tr>
+        <tr>
+          <td><strong>Corporativo</strong></td>
+          <td>2 sedes</td>
+          <td>Ilimitados</td>
+          <td>A medida, según lo que se acuerde con cada cliente</td>
+          <td>Todo lo del plan Básico, más liquidación masiva de comisiones, integraciones adicionales (pasarela
+          de pagos, mensajería por WhatsApp/SMS), conciliación con IA, SLA y soporte prioritario.</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="seguridad">
+      <h2>7. Seguridad y confianza (en términos simples)</h2>
+      <ul>
+        <li>Cada empresa solo puede ver y administrar su propia información; nunca la de otra empresa.</li>
+        <li>Cada acción importante que se realiza en el sistema (crear, modificar, eliminar) queda registrada en
+        un historial que <strong>no se puede alterar sin que quede evidencia</strong>, y existe una función para
+        comprobar que ese historial sigue intacto. Solo el dueño de la plataforma puede depurar registros de más
+        de un año de antigüedad, y esa depuración queda documentada (qué se quitó, cuándo y quién lo hizo) —
+        nunca desaparece sin dejar rastro.</li>
+        <li>Antes de vender una boleta, el sistema verifica en el momento que nadie más la esté vendiendo al
+        mismo tiempo, evitando la venta duplicada de un mismo número.</li>
+        <li>El acceso de cada persona está limitado a lo que su rol y permisos le autorizan a ver o hacer.</li>
+        <li>Las contraseñas nunca se guardan ni se muestran en texto plano, y toda contraseña temporal obliga a
+        definir una nueva en el primer ingreso.</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<footer class="page-footer">
+  © 2026 RIFAX. Documento de características funcionales — no incluye detalles técnicos de implementación.
+</footer>
+
+</body>
+</html>

@@ -22,7 +22,7 @@ export const PLANES: Record<Plan, CapacidadesPlan> = {
   basico: {
     etiqueta: "Básico",
     maxSedes: 1,
-    maxUsuarios: 2,
+    maxUsuarios: null,
     liquidacionMasiva: false,
     integraciones: false,
     conciliacionIA: false,
@@ -30,8 +30,7 @@ export const PLANES: Record<Plan, CapacidadesPlan> = {
     portalVendedor: true,
     portalCliente: true,
     incluye: [
-      "1 sede",
-      "Hasta 2 usuarios",
+      "Usuarios ilimitados",
       "Rifas, ventas y cartera",
       "Vendedores y talonarios",
       "Sorteos verificables",
@@ -41,7 +40,7 @@ export const PLANES: Record<Plan, CapacidadesPlan> = {
   },
   corporativo: {
     etiqueta: "Corporativo",
-    maxSedes: null,
+    maxSedes: 2,
     maxUsuarios: null,
     liquidacionMasiva: true,
     integraciones: true,
@@ -50,7 +49,7 @@ export const PLANES: Record<Plan, CapacidadesPlan> = {
     portalVendedor: true,
     portalCliente: true,
     incluye: [
-      "Sedes y usuarios ilimitados",
+      "Usuarios ilimitados",
       "Vendedores ilimitados + liquidación masiva",
       "Portales de vendedor y cliente",
       "Integraciones (pasarela, WhatsApp/SMS)",

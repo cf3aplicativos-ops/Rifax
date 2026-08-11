@@ -30,7 +30,7 @@ export default async function TraspasosPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <PageTitle icon="traspaso">Traspasos de boletas</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Solicitudes de vendedores u otras sedes para tomar boletas de tu punto de venta, y el estado de tus propias solicitudes.

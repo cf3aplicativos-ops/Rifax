@@ -46,19 +46,38 @@ export default async function FacturacionPage({
       {/* Precio configurable + facturación masiva */}
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <form action={guardarPrecioAction} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Precios de los planes</h2>
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Precios y sedes de los planes</h2>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Plan Básico (COP / mes, según periodicidad de pago)</p>
+          <div className="mt-2 grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Plan Básico (COP / mes)</label>
-              <input name="precio_basico" type="number" min={0} step={1000} defaultValue={config.precioBasico} className={ctrl} />
+              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Mensual</label>
+              <input name="precio_basico_mensual" type="number" min={0} step={1000} defaultValue={config.precioBasicoMensual} className={ctrl} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Plan Corporativo (texto)</label>
-              <input name="precio_corporativo_texto" defaultValue={config.precioCorporativoTexto} className={ctrl} />
+              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Semestral</label>
+              <input name="precio_basico_semestral" type="number" min={0} step={1000} defaultValue={config.precioBasicoSemestral} className={ctrl} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Anual</label>
+              <input name="precio_basico_anual" type="number" min={0} step={1000} defaultValue={config.precioBasicoAnual} className={ctrl} />
             </div>
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Sedes incluidas · Básico</label>
+              <input name="sedes_basico" type="number" min={1} defaultValue={config.sedesBasico} className={ctrl} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Sedes incluidas · Corporativo</label>
+              <input name="sedes_corporativo" type="number" min={1} defaultValue={config.sedesCorporativo} className={ctrl} />
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Plan Corporativo (texto del precio)</label>
+            <input name="precio_corporativo_texto" defaultValue={config.precioCorporativoTexto} className={ctrl} />
+          </div>
           <button type="submit" className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar precios</button>
-          <p className="mt-2 text-xs text-slate-400">El precio básico se usa en la landing y en la facturación automática.</p>
+          <p className="mt-2 text-xs text-slate-400">Estos valores se usan en la landing y en la facturación automática del plan básico.</p>
         </form>
 
         <form action={generarMasivaAction} className="rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">

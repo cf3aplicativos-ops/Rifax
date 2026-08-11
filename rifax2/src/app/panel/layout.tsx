@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { requireSuper } from "@/lib/auth/rbac";
+import { proximosVencimientosCriticos } from "@/lib/vencimientos";
 import { logoutSuperAction } from "./actions";
+import VencimientoAvisoSuper from "./vencimiento-aviso";
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const admin = await requireSuper();
+  const criticos = await proximosVencimientosCriticos(5);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <VencimientoAvisoSuper items={criticos} />
       <header className="border-b border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
@@ -21,6 +25,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <a
+              href="/manual/manual-usuario.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden text-sm text-slate-500 hover:text-slate-700 sm:inline dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Manual de usuario
+            </a>
             <span className="hidden text-sm text-slate-600 sm:inline dark:text-slate-300">
               {admin.nombre}
             </span>

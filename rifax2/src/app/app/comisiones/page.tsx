@@ -1,8 +1,8 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
-import { estadoComisiones } from "@/lib/comisiones";
+import { estadoComisiones, comisionesDetalladas } from "@/lib/comisiones";
 import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
-import { money } from "@/lib/format";
+import { money, fecha } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 import { liquidarVendedorAction, liquidarMasivoAction } from "./actions";
 
@@ -11,11 +11,16 @@ export const dynamic = "force-dynamic";
 export default async function ComisionesPage({ searchParams }: { searchParams: Promise<{ liquidado?: string; masivo?: string; error?: string }> }) {
   const user = await requirePermission("cartera.ver");
   const sp = await searchParams;
-  const todas = await estadoComisiones(user.tenant.id);
+  const [todas, detalleTodas] = await Promise.all([
+    estadoComisiones(user.tenant.id),
+    comisionesDetalladas(user.tenant.id, user.sede?.id ?? null),
+  ]);
   // Un vendedor solo ve su propia comisión.
   const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
   const comisiones = vendedorId ? todas.filter((c) => c.id === vendedorId) : todas;
+  const detalle = vendedorId ? detalleTodas.filter((d) => d.vendedorId === String(vendedorId)) : detalleTodas;
   const puedeLiquidar = hasPermission(user, "pago.conciliar");
+  const descarga = "no-print rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800";
 
   const tot = comisiones.reduce(
     (a, c) => ({ ganada: a.ganada + c.comisionGanada, liquidado: a.liquidado + c.liquidado, pendiente: a.pendiente + c.pendiente }),
@@ -32,6 +37,10 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Comisión ganada = recaudado del vendedor × su %.</p>
         </div>
         <div className="no-print flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/export/comisiones" className={descarga}>⬇ Consolidado CSV</a>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/api/export/comisiones-detalle" className={descarga}>⬇ Detallado CSV</a>
           <PrintButton label="Imprimir" />
           {puedeLiquidar && hayPendientes ? (
             <form action={liquidarMasivoAction}>
@@ -76,6 +85,47 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
                       </form>
                     ) : null}
                   </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h2 className="mt-10 text-lg font-semibold text-slate-900 dark:text-white">Detalle por venta</h2>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Informe aparte del consolidado: cada fila es una venta, con sus números de boleta.</p>
+      {detalle.length === 0 ? (
+        <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+          No hay ventas con comisión todavía.
+        </p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+              <tr>
+                <th className="px-4 py-3 font-medium">Venta</th>
+                <th className="px-4 py-3 font-medium">Fecha</th>
+                <th className="px-4 py-3 font-medium">Vendedor</th>
+                <th className="px-4 py-3 font-medium">Rifa</th>
+                <th className="px-4 py-3 font-medium">Boletas</th>
+                <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 text-right font-medium">Recaudado</th>
+                <th className="px-4 py-3 text-right font-medium">%</th>
+                <th className="px-4 py-3 text-right font-medium">Comisión</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
+              {detalle.map((d) => (
+                <tr key={d.ventaId}>
+                  <td className="px-4 py-3 font-mono text-xs text-indigo-600 dark:text-indigo-400">{d.codigo}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{fecha(d.fecha)}</td>
+                  <td className="px-4 py-3 text-slate-900 dark:text-slate-100">{d.vendedorNombre}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{d.rifaCodigo}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{d.boletas.join(", ")}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{d.cliente}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{money(d.recaudadoVenta)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-slate-600 dark:text-slate-400">{d.pct}%</td>
+                  <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">{money(d.comisionVenta)}</td>
                 </tr>
               ))}
             </tbody>

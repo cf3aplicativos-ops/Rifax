@@ -6,6 +6,7 @@ import { requireSuper } from "@/lib/auth/rbac";
 import { destroySession } from "@/lib/auth/session";
 import {
   crearTenant,
+  editarTenant,
   cambiarEstadoTenant,
   cambiarMaxSedes,
   purgarTenant,
@@ -60,6 +61,31 @@ export async function crearTenantAction(
   if (!res.ok) return { error: res.error };
   revalidatePath("/panel");
   redirect("/panel?creado=1");
+}
+
+export async function editarTenantAction(formData: FormData): Promise<void> {
+  const admin = await requireSuper();
+  const tenantId = String(formData.get("tenant_id") ?? "0");
+  const sedesIlim = formData.get("sedes_ilimitadas") === "on";
+  const usuariosIlim = formData.get("usuarios_ilimitados") === "on";
+  const res = await editarTenant(
+    BigInt(tenantId),
+    {
+      nombre: String(formData.get("nombre") ?? "").trim(),
+      slug: String(formData.get("slug") ?? "").trim().toLowerCase(),
+      sedes_ilimitadas: sedesIlim,
+      max_sedes: String(formData.get("max_sedes") ?? "1"),
+      usuarios_ilimitados: usuariosIlim,
+      ...(usuariosIlim ? {} : { max_usuarios: String(formData.get("max_usuarios") ?? "5") }),
+      periodicidad: String(formData.get("periodicidad") ?? "mensual"),
+      periodicidad_pago: String(formData.get("periodicidad_pago") ?? "mensual"),
+      fecha_inicio: String(formData.get("fecha_inicio") ?? ""),
+    },
+    admin.id,
+  );
+  revalidatePath("/panel");
+  revalidatePath(`/panel/${tenantId}`);
+  redirect(res.ok ? `/panel/${tenantId}?editado=1` : `/panel/${tenantId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function cambiarEstadoTenantAction(formData: FormData): Promise<void> {

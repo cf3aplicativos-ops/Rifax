@@ -15,7 +15,7 @@ export default async function NuevoVendedorPage() {
   });
 
   return (
-    <div className="mx-auto max-w-xl">
+    <div>
       <Link href="/app/vendedores" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a vendedores</Link>
       <PageTitle icon="nuevo" className="mt-2">Nuevo vendedor</PageTitle>
       <FormVendedor sedes={sedes.map((s) => ({ id: String(s.id), nombre: s.nombre }))} />

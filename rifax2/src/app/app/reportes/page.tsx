@@ -1,6 +1,6 @@
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
-import { resumenVentas, avancePorRifa, verificarAuditoria } from "@/lib/reportes";
+import { resumenVentas, avancePorRifa, verificarAuditoria, ventasPorVendedor } from "@/lib/reportes";
 import { money, fechaHora } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 
@@ -11,9 +11,10 @@ export default async function ReportesPage() {
   const user = await requirePermission("reporte.ver");
   const veAud = hasPermission(user, "reporte.auditoria");
   const sede = user.sede?.id ?? null;
-  const [resumen, avance, aud] = await Promise.all([
+  const [resumen, avance, porVendedor, aud] = await Promise.all([
     resumenVentas(user.tenant.id, sede),
     avancePorRifa(user.tenant.id, sede),
+    ventasPorVendedor(user.tenant.id, sede),
     veAud ? verificarAuditoria(user.tenant.id) : Promise.resolve(null),
   ]);
 
@@ -31,13 +32,19 @@ export default async function ReportesPage() {
       <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PageTitle icon="reportes">Reportes</PageTitle>
+        {/* Enlaces a rutas de API que devuelven un archivo adjunto (Content-Disposition),
+            no páginas de la aplicación: <Link/> haría una navegación de cliente que no
+            aplica aquí, así que se usa <a> a propósito. */}
+        {/* eslint-disable @next/next/no-html-link-for-pages */}
         <div className="no-print flex flex-wrap items-center gap-2">
           <a href="/api/export/ventas" className={descarga}>⬇ Ventas CSV</a>
+          <a href="/api/export/vendedores" className={descarga}>⬇ Vendedores CSV</a>
           <a href="/api/export/cartera" className={descarga}>⬇ Cartera CSV</a>
           <a href="/api/export/avance" className={descarga}>⬇ Avance CSV</a>
           {veAud ? <a href="/api/export/auditoria" className={descarga}>⬇ Auditoría CSV</a> : null}
           <PrintButton label="Imprimir" />
         </div>
+        {/* eslint-enable @next/next/no-html-link-for-pages */}
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -77,6 +84,40 @@ export default async function ReportesPage() {
         )}
       </section>
 
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ventas por vendedor y sede</h2>
+        {porVendedor.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Sin ventas registradas.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Vendedor</th>
+                  <th className="px-4 py-3 font-medium">Sede</th>
+                  <th className="px-4 py-3 text-right font-medium">Ventas</th>
+                  <th className="px-4 py-3 text-right font-medium">Facturado</th>
+                  <th className="px-4 py-3 text-right font-medium">Recaudado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                {porVendedor.map((v, i) => (
+                  <tr key={v.vendedorId ?? `punto-venta-${i}`}>
+                    <td className="px-4 py-3 text-slate-900 dark:text-slate-100">
+                      {v.vendedorId ? v.vendedorNombre : <span className="text-slate-500 dark:text-slate-400">{v.vendedorNombre}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{v.sedeNombre}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{v.ventas}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{money(v.facturado)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-medium text-emerald-600 dark:text-emerald-400">{money(v.recaudado)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {aud ? (
         <section className="mt-10">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Integridad de auditoría</h2>
@@ -87,6 +128,13 @@ export default async function ReportesPage() {
               <p className="text-xs text-slate-500 dark:text-slate-400">{aud.totalEventos.toLocaleString("es-CO")} eventos de tu empresa · hash encadenado SHA-256</p>
             </div>
           </div>
+          {aud.ultimaPurgaGlobal ? (
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              El super-administrador de la plataforma purgó el historial de auditoría anterior al{" "}
+              {new Date(aud.ultimaPurgaGlobal).toLocaleDateString("es-CO")} (aplica a toda la plataforma, no solo a
+              tu empresa); el reinicio de la cadena queda documentado y no se cuenta como alteración.
+            </p>
+          ) : null}
           <div className="mt-4 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">

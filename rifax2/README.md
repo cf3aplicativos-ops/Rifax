@@ -6,7 +6,7 @@ boletas, pagos, mensajería, cobranza, sorteos, IA y auditoría con hash encaden
 
 ## Stack
 
-- **Next.js 15** (App Router, TypeScript, Tailwind CSS, `src/`)
+- **Next.js 16** (App Router, TypeScript, Tailwind CSS, `src/`)
 - **Prisma 7** (generador `prisma-client` → `src/generated/prisma`)
 - **Neon** (Postgres serverless) provisionado desde **Vercel** (integración Marketplace)
 - **Vercel** (deploy) · **GitHub** `cf3aplicativos-ops/Rifax` (rama `rifax2`)
@@ -58,5 +58,12 @@ npm run dev
 | `DATABASE_URL_UNPOOLED`  | Conexión **directa** (Prisma CLI / DDL / migraciones) |
 | `JWT_SECRET`             | Firma de tokens de sesión                  |
 | `CRON_SECRET`            | Autoriza `GET /api/cron/outbox` (header `Authorization: Bearer <valor>`) |
+| `GROQ_API_KEY`           | Proveedor de IA (Groq, API compatible con OpenAI) para `/app/conciliacion` (plan Corporativo). Opcional: sin ella, la pantalla se muestra pero el análisis falla con un mensaje claro. |
+| `SMTP_HOST`              | Servidor SMTP para envío de correo (p. ej. `smtp.gmail.com`). Opcional: sin `SMTP_HOST`/`SMTP_USER`/`SMTP_PASSWORD`, el correo se simula (log en consola) en vez de fallar. |
+| `SMTP_PORT`              | Puerto SMTP: `587` (TLS, por defecto) o `465` (SSL). |
+| `SMTP_SECURE`            | `"true"` para forzar SSL (puerto 465). Por defecto `false`. |
+| `SMTP_USER`              | Cuenta remitente (login SMTP). |
+| `SMTP_PASSWORD`          | Contraseña de aplicación del remitente (p. ej. Gmail App Password). |
+| `MAIL_FROM`              | Remitente visible en los correos. Por defecto, igual a `SMTP_USER`. |
 
 > `.env*` está en `.gitignore`: los secretos nunca se suben al repo.

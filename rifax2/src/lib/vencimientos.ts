@@ -26,11 +26,15 @@ export async function generarVencimientos(
 ): Promise<void> {
   const n = cantidadFechas(periodicidad);
   const paso = intervalo(periodicidad);
-  await tx.$executeRawUnsafe(`DELETE FROM saas.vencimientos WHERE tenant_id = $1::bigint`, tenantId);
+  // Solo se borran las cuotas PENDIENTES: las ya pagadas son historial de cobro
+  // (llevan `pagada_en`) y el DELETE indiscriminado anterior las perdía cada vez
+  // que el super-admin editaba la periodicidad o la fecha de inicio.
+  await tx.$executeRawUnsafe(`DELETE FROM saas.vencimientos WHERE tenant_id = $1::bigint AND estado = 'pendiente'`, tenantId);
   await tx.$executeRawUnsafe(
     `INSERT INTO saas.vencimientos (tenant_id, numero, fecha)
      SELECT $1::bigint, gs, (COALESCE($2::date, CURRENT_DATE) + (gs * $3::interval))::date
-       FROM generate_series(1, $4::int) AS gs`,
+       FROM generate_series(1, $4::int) AS gs
+     ON CONFLICT (tenant_id, numero) DO NOTHING`,
     tenantId,
     fechaInicioISO && /^\d{4}-\d{2}-\d{2}$/.test(fechaInicioISO) ? fechaInicioISO : null,
     paso,
@@ -100,12 +104,41 @@ export async function vencimientosPorTenant(): Promise<Record<string, Vencimient
   return m;
 }
 
+export interface VencimientoCritico { tenantId: string; nombre: string; fecha: string; dias: number }
+
+// Empresas cuya próxima fecha pendiente vence dentro de `diasMax` días (o ya
+// venció), para el aviso emergente del super-admin (#2, "cinco días de
+// anticipación calculados desde la fecha de inicio del contrato").
+export async function proximosVencimientosCriticos(diasMax: number): Promise<VencimientoCritico[]> {
+  const filas = await prisma.$queryRawUnsafe<{ tenant_id: bigint; nombre: string; fecha: string; dias: number }[]>(
+    // El recorte por `diasMax` va en SQL: filtrarlo en JS obligaba a traer la
+    // próxima cuota de TODAS las empresas en cada carga del panel.
+    `SELECT * FROM (
+       SELECT DISTINCT ON (v.tenant_id) v.tenant_id, t.nombre,
+              to_char(v.fecha,'DD/MM/YYYY') AS fecha, (v.fecha - CURRENT_DATE)::int AS dias
+         FROM saas.vencimientos v JOIN saas.tenants t ON t.id = v.tenant_id
+        WHERE v.estado = 'pendiente'
+        ORDER BY v.tenant_id, v.fecha ASC
+     ) p
+      WHERE p.dias <= $1::int
+      ORDER BY p.dias ASC`,
+    diasMax,
+  );
+  return filas.map((f) => ({ tenantId: String(f.tenant_id), nombre: f.nombre, fecha: f.fecha, dias: Number(f.dias) }));
+}
+
 // Próxima fecha pendiente por tenant (para el resumen del panel).
 export async function proximosVencimientos(): Promise<Record<string, { fecha: string; dias: number }>> {
   const filas = await prisma.$queryRawUnsafe<{ tenant_id: bigint; fecha: string; dias: number }[]>(
-    `SELECT DISTINCT ON (tenant_id) tenant_id, to_char(fecha,'DD/MM/YYYY') AS fecha, (fecha - CURRENT_DATE)::int AS dias
-       FROM saas.vencimientos WHERE estado = 'pendiente'
-      ORDER BY tenant_id, fecha ASC`,
+    // `v.fecha` cualificado a propósito: sin el prefijo, el identificador simple
+    // del ORDER BY resuelve contra el alias de salida `fecha`, que es el texto
+    // 'DD/MM/YYYY'. Ordenar por ese texto compara día-mes-año como cadena, así
+    // que el DISTINCT ON se quedaba con una fecha que no era la más próxima
+    // (p. ej. elegía 01/12/2026 teniendo pendiente el 15/11/2026).
+    `SELECT DISTINCT ON (v.tenant_id) v.tenant_id, to_char(v.fecha,'DD/MM/YYYY') AS fecha,
+            (v.fecha - CURRENT_DATE)::int AS dias
+       FROM saas.vencimientos v WHERE v.estado = 'pendiente'
+      ORDER BY v.tenant_id, v.fecha ASC`,
   );
   const m: Record<string, { fecha: string; dias: number }> = {};
   for (const f of filas) m[String(f.tenant_id)] = { fecha: f.fecha, dias: Number(f.dias) };

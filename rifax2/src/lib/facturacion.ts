@@ -2,7 +2,7 @@
 // El super-admin genera facturas individuales o masivas y marca pagos.
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { getConfigPlataforma } from "@/lib/plataforma";
+import { getConfigPlataforma, precioBasicoPorPeriodicidad } from "@/lib/plataforma";
 import { mensajeError } from "@/lib/errores";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
@@ -54,17 +54,20 @@ function periodoValido(p: string): boolean {
   return /^\d{4}-(0[1-9]|1[0-2])$/.test(p);
 }
 
-// Monto según el plan del tenant (básico = precio configurable; corporativo = a definir).
-async function montoDePlan(plan: string): Promise<number> {
-  if (plan === "basico") return (await getConfigPlataforma()).precioBasico;
+// Monto según el plan del tenant (básico = precio configurable según su
+// periodicidad de pago; corporativo = a definir).
+async function montoDePlan(plan: string, periodicidadPago: string): Promise<number> {
+  if (plan === "basico") return precioBasicoPorPeriodicidad(await getConfigPlataforma(), periodicidadPago);
   return 0; // corporativo: "a medida" → el super-admin ajusta el monto luego
 }
 
 export async function generarFacturaTenant(tenantId: bigint, periodo: string, montoManual?: number): Promise<Resultado> {
   if (!periodoValido(periodo)) return { ok: false, error: "Periodo inválido (usa AAAA-MM)." };
-  const filas = await prisma.$queryRawUnsafe<{ plan: string }[]>(`SELECT plan FROM saas.tenants WHERE id = $1::bigint`, tenantId);
+  const filas = await prisma.$queryRawUnsafe<{ plan: string; periodicidad_pago: string }[]>(
+    `SELECT plan, periodicidad_pago FROM saas.tenants WHERE id = $1::bigint`, tenantId,
+  );
   const plan = filas[0]?.plan ?? "basico";
-  const monto = montoManual != null && Number.isFinite(montoManual) ? montoManual : await montoDePlan(plan);
+  const monto = montoManual != null && Number.isFinite(montoManual) ? montoManual : await montoDePlan(plan, filas[0]?.periodicidad_pago ?? "mensual");
   // vence a 10 días de la emisión
   try {
     await prisma.$executeRawUnsafe(
@@ -83,26 +86,38 @@ export async function generarFacturaTenant(tenantId: bigint, periodo: string, mo
 // las empresas activas.
 export async function generarFacturacionMasiva(periodo: string): Promise<Resultado<{ generadas: number }>> {
   if (!periodoValido(periodo)) return { ok: false, error: "Periodo inválido (usa AAAA-MM)." };
-  const { precioBasico } = await getConfigPlataforma();
+  const config = await getConfigPlataforma();
   const r = await prisma.$executeRawUnsafe(
     `INSERT INTO saas.facturas (tenant_id, periodo, concepto, plan, monto, vence_en)
      SELECT t.id, $1::text, $2::text, t.plan,
-            CASE WHEN t.plan = 'basico' THEN $3::numeric ELSE 0 END,
+            CASE
+              WHEN t.plan <> 'basico' THEN 0
+              WHEN t.periodicidad_pago = 'semestral' THEN $3::numeric
+              WHEN t.periodicidad_pago = 'anual' THEN $4::numeric
+              ELSE $5::numeric
+            END,
             (CURRENT_DATE + INTERVAL '10 days')::date
        FROM saas.tenants t
       WHERE t.estado = 'activo'
      ON CONFLICT (tenant_id, periodo) DO NOTHING`,
-    periodo, `Suscripción ${periodo}`, String(precioBasico),
+    periodo, `Suscripción ${periodo}`,
+    String(config.precioBasicoSemestral), String(config.precioBasicoAnual), String(config.precioBasicoMensual),
   );
   return { ok: true, data: { generadas: typeof r === "number" ? r : 0 } };
 }
 
 export async function marcarFacturaPagada(facturaId: bigint): Promise<Resultado> {
-  await prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(
-      `UPDATE saas.facturas SET estado = 'pagada', pagada_en = now() WHERE id = $1::bigint AND estado <> 'anulada'`,
+  return prisma.$transaction(async (tx): Promise<Resultado> => {
+    // Solo la transición pendiente -> pagada extiende la vigencia. Antes el
+    // UPDATE aceptaba cualquier factura no anulada, así que volver a pulsar
+    // "marcar pagada" (o un doble clic) regalaba otro periodo de vigencia.
+    const filas = await tx.$queryRawUnsafe<{ tenant_id: bigint }[]>(
+      `UPDATE saas.facturas SET estado = 'pagada', pagada_en = now()
+        WHERE id = $1::bigint AND estado = 'pendiente'
+        RETURNING tenant_id`,
       facturaId,
     );
+    if (filas.length === 0) return { ok: false, error: "La factura ya estaba pagada o fue anulada." };
     // Al recibir el pago se extiende la vigencia del tenant según su periodicidad
     // de pago (esto también suspende el aviso de vencimiento).
     await tx.$executeRawUnsafe(
@@ -110,15 +125,20 @@ export async function marcarFacturaPagada(facturaId: bigint): Promise<Resultado>
            GREATEST(COALESCE(t.fecha_vencimiento, CURRENT_DATE), CURRENT_DATE)
            + (CASE t.periodicidad_pago WHEN 'anual' THEN '1 year' WHEN 'semestral' THEN '6 months' ELSE '1 month' END)::interval
          )::date
-         FROM saas.facturas f
-        WHERE f.id = $1::bigint AND t.id = f.tenant_id`,
-      facturaId,
+        WHERE t.id = $1::bigint`,
+      filas[0].tenant_id,
     );
+    return { ok: true };
   });
-  return { ok: true };
 }
 
 export async function anularFactura(facturaId: bigint): Promise<Resultado> {
-  await prisma.$executeRawUnsafe(`UPDATE saas.facturas SET estado = 'anulada' WHERE id = $1::bigint`, facturaId);
+  // Solo se anula lo que sigue pendiente: anular una factura ya pagada dejaría
+  // la vigencia extendida sin respaldo contable.
+  const n = await prisma.$executeRawUnsafe(
+    `UPDATE saas.facturas SET estado = 'anulada' WHERE id = $1::bigint AND estado = 'pendiente'`,
+    facturaId,
+  );
+  if (!n) return { ok: false, error: "Solo se pueden anular facturas pendientes." };
   return { ok: true };
 }

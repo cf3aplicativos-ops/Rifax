@@ -4,9 +4,10 @@ import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerVendedor } from "@/lib/vendedores";
 import { prisma } from "@/lib/prisma";
 import { fecha } from "@/lib/format";
-import { cerrarTalonarioAction, crearAccesoVendedorAction } from "../actions";
+import { cerrarTalonarioAction, crearAccesoVendedorAction, actualizarAccesoVendedorAction, editarVendedorAction } from "../actions";
 import FormAsignarTalonario from "./form-asignar";
 import { Icon } from "@/components/icons";
+import PasswordInput from "@/components/PasswordInput";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function VendedorDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ asignadas?: string; liberadas?: string; acceso?: string; error?: string }>;
+  searchParams: Promise<{ asignadas?: string; liberadas?: string; acceso?: string; acceso_actualizado?: string; editado?: string; error?: string }>;
 }) {
   const user = await requirePermission("vendedor.ver");
   const { id } = await params;
@@ -30,7 +31,8 @@ export default async function VendedorDetalle({
   let vId: bigint;
   try { vId = BigInt(id); } catch { notFound(); }
 
-  const vendedor = await obtenerVendedor(user.tenant.id, vId);
+  // Un usuario acotado a una sede solo alcanza a los vendedores de esa sede.
+  const vendedor = await obtenerVendedor(user.tenant.id, vId, user.sede?.id ?? null);
   if (!vendedor) notFound();
 
   const rifas = await prisma.rifas.findMany({
@@ -42,10 +44,22 @@ export default async function VendedorDetalle({
   const puedeAsignar = hasPermission(user, "talonario.asignar");
   const puedeCerrar = hasPermission(user, "talonario.devolver");
   const vePii = hasPermission(user, "vendedor.ver_pii");
+  // Editar expone documento/teléfono en el formulario: exige también poder verlos.
+  const puedeEditarDatos = hasPermission(user, "vendedor.editar") && vePii;
+  const sedes = puedeEditarDatos
+    ? await prisma.sedes.findMany({
+        where: { tenant_id: user.tenant.id, estado: "activa", ...(user.sede ? { id: user.sede.id } : {}) },
+        orderBy: { nombre: "asc" },
+        select: { id: true, nombre: true },
+      })
+    : [];
   const asignadas = vendedor.talonarios.filter((t) => t.estado !== "cerrado").reduce((a, t) => a + (t.numero_fin - t.numero_inicio + 1), 0);
+  const accesoUsuario = vendedor.usuario_id
+    ? await prisma.usuarios.findUnique({ where: { id: vendedor.usuario_id }, select: { correo: true } })
+    : null;
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <Link href="/app/vendedores" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a vendedores</Link>
       <div className="mt-2 flex items-center gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="vendedores" /></span>
@@ -54,22 +68,93 @@ export default async function VendedorDetalle({
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {vePii ? `${vendedor.documento} · ${vendedor.telefono}` : "datos protegidos"} · {Number(vendedor.pct_comision.toString())}% comisión · {vendedor.cupo_max ? `${asignadas}/${vendedor.cupo_max}` : asignadas} boletas
       </p>
+      <p className="mt-2">
+        {vendedor.sedes ? (
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">Sede: {vendedor.sedes.nombre}</span>
+        ) : (
+          <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">Todas las sedes</span>
+        )}
+      </p>
 
       {sp.acceso ? <Aviso tipo="ok">Acceso al portal de vendedor creado. Ya puede ingresar.</Aviso> : null}
       {sp.asignadas ? <Aviso tipo="ok">Talonario asignado: {sp.asignadas} boletas.</Aviso> : null}
       {sp.liberadas ? <Aviso tipo="neutral">Talonario cerrado. {sp.liberadas} boletas liberadas.</Aviso> : null}
+      {sp.editado ? <Aviso tipo="ok">Datos del vendedor actualizados.</Aviso> : null}
+      {sp.acceso_actualizado ? <Aviso tipo="ok">Credenciales de acceso actualizadas.</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
+
+      {puedeEditarDatos ? (
+        <details className="mt-4 rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">✏️ Editar vendedor</summary>
+          <form action={editarVendedorAction} className="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
+            <input type="hidden" name="vendedor_id" value={String(vendedor.id)} />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Nombre completo</label>
+              <input name="nombre" defaultValue={vendedor.nombre} required minLength={3} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Documento</label>
+                <input name="documento" defaultValue={vendedor.documento} required minLength={3} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Teléfono</label>
+                <input name="telefono" defaultValue={vendedor.telefono} required minLength={7} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Correo <span className="text-slate-400">(opcional)</span></label>
+              <input name="correo" type="email" defaultValue={vendedor.correo ?? ""} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+            </div>
+            {sedes.length > 0 ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Sede <span className="text-slate-400">(opcional)</span></label>
+                <select name="sede_id" defaultValue={vendedor.sede_id ? String(vendedor.sede_id) : ""} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                  <option value="">Todas las sedes</option>
+                  {sedes.map((s) => <option key={String(s.id)} value={String(s.id)}>{s.nombre}</option>)}
+                </select>
+              </div>
+            ) : null}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Comisión % <span className="text-slate-400">(opcional)</span></label>
+                <input name="pct_comision" type="number" min="0" max="100" step="0.01" defaultValue={vendedor.pct_comision.toString()} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Cupo máx. boletas <span className="text-slate-400">(opcional)</span></label>
+                <input name="cupo_max" type="number" min="1" step="1" defaultValue={vendedor.cupo_max ?? ""} placeholder="Sin límite" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </div>
+            </div>
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar cambios</button>
+          </form>
+        </details>
+      ) : null}
 
       {hasPermission(user, "usuario.crear") ? (
         <div className="mt-6 rounded-xl border border-slate-300 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Acceso al portal de vendedor</h2>
-          {vendedor.usuario_id ? (
-            <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">✓ Este vendedor ya tiene acceso al portal móvil.</p>
+          {vendedor.usuario_id && accesoUsuario ? (
+            <form action={actualizarAccesoVendedorAction} className="mt-2 space-y-3">
+              <input type="hidden" name="vendedor_id" value={String(vendedor.id)} />
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">✓ Este vendedor ya tiene acceso al portal móvil.</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Correo de acceso</label>
+                <input name="correo" type="email" required defaultValue={accesoUsuario.correo} className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Contraseña</label>
+                <PasswordInput name="password" placeholder="••••••••" required={false} autoComplete="new-password" minLength={8} />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Déjala en blanco para mantener la actual. Escribe una nueva (mínimo 8 caracteres) para cambiarla.</p>
+              </div>
+              <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar credenciales</button>
+            </form>
           ) : (
             <form action={crearAccesoVendedorAction} className="mt-2 flex flex-wrap items-end gap-2">
               <input type="hidden" name="vendedor_id" value={String(vendedor.id)} />
               <input name="correo" type="email" required placeholder="correo@empresa.co" className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
-              <input name="password" type="text" required minLength={8} placeholder="contraseña (≥8)" className="w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+              <div className="w-44">
+                <PasswordInput name="password" required minLength={8} placeholder="contraseña (≥8)" autoComplete="new-password" />
+              </div>
               <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Crear acceso</button>
             </form>
           )}
@@ -115,6 +200,7 @@ export default async function VendedorDetalle({
         ) : (
           <FormAsignarTalonario
             vendedorId={String(vendedor.id)}
+            sedeVendedor={vendedor.sedes?.nombre ?? null}
             rifas={rifas.map((r) => ({ id: String(r.id), codigo: r.codigo, nombre: r.nombre, min: r.numero_min, max: r.numero_max }))}
           />
         )

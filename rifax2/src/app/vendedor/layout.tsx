@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth/rbac";
 import { getBranding } from "@/lib/branding";
+import { brandCss } from "@/lib/color";
 import VendedorShell from "./shell";
 import type { NavItem } from "@/components/side-nav";
 
@@ -21,7 +22,7 @@ export default async function VendedorLayout({ children }: { children: React.Rea
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">
-      <style>{`:root{--rifax-accent:${branding.colorPrimario}}`}</style>
+      <style>{brandCss(branding.colorPrimario)}</style>
       <VendedorShell nav={nav} tenant={user.tenant.nombre} userName={user.nombre} logoUrl={branding.logoUrl}>
         {children}
       </VendedorShell>

@@ -1,8 +1,11 @@
-// Restablecimiento de contraseña mediado por administrador (sin correo).
+// Restablecimiento de contraseña: automático por correo (ver
+// `solicitarResetAutomatico`), que reutiliza la misma lógica de generación
+// que antes exponía el panel manual del super-admin (ya retirado).
 import "server-only";
 import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
+import { sendMail, mailPasswordTemporal } from "@/lib/mail";
 
 type Resultado<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -14,26 +17,37 @@ function passwordTemporal(): string {
   return s;
 }
 
-// El usuario registra que olvidó su contraseña (respuesta genérica, no revela
-// si el correo existe).
-export async function registrarSolicitudReset(correo: string): Promise<Resultado> {
+// El usuario solicita recuperar su contraseña: se valida contra el correo
+// registrado y, si corresponde a un usuario o super-admin real, se genera y
+// envía de inmediato una contraseña temporal a ese correo (self-service, sin
+// esperar a que un administrador la procese). La respuesta es siempre
+// genérica para no revelar si el correo existe.
+export async function solicitarResetAutomatico(correo: string): Promise<Resultado> {
   const c = correo.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)) return { ok: false, error: "Ingresa un correo válido." };
-  await prisma.$executeRawUnsafe(`INSERT INTO saas.reset_solicitudes (correo) VALUES ($1::citext)`, c);
+
+  // Queda registrada como atendida: se resuelve en el acto, no requiere
+  // revisión manual (el panel de super-admin sigue disponible como respaldo).
+  await prisma.$executeRawUnsafe(`INSERT INTO saas.reset_solicitudes (correo, atendida) VALUES ($1::citext, true)`, c);
+
+  const res = await restablecerPorCorreo(c);
+  if (res.ok) {
+    // La contraseña ya cambió y las sesiones ya se revocaron (commit hecho en
+    // restablecerPorCorreo); un fallo de envío (SMTP caído, credenciales,
+    // Gmail lo rechaza) no debe reventar la función ni la respuesta genérica
+    // — solo queda sin recibir el correo, y puede volver a solicitarlo.
+    try {
+      await sendMail({ to: c, ...mailPasswordTemporal({ nombre: res.data!.nombre, password: res.data!.password }) });
+    } catch (e) {
+      console.error("[reset-password] fallo al enviar el correo:", e instanceof Error ? e.message : e);
+    }
+  }
   return { ok: true };
 }
 
-export interface SolicitudReset { id: string; correo: string; creadoEn: Date }
-export async function listarSolicitudesReset(): Promise<SolicitudReset[]> {
-  const filas = await prisma.$queryRawUnsafe<{ id: bigint; correo: string; creado_en: Date }[]>(
-    `SELECT id, correo, creado_en FROM saas.reset_solicitudes WHERE atendida = false ORDER BY creado_en DESC LIMIT 100`,
-  );
-  return filas.map((f) => ({ id: String(f.id), correo: f.correo, creadoEn: f.creado_en }));
-}
-
-// Super-admin: restablece por correo, ya sea un usuario de tenant o un
-// super-admin de plataforma. Devuelve la contraseña temporal (mostrar una vez).
-export async function restablecerPorCorreo(correo: string): Promise<Resultado<{ password: string; quien: string }>> {
+// Restablece por correo, ya sea un usuario de tenant o un super-admin de
+// plataforma. Usada internamente por `solicitarResetAutomatico`.
+async function restablecerPorCorreo(correo: string): Promise<Resultado<{ password: string; quien: string; nombre: string }>> {
   const c = correo.trim();
   if (!c) return { ok: false, error: "Indica el correo." };
   const nueva = passwordTemporal();
@@ -48,14 +62,14 @@ export async function restablecerPorCorreo(correo: string): Promise<Resultado<{ 
       await tx.sesiones.updateMany({ where: { usuario_id: usuario.id, revocada: false }, data: { revocada: true } });
       await tx.$executeRawUnsafe(`UPDATE saas.reset_solicitudes SET atendida = true WHERE correo = $1::citext`, c);
     });
-    return { ok: true, data: { password: nueva, quien: `${usuario.nombre} (usuario)` } };
+    return { ok: true, data: { password: nueva, quien: `${usuario.nombre} (usuario)`, nombre: usuario.nombre } };
   }
 
   const admin = await prisma.plataforma_admins.findUnique({ where: { correo: c }, select: { id: true, nombre: true } });
   if (admin) {
     await prisma.plataforma_admins.update({ where: { id: admin.id }, data: { password_hash: hash } });
     await prisma.$executeRawUnsafe(`UPDATE saas.reset_solicitudes SET atendida = true WHERE correo = $1::citext`, c);
-    return { ok: true, data: { password: nueva, quien: `${admin.nombre} (super-admin)` } };
+    return { ok: true, data: { password: nueva, quien: `${admin.nombre} (super-admin)`, nombre: admin.nombre } };
   }
 
   return { ok: false, error: "No existe un usuario con ese correo." };

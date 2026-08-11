@@ -21,6 +21,20 @@ export const crearRifaSchema = z.object({
   compartida: z.coerce.boolean().optional().default(false),
 });
 
+// Edición posterior a la creación: no incluye sede_id, numero_digitos ni
+// compartida (afectan el rango/generación de boletas ya creadas; cambiarlos
+// requeriría un flujo aparte, no una simple edición de datos).
+export const editarRifaSchema = z.object({
+  nombre: z.string().min(3, "El nombre debe tener al menos 3 caracteres."),
+  descripcion: z.string().optional(),
+  loteria: z.string().optional(),
+  precio_boleta: z.coerce.number().positive("El precio debe ser mayor que 0."),
+  fecha_apertura: z.string().min(1, "Indica la fecha de apertura."),
+  fecha_cierre_ventas: z.string().min(1, "Indica el cierre de ventas."),
+  fecha_sorteo: z.string().min(1, "Indica la fecha del sorteo."),
+  tasa_derechos: z.coerce.number().min(0).max(1).optional(),
+});
+
 /** Sedes que un usuario puede operar: la suya si está acotado, o todas las activas. */
 export async function sedesOperables(tenantId: bigint, sedeId: bigint | null) {
   return prisma.sedes.findMany({
@@ -131,6 +145,12 @@ export async function asignarBoletasSede(
 ): Promise<{ ok: true; data: { asignadas: number } } | { ok: false; error: string }> {
   const rifa = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { numero_min: true, numero_max: true, codigo: true } });
   if (!rifa) return { ok: false, error: "Rifa no encontrada." };
+  // boletas.sede_id solo tiene sentido en una rifa compartida; en una rifa normal
+  // la sede la define la propia rifa y marcar las boletas dejaría dos fuentes de
+  // verdad en conflicto (crearVenta y los traspasos leen COALESCE(b.sede_id, r.sede_id)).
+  if (!(await esCompartida(tenantId, rifaId))) {
+    return { ok: false, error: "Esta rifa no es compartida: sus boletas pertenecen a la sede de la rifa." };
+  }
   const sede = await prisma.sedes.findFirst({ where: { id: sedeId, tenant_id: tenantId }, select: { nombre: true } });
   if (!sede) return { ok: false, error: "Sede inválida." };
 
@@ -183,11 +203,15 @@ export async function asignarBoletasSede(
 // Libera (des-asigna) las boletas DISPONIBLES de una sede (no toca las vendidas).
 export async function liberarBoletasSede(tenantId: bigint, rifaId: bigint, sedeId: bigint, actorId: bigint): Promise<{ ok: true; data: { liberadas: number } } | { ok: false; error: string }> {
   try {
-    const n = await prisma.$executeRawUnsafe(
-      `UPDATE saas.boletas SET sede_id=NULL WHERE tenant_id=$1::bigint AND rifa_id=$2::bigint AND sede_id=$3::bigint AND estado='disponible' AND talonario_id IS NULL`,
-      tenantId, rifaId, sedeId,
-    );
-    return { ok: true, data: { liberadas: typeof n === "number" ? n : 0 } };
+    return await prisma.$transaction(async (tx) => {
+      const n = await tx.$executeRawUnsafe(
+        `UPDATE saas.boletas SET sede_id=NULL WHERE tenant_id=$1::bigint AND rifa_id=$2::bigint AND sede_id=$3::bigint AND estado='disponible' AND talonario_id IS NULL`,
+        tenantId, rifaId, sedeId,
+      );
+      const liberadas = typeof n === "number" ? n : 0;
+      await auditar(tx, { tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId, despues: { compartida_liberar: String(sedeId), cantidad: liberadas } });
+      return { ok: true as const, data: { liberadas } };
+    });
   } catch (e) {
     return { ok: false, error: mensajeError(e, "Error al liberar boletas.") };
   }
@@ -371,14 +395,16 @@ export async function crearRifa(
   }
   const d = parsed.data;
 
-  // La sede debe pertenecer al tenant y estar permitida para el usuario.
+  // Si el usuario está acotado a una sede, la rifa solo puede crearse para
+  // esa sede (comprobación aparte: un `id` duplicado en el mismo objeto
+  // `where` haría que la segunda clave silenciosamente sobrescribiera a la
+  // primera, dejando pasar cualquier sede_id que llegara en el formulario).
+  if (sedeIdUsuario && d.sede_id !== sedeIdUsuario) {
+    return { ok: false as const, error: "Sede inválida o no permitida." };
+  }
+  // La sede debe pertenecer al tenant y estar activa.
   const sede = await prisma.sedes.findFirst({
-    where: {
-      id: d.sede_id,
-      tenant_id: tenantId,
-      estado: "activa",
-      ...(sedeIdUsuario ? { id: sedeIdUsuario } : {}),
-    },
+    where: { id: d.sede_id, tenant_id: tenantId, estado: "activa" },
   });
   if (!sede) return { ok: false as const, error: "Sede inválida o no permitida." };
 
@@ -430,6 +456,49 @@ export async function crearRifa(
   }, { maxWait: 15_000, timeout: 30_000 });
 
   return { ok: true as const, rifa };
+}
+
+export async function editarRifa(tenantId: bigint, rifaId: bigint, input: unknown, actorId: bigint) {
+  const parsed = editarRifaSchema.safeParse(input);
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos." };
+  const d = parsed.data;
+
+  const cierre = new Date(d.fecha_cierre_ventas);
+  const sorteo = new Date(d.fecha_sorteo);
+  if (cierre > sorteo) return { ok: false as const, error: "El cierre de ventas debe ser anterior o igual al sorteo." };
+
+  const actual = await prisma.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId } });
+  if (!actual) return { ok: false as const, error: "Rifa no encontrada." };
+  if (["sorteada", "liquidada", "archivada"].includes(actual.estado)) {
+    return { ok: false as const, error: `No se puede editar una rifa '${actual.estado}'.` };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.rifas.update({
+        where: { id: rifaId },
+        data: {
+          nombre: d.nombre,
+          descripcion: d.descripcion || null,
+          loteria: d.loteria || null,
+          precio_boleta: d.precio_boleta,
+          fecha_apertura: new Date(d.fecha_apertura),
+          fecha_cierre_ventas: cierre,
+          fecha_sorteo: sorteo,
+          tasa_derechos: d.tasa_derechos ?? Number(actual.tasa_derechos),
+          actualizado_en: new Date(),
+        },
+      });
+      await auditar(tx, {
+        tenantId, actorId, accion: "rifa.editar", entidadTipo: "rifa", entidadId: rifaId,
+        antes: { nombre: actual.nombre, precio_boleta: actual.precio_boleta.toString() },
+        despues: { nombre: d.nombre, precio_boleta: d.precio_boleta },
+      });
+    });
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: mensajeError(e, "Error al editar la rifa.") };
+  }
 }
 
 export async function publicarRifa(tenantId: bigint, rifaId: bigint, actorId: bigint) {

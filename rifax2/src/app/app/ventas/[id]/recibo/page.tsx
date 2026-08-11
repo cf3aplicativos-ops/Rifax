@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { getBranding } from "@/lib/branding";
 import { logoRifa } from "@/lib/rifas";
+import { ventaEnAlcance } from "@/lib/ventas";
 import { money, fechaHora } from "@/lib/format";
 import PrintButton from "@/components/PrintButton";
 
@@ -29,6 +30,8 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
     getBranding(user.tenant.id),
   ]);
   if (!venta) notFound();
+  // Un vendedor solo ve sus ventas; un usuario de sede, solo las de su sede.
+  if (!(await ventaEnAlcance(user, ventaId))) notFound();
   // Logo propio de la rifa; si no tiene, se usa el de la empresa.
   const rifaLogo = (await logoRifa(user.tenant.id, venta.rifa_id)) ?? branding.logoUrl;
 

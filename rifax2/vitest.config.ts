@@ -10,6 +10,10 @@ export default defineConfig({
     testTimeout: 60_000,
     hookTimeout: 120_000,
     include: ["test/**/*.test.ts"],
+    // La suite funcional crea y purga una empresa real en Neon; corre aparte
+    // vía `npm run test:functional` (vitest.functional.config.ts), no en
+    // cada `npm test` normal.
+    exclude: ["**/node_modules/**", "test/functional/**"],
   },
   resolve: {
     alias: {

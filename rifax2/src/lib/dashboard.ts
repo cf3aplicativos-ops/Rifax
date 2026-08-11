@@ -19,7 +19,8 @@ export async function estadoSedes(tenantId: bigint): Promise<EstadoSede[]> {
     `SELECT s.id, s.nombre, s.estado,
        (SELECT COUNT(*) FROM saas.rifas r WHERE r.sede_id = s.id AND r.estado = 'activa') AS rifas_activas,
        (SELECT COUNT(*) FROM saas.ventas v WHERE v.sede_id = s.id AND v.estado <> 'anulada') AS ventas,
-       COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id WHERE v.sede_id = s.id), 0)::text AS recaudado,
+       COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id
+                  WHERE v.sede_id = s.id AND v.estado <> 'anulada'), 0)::text AS recaudado,
        COALESCE((SELECT SUM(v.saldo) FROM saas.ventas v WHERE v.sede_id = s.id AND v.estado IN ('pendiente_pago','parcial')), 0)::text AS cartera
      FROM saas.sedes s
      WHERE s.tenant_id = $1::bigint
@@ -55,14 +56,25 @@ export interface TopVendedor {
 }
 
 export async function topVendedores(tenantId: bigint, sedeId: bigint, limite = 10): Promise<TopVendedor[]> {
+  // El ORDER BY va sobre la columna NUMÉRICA del CTE (`recaudado_num`), no sobre
+  // el alias de salida: ordenar por el texto comparaba '9000' > '20000'
+  // lexicográficamente y devolvía un "top" incorrecto, además de recortar mal el
+  // LIMIT. Ojo con el nombre: en ORDER BY un identificador simple resuelve
+  // primero contra los alias de SELECT, así que la columna numérica debe
+  // llamarse distinto del alias de salida.
   const filas = await prisma.$queryRawUnsafe<{ id: bigint; nombre: string; pct: string; ventas: bigint; recaudado: string }[]>(
-    `SELECT ve.id, ve.nombre, ve.pct_comision::text AS pct,
-       (SELECT COUNT(*) FROM saas.ventas v WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint AND v.estado <> 'anulada') AS ventas,
-       COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint), 0)::text AS recaudado
-     FROM saas.vendedores ve
-     WHERE ve.tenant_id = $1::bigint
-     ORDER BY recaudado DESC, ventas DESC
-     LIMIT $3::int`,
+    `WITH base AS (
+       SELECT ve.id, ve.nombre, ve.pct_comision AS pct_num,
+         (SELECT COUNT(*) FROM saas.ventas v WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint AND v.estado <> 'anulada') AS ventas_num,
+         COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id
+                    WHERE v.vendedor_id = ve.id AND v.sede_id = $2::bigint AND v.estado <> 'anulada'), 0) AS recaudado_num
+       FROM saas.vendedores ve
+       WHERE ve.tenant_id = $1::bigint
+     )
+     SELECT id, nombre, pct_num::text AS pct, ventas_num AS ventas, recaudado_num::text AS recaudado
+       FROM base
+      ORDER BY recaudado_num DESC, ventas_num DESC
+      LIMIT $3::int`,
     tenantId, sedeId, limite,
   );
   return filas
@@ -72,14 +84,20 @@ export async function topVendedores(tenantId: bigint, sedeId: bigint, limite = 1
 
 // Top de vendedores del tenant (todas las sedes) por recaudo y nº de ventas.
 export async function topVendedoresTenant(tenantId: bigint, limite = 10): Promise<TopVendedor[]> {
+  // Mismo criterio que topVendedores: ordenar por las columnas numéricas del CTE.
   const filas = await prisma.$queryRawUnsafe<{ id: bigint; nombre: string; pct: string; ventas: bigint; recaudado: string }[]>(
-    `SELECT ve.id, ve.nombre, ve.pct_comision::text AS pct,
-       (SELECT COUNT(*) FROM saas.ventas v WHERE v.vendedor_id = ve.id AND v.estado <> 'anulada') AS ventas,
-       COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id WHERE v.vendedor_id = ve.id), 0)::text AS recaudado
-     FROM saas.vendedores ve
-     WHERE ve.tenant_id = $1::bigint
-     ORDER BY recaudado DESC, ventas DESC
-     LIMIT $2::int`,
+    `WITH base AS (
+       SELECT ve.id, ve.nombre, ve.pct_comision AS pct_num,
+         (SELECT COUNT(*) FROM saas.ventas v WHERE v.vendedor_id = ve.id AND v.estado <> 'anulada') AS ventas_num,
+         COALESCE((SELECT SUM(a.monto) FROM saas.abonos a JOIN saas.ventas v ON v.id = a.venta_id
+                    WHERE v.vendedor_id = ve.id AND v.estado <> 'anulada'), 0) AS recaudado_num
+       FROM saas.vendedores ve
+       WHERE ve.tenant_id = $1::bigint
+     )
+     SELECT id, nombre, pct_num::text AS pct, ventas_num AS ventas, recaudado_num::text AS recaudado
+       FROM base
+      ORDER BY recaudado_num DESC, ventas_num DESC
+      LIMIT $2::int`,
     tenantId, limite,
   );
   return filas

@@ -16,7 +16,7 @@ export default async function ImportarPage({ params }: { params: Promise<{ id: s
   if (!rifa) notFound();
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <Link href={`/app/rifas/${rifa.id}`} className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a la rifa</Link>
       <PageTitle icon="rifas" className="mt-2">Carga masiva · {rifa.codigo}</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

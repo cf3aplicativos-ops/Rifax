@@ -20,7 +20,10 @@ export default async function CarruselPage({
     <div>
       <Link href="/panel" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a empresas</Link>
       <PageTitle icon="empresas" className="mt-2">Apariencia</PageTitle>
-      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Fondo de la pantalla de inicio de sesión y carrusel de fotos de la landing.</p>
+      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        Dos configuraciones independientes: el fondo de la pantalla donde los usuarios ingresan su correo y
+        contraseña, y el carrusel de fotos de la página pública de inicio (landing).
+      </p>
 
       {sp.creado ? <Aviso tipo="ok">Slide agregado.</Aviso> : null}
       {sp.eliminado ? <Aviso tipo="ok">Slide eliminado.</Aviso> : null}
@@ -30,8 +33,13 @@ export default async function CarruselPage({
 
       {/* Fondo de la pantalla de inicio de sesión (#1g) */}
       <form action={guardarLoginFondoAction} className="mt-6 rounded-2xl border-2 border-amber-300 bg-white p-6 dark:border-amber-800/60 dark:bg-slate-900">
-        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white"><span>🖼️</span> Fondo de la pantalla de inicio de sesión</h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Se ajusta a la pantalla en uso con un degradado para mantener el formulario legible.</p>
+        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white"><span>🖼️</span> Fondo de la pantalla de inicio de sesión (login)</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Es la pantalla donde los usuarios de las empresas y los vendedores ingresan su correo y contraseña
+          (<code className="rounded bg-slate-100 px-1 py-0.5 dark:bg-slate-800">/login</code>) — <strong>no</strong>{" "}
+          la página pública de inicio (landing). Se ajusta a la pantalla en uso con un degradado para mantener el
+          formulario legible.
+        </p>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           {loginFondo ? (
             <div className="relative h-20 w-32 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-700">
@@ -48,7 +56,7 @@ export default async function CarruselPage({
 
       {/* Alta de slide con imagen */}
       <form action={crearSlideAction} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
-        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nueva foto del carrusel</h2>
+        <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Nueva foto del carrusel de la página pública de inicio (landing)</h2>
         <div>
           <label className="mb-1 block text-xs text-slate-500 dark:text-slate-400">Imagen (PNG, JPG, WEBP o SVG · máx. 2 MB)</label>
           <input name="imagen" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-indigo-700 dark:text-slate-300" />

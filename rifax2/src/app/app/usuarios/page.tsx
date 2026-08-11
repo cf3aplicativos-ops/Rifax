@@ -39,7 +39,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
       <div className="mt-6 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-            <tr><th className="px-4 py-3 font-medium">Usuario</th><th className="px-4 py-3 font-medium">Sede</th><th className="px-4 py-3 font-medium">Rol</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Último ingreso</th><th className="px-4 py-3 font-medium">Contraseña</th></tr>
+            <tr><th className="px-4 py-3 font-medium">Usuario</th><th className="px-4 py-3 font-medium">Sede</th><th className="px-4 py-3 font-medium">Rol</th><th className="px-4 py-3 font-medium">Estado</th><th className="px-4 py-3 font-medium">Último ingreso</th><th className="px-4 py-3 font-medium">Contraseña</th><th className="px-4 py-3 font-medium"></th></tr>
           </thead>
           <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {usuarios.map((u) => {
@@ -58,7 +58,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
                         <select name="rol_id" defaultValue={String(u.rol_id)} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
                           {roles.map((r) => <option key={String(r.id)} value={String(r.id)}>{r.nombre}</option>)}
                         </select>
-                        <button type="submit" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
+                        <button type="submit" aria-label="Guardar rol" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
                       </form>
                     ) : <span className="text-slate-700 dark:text-slate-300">{u.roles.nombre}</span>}
                   </td>
@@ -69,7 +69,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
                         <select name="estado" defaultValue={u.estado} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
                           <option value="activo">activo</option><option value="inactivo">inactivo</option><option value="bloqueado">bloqueado</option>
                         </select>
-                        <button type="submit" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
+                        <button type="submit" aria-label="Guardar estado" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
                       </form>
                     ) : <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${estadoClase[u.estado] ?? estadoClase.inactivo}`}>{u.estado}</span>}
                   </td>
@@ -81,6 +81,11 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
                         <button type="submit" className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Restablecer</button>
                       </form>
                     ) : <span className="text-xs text-slate-400">—</span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    {puedeEditar ? (
+                      <Link href={`/app/usuarios/${String(u.id)}`} className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Editar</Link>
+                    ) : null}
                   </td>
                 </tr>
               );

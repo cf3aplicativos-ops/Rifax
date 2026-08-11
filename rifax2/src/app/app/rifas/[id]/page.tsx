@@ -5,7 +5,7 @@ import { obtenerRifa, imagenesRifa, esCompartida, distribucionPorSede, boletasDi
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
-import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction } from "./actions";
+import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction, editarRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
 import PremiosAnticipados, { type PA } from "./premios-anticipados";
 import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
@@ -13,13 +13,14 @@ import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
 export const dynamic = "force-dynamic";
 const entregaOpc = ["pendiente", "contactado", "entregado", "no_reclamado"];
 const inp = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
+const datetimeLocal = (d: Date) => d.toISOString().slice(0, 16);
 
 export default async function RifaDetalle({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; editada?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -60,7 +61,7 @@ export default async function RifaDetalle({
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <Link href="/app/rifas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a rifas</Link>
       <h1 className="mt-2 flex items-center gap-3 text-2xl font-bold text-slate-900 dark:text-white">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300"><Icon name="rifas" /></span>
@@ -81,6 +82,62 @@ export default async function RifaDetalle({
         </Link>
       ) : null}
 
+      {puedeEditar && !["sorteada", "liquidada", "archivada"].includes(rifa.estado) ? (
+        <details className="mt-4 rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-slate-700 dark:text-slate-300">✏️ Editar datos de la rifa</summary>
+          <form action={editarRifaAction} className="space-y-3 border-t border-slate-200 p-4 dark:border-slate-800">
+            <input type="hidden" name="rifa_id" value={String(rifa.id)} />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Nombre</label>
+                <input name="nombre" defaultValue={rifa.nombre} required minLength={3} className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Lotería (premio mayor)</label>
+                <select name="loteria" defaultValue={rifa.loteria ?? ""} className={`w-full ${inp}`}>
+                  <option value="">— Sin definir —</option>
+                  {loterias.map((l) => <option key={l.valor} value={l.valor}>{l.etiqueta}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Descripción</label>
+              <textarea name="descripcion" defaultValue={rifa.descripcion ?? ""} rows={2} className={`w-full ${inp}`} />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Precio por boleta (COP)</label>
+                <input name="precio_boleta" type="number" min="1" step="1" defaultValue={rifa.precio_boleta.toString()} required className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Tasa de derechos</label>
+                <input name="tasa_derechos" type="number" min="0" max="1" step="0.0001" defaultValue={rifa.tasa_derechos.toString()} className={`w-full ${inp}`} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Apertura</label>
+                <input name="fecha_apertura" type="datetime-local" defaultValue={datetimeLocal(rifa.fecha_apertura)} required className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Cierre ventas</label>
+                <input name="fecha_cierre_ventas" type="datetime-local" defaultValue={datetimeLocal(rifa.fecha_cierre_ventas)} required className={`w-full ${inp}`} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">Sorteo</label>
+                <input name="fecha_sorteo" type="datetime-local" defaultValue={datetimeLocal(rifa.fecha_sorteo)} required className={`w-full ${inp}`} />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              La sede, la cantidad de dígitos y si es compartida no se pueden cambiar aquí porque ya determinaron
+              las boletas generadas.
+            </p>
+            <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar cambios</button>
+          </form>
+        </details>
+      ) : null}
+
+      {sp.editada ? <Aviso tipo="ok">Datos de la rifa actualizados.</Aviso> : null}
       {sp.premio ? <Aviso tipo="ok">Premio agregado.</Aviso> : null}
       {sp.anticipado ? <Aviso tipo="ok">Premio anticipado programado.</Aviso> : null}
       {sp.sorteo ? <Aviso tipo="ok">Sorteo ejecutado. Número ganador: <strong>{sp.sorteo}</strong>. {sp.ganador === "1" ? "La boleta estaba vendida y pagada." : "La boleta no tenía comprador pagado."}</Aviso> : null}
@@ -232,7 +289,7 @@ export default async function RifaDetalle({
                         <select name="estado" defaultValue={ganador.estado_entrega} className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
                           {entregaOpc.map((e) => <option key={e} value={e}>{e.replace("_", " ")}</option>)}
                         </select>
-                        <button type="submit" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
+                        <button type="submit" aria-label="Guardar estado de entrega" className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800">✓</button>
                       </form>
                     ) : null}
                   </div>

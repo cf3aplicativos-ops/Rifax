@@ -8,6 +8,63 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
 import { mensajeError } from "@/lib/errores";
+import { vendedorIdDeUsuario } from "@/lib/portal-vendedor";
+import type { TenantUser } from "@/lib/auth/session";
+
+// ---------------------------------------------------------------------------
+// Alcance por objeto (autorización a nivel de registro, no solo de tenant).
+// Las listas ya se acotan por sede/vendedor; estas guardas replican ese mismo
+// criterio en el detalle y en las acciones que reciben un id por formulario,
+// para que nadie llegue a una venta ajena escribiendo su id en la URL.
+// ---------------------------------------------------------------------------
+
+/** ¿La venta cae dentro del alcance del usuario en sesión? */
+export async function ventaEnAlcance(user: TenantUser, ventaId: bigint): Promise<boolean> {
+  const v = await prisma.ventas.findFirst({
+    where: { id: ventaId, tenant_id: user.tenant.id },
+    select: { sede_id: true, vendedor_id: true },
+  });
+  if (!v) return false;
+  // Usuario acotado a una sede: solo las ventas de esa sede.
+  if (user.sede && v.sede_id !== user.sede.id) return false;
+  // Vendedor: solo las ventas atribuidas a él.
+  if (user.rol === "vendedor") {
+    const vendedorId = await vendedorIdDeUsuario(user.tenant.id, user.id);
+    if (!vendedorId || v.vendedor_id !== vendedorId) return false;
+  }
+  return true;
+}
+
+/** ¿El abono pertenece a una venta dentro del alcance del usuario? */
+export async function abonoEnAlcance(user: TenantUser, abonoId: bigint): Promise<boolean> {
+  const a = await prisma.abonos.findFirst({
+    where: { id: abonoId, tenant_id: user.tenant.id },
+    select: { venta_id: true },
+  });
+  if (!a) return false;
+  return ventaEnAlcance(user, a.venta_id);
+}
+
+/** ¿El cliente tiene al menos una venta dentro del alcance del usuario? */
+export async function clienteEnAlcance(user: TenantUser, clienteId: bigint): Promise<boolean> {
+  const vendedorId = user.rol === "vendedor" ? await vendedorIdDeUsuario(user.tenant.id, user.id) : null;
+  if (user.rol === "vendedor" && !vendedorId) return false;
+  if (!user.sede && !vendedorId) {
+    // Sin restricción de sede ni de vendedor: basta con que sea de su empresa.
+    const c = await prisma.clientes.findFirst({ where: { id: clienteId, tenant_id: user.tenant.id }, select: { id: true } });
+    return !!c;
+  }
+  const v = await prisma.ventas.findFirst({
+    where: {
+      tenant_id: user.tenant.id,
+      cliente_id: clienteId,
+      ...(user.sede ? { sede_id: user.sede.id } : {}),
+      ...(vendedorId ? { vendedor_id: vendedorId } : {}),
+    },
+    select: { id: true },
+  });
+  return !!v;
+}
 
 export const crearVentaSchema = z.object({
   rifa_id: z.coerce.bigint(),
@@ -27,11 +84,48 @@ export const crearVentaSchema = z.object({
 type Resultado<T> = { ok: true; data: T } | { ok: false; error: string };
 
 export async function listarVentas(tenantId: bigint, sedeId: bigint | null, vendedorId?: bigint | null) {
-  return prisma.ventas.findMany({
+  const ventas = await prisma.ventas.findMany({
     where: { tenant_id: tenantId, ...(sedeId ? { sede_id: sedeId } : {}), ...(vendedorId ? { vendedor_id: vendedorId } : {}) },
     orderBy: { id: "desc" },
-    include: { clientes: true, rifas: { select: { codigo: true } }, sedes: { select: { nombre: true } } },
+    include: {
+      clientes: true, rifas: { select: { codigo: true } }, sedes: { select: { nombre: true } }, vendedores: { select: { nombre: true } },
+      ventas_boletas: { include: { boletas: { select: { id: true, numero: true } } } },
+    },
     take: 100,
+  });
+
+  // Observaciones de traspaso: si alguna boleta de la venta llegó a manos de
+  // quien la vendió por un traspaso APROBADO, se anota de quién a quién
+  // (mismo criterio que el mensaje "Fue un traspaso al vendedor..." de
+  // buscarBoleta en traspasos.ts, pero aquí también con el nombre de quien
+  // la tenía antes). Una sola consulta batched para todas las boletas
+  // visibles, en vez de una por venta.
+  const boletaIds = ventas.flatMap((v) => v.ventas_boletas.map((vb) => vb.boletas.id));
+  const traspasos = boletaIds.length
+    ? await prisma.$queryRawUnsafe<{ boleta_id: bigint; numero: number; propietario_nombre: string | null; solicitante_nombre: string | null; solicitante_tipo: string }[]>(
+        `SELECT DISTINCT ON (sb.boleta_id) sb.boleta_id, sb.numero,
+                COALESCE(vp.nombre, sp.nombre) AS propietario_nombre,
+                COALESCE(vs.nombre, ss.nombre) AS solicitante_nombre,
+                sb.solicitante_tipo
+           FROM saas.solicitudes_boleta sb
+           LEFT JOIN saas.vendedores vp ON vp.id = sb.propietario_vendedor_id
+           LEFT JOIN saas.sedes sp ON sp.id = sb.propietario_sede_id
+           LEFT JOIN saas.vendedores vs ON vs.id = sb.solicitante_vendedor_id
+           LEFT JOIN saas.sedes ss ON ss.id = sb.solicitante_sede_id
+          WHERE sb.boleta_id = ANY($1::bigint[]) AND sb.estado = 'aprobada'
+          ORDER BY sb.boleta_id, sb.resuelto_en DESC`,
+        boletaIds,
+      )
+    : [];
+  const traspasoPorBoleta = new Map(traspasos.map((t) => [String(t.boleta_id), t]));
+
+  return ventas.map((v) => {
+    const boletas = v.ventas_boletas.map((vb) => vb.boletas.numero).sort((a, b) => a - b);
+    const notas = v.ventas_boletas
+      .map((vb) => traspasoPorBoleta.get(String(vb.boletas.id)))
+      .filter((t): t is NonNullable<typeof t> => t !== undefined && t.solicitante_tipo === "vendedor")
+      .map((t) => `Boleta #${t.numero}: traspasada de ${t.propietario_nombre ?? "—"} a ${t.solicitante_nombre ?? "—"}.`);
+    return { ...v, boletas, observaciones: notas.length ? notas.join(" ") : null };
   });
 }
 
@@ -40,6 +134,8 @@ export async function obtenerVenta(tenantId: bigint, id: bigint) {
     where: { id, tenant_id: tenantId },
     include: {
       clientes: true,
+      sedes: { select: { nombre: true } },
+      vendedores: { select: { nombre: true } },
       rifas: { select: { codigo: true, nombre: true } },
       abonos: { orderBy: { id: "asc" } },
       ventas_boletas: { include: { boletas: true } },
@@ -96,6 +192,13 @@ export async function crearVenta(
       const rifa = await tx.rifas.findFirst({ where: { id: d.rifa_id, tenant_id: tenantId } });
       if (!rifa) return { ok: false as const, error: "Rifa no encontrada." };
       if (rifa.estado !== "activa") return { ok: false as const, error: `La rifa no está activa (estado: ${rifa.estado}).` };
+      // El vendedor llega por formulario y la FK apunta a vendedores(id) sin
+      // restricción de tenant: hay que verificar que sea de esta empresa, o una
+      // venta podría atribuirse (y comisionar) a un vendedor de otra.
+      if (d.vendedor_id) {
+        const ven = await tx.vendedores.findFirst({ where: { id: d.vendedor_id, tenant_id: tenantId }, select: { id: true } });
+        if (!ven) return { ok: false as const, error: "Vendedor inválido." };
+      }
       const compRows = await tx.$queryRawUnsafe<{ compartida: boolean }[]>(`SELECT compartida FROM saas.rifas WHERE id=$1::bigint`, d.rifa_id);
       const esCompartidaRifa = compRows[0]?.compartida ?? false;
 
@@ -204,15 +307,23 @@ export async function registrarAbono(
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const filas = await tx.$queryRawUnsafe<{ id: bigint; saldo: string; estado: string }[]>(
-        `SELECT id, saldo::text AS saldo, estado FROM saas.ventas WHERE id=$1::bigint AND tenant_id=$2::bigint FOR UPDATE`,
+      const filas = await tx.$queryRawUnsafe<{ id: bigint; saldo: string; estado: string; excede: boolean }[]>(
+        `SELECT id, saldo::text AS saldo, estado, (saldo < $3::numeric) AS excede
+           FROM saas.ventas WHERE id=$1::bigint AND tenant_id=$2::bigint FOR UPDATE`,
         ventaId,
         tenantId,
+        montoTexto,
       );
       const venta = filas[0];
       if (!venta) return { ok: false as const, error: "Venta no encontrada." };
       if (venta.estado === "anulada" || venta.estado === "pagada") {
         return { ok: false as const, error: `La venta está '${venta.estado}'.` };
+      }
+      // Sin esta guarda, GREATEST(saldo - monto, 0) absorbía el exceso: la venta
+      // quedaba pagada pero la suma de abonos superaba el total, descuadrando el
+      // recaudo, las comisiones y cualquier devolución posterior.
+      if (venta.excede) {
+        return { ok: false as const, error: `El abono excede el saldo pendiente (${venta.saldo}).` };
       }
 
       await tx.$executeRawUnsafe(
@@ -228,10 +339,11 @@ export async function registrarAbono(
         `UPDATE saas.ventas
             SET saldo  = GREATEST(saldo - $2::numeric, 0),
                 estado = CASE WHEN saldo - $2::numeric <= 0 THEN 'pagada' ELSE 'parcial' END
-          WHERE id = $1::bigint
+          WHERE id = $1::bigint AND tenant_id = $3::bigint
         RETURNING saldo::text AS saldo, estado`,
         ventaId,
         montoTexto,
+        tenantId,
       );
       const nuevoSaldo = upd[0].saldo;
       const nuevoEstado = upd[0].estado;
@@ -306,6 +418,17 @@ export async function editarAbono(
       const a = filas[0];
       if (!a) return { ok: false as const, error: "Abono no encontrado." };
       if (a.venta_estado === "anulada") return { ok: false as const, error: "La venta está anulada." };
+      // Igual que al registrar: la suma de abonos no puede superar el total.
+      const tope = await tx.$queryRawUnsafe<{ excede: boolean; maximo: string }[]>(
+        `SELECT (COALESCE(SUM(o.monto),0) + $3::numeric > v.total) AS excede,
+                (v.total - COALESCE(SUM(o.monto),0))::text AS maximo
+           FROM saas.ventas v
+           LEFT JOIN saas.abonos o ON o.venta_id = v.id AND o.id <> $2::bigint
+          WHERE v.id = $1::bigint
+          GROUP BY v.total`,
+        a.venta_id, abonoId, String(datos.monto),
+      );
+      if (tope[0]?.excede) return { ok: false as const, error: `El abono excede el total de la venta (máximo ${tope[0].maximo}).` };
       const origenOk = ["pasarela", "comprobante", "efectivo", "ajuste"].includes(String(datos.origen)) ? String(datos.origen) : "efectivo";
       await tx.$executeRawUnsafe(`UPDATE saas.abonos SET monto=$2::numeric, origen=$3::text WHERE id=$1::bigint`, abonoId, String(datos.monto), origenOk);
       const estado = await recalcularVenta(tx, a.venta_id);
@@ -362,7 +485,10 @@ export async function anularVenta(
         ventaId,
       );
       await tx.ventas_boletas.deleteMany({ where: { venta_id: ventaId } });
-      await tx.ventas.update({ where: { id: ventaId }, data: { estado: "anulada" } });
+      // El saldo se deja en 0: una venta anulada ya no es cartera. Antes conservaba
+      // el saldo original y, aunque los listados filtran por estado, cualquier
+      // SUM(saldo) sin ese filtro (o un cambio de estado posterior) lo reactivaba.
+      await tx.ventas.update({ where: { id: ventaId }, data: { estado: "anulada", saldo: 0 } });
       await auditar(tx, {
         tenantId,
         actorId,

@@ -2,6 +2,8 @@
 
 import SideNav, { type NavItem } from "@/components/side-nav";
 import { Icon } from "@/components/icons";
+import NotificadorTraspasos from "@/components/NotificadorTraspasos";
+import InstalarApp from "@/components/InstalarApp";
 import { logoutUserAction } from "@/app/app/actions";
 
 export default function VendedorShell({
@@ -27,6 +29,8 @@ export default function VendedorShell({
 
   return (
     <SideNav nav={nav} brand={tenant} subtitle="Vendedor" logoUrl={logoUrl} homeHref="/vendedor" footer={footer} mode="hamburger">
+      <NotificadorTraspasos hrefTraspasos="/vendedor/traspasos" />
+      <InstalarApp />
       {children}
     </SideNav>
   );

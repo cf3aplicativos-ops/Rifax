@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { obtenerVenta } from "@/lib/ventas";
+import { obtenerVenta, ventaEnAlcance } from "@/lib/ventas";
 import { estadoCliente } from "@/lib/clientes";
 import { money, fechaHora, estadoVentaClase } from "@/lib/format";
 import { registrarAbonoAction, anularVentaAction } from "../actions";
@@ -30,6 +30,8 @@ export default async function VentaDetalle({
   }
   const venta = await obtenerVenta(user.tenant.id, ventaId);
   if (!venta) notFound();
+  // Un vendedor solo ve sus ventas; un usuario de sede, solo las de su sede.
+  if (!(await ventaEnAlcance(user, ventaId))) notFound();
   const clienteEstado = await estadoCliente(user.tenant.id, venta.cliente_id);
 
   const puedeAbonar = hasPermission(user, "pago.registrar");
@@ -39,7 +41,7 @@ export default async function VentaDetalle({
   const abonado = Number(venta.total.toString()) - Number(venta.saldo.toString());
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <Link href="/app/ventas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a ventas
       </Link>
@@ -75,6 +77,11 @@ export default async function VentaDetalle({
         <Card titulo="Rifa">
           <p className="text-slate-900 dark:text-slate-100">{venta.rifas.codigo}</p>
           <p className="text-sm text-slate-500 dark:text-slate-400">{venta.rifas.nombre}</p>
+          <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Vendedor / Punto de venta</p>
+            <p className="text-slate-900 dark:text-slate-100">{venta.vendedores ? venta.vendedores.nombre : "Punto de venta"}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{venta.sedes.nombre}</p>
+          </div>
         </Card>
       </div>
 

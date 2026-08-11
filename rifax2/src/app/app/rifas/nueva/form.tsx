@@ -16,10 +16,10 @@ export default function FormRifa({ sedes, loterias }: { sedes: { id: string; nom
   const variasSedes = sedes.length > 1;
 
   return (
-    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+    <form action={action} className="mt-6 max-w-2xl space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <label htmlFor="sede_id" className={etiqueta}>{compartida ? "Sede de creación (los números se reparten luego)" : "Sede"}</label>
-        <select id="sede_id" name="sede_id" className={campo}>
+        <select id="sede_id" name="sede_id" autoFocus className={campo}>
           {sedes.map((s) => (
             <option key={s.id} value={s.id}>{s.nombre}</option>
           ))}

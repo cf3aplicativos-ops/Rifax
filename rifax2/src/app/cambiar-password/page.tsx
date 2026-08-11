@@ -24,7 +24,7 @@ export default function CambiarPasswordPage() {
         <form action={action} className="space-y-4 rounded-2xl border border-slate-300 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Contraseña temporal (actual)</label>
-            <PasswordInput name="actual" autoComplete="current-password" />
+            <PasswordInput name="actual" autoComplete="current-password" autoFocus />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">Nueva contraseña</label>

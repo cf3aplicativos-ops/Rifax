@@ -9,7 +9,7 @@ const campo =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100";
 const etiqueta = "mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300";
 
-interface Rol { id: string; nombre: string; permisos: string[] }
+interface Rol { id: string; nombre: string; descripcion: string | null; permisos: string[] }
 interface Permiso { id: string; codigo: string }
 
 function grupo(codigo: string) {
@@ -59,10 +59,10 @@ export default function FormUsuario({
   );
 
   return (
-    <form action={action} className="mt-6 space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
+    <form action={action} className="mt-6 max-w-2xl space-y-4 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <div>
         <label htmlFor="nombre" className={etiqueta}>Nombre completo</label>
-        <input id="nombre" name="nombre" required minLength={3} className={campo} />
+        <input id="nombre" name="nombre" autoFocus required minLength={3} className={campo} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
@@ -82,7 +82,7 @@ export default function FormUsuario({
         <div>
           <label htmlFor="rol_id" className={etiqueta}>Rol</label>
           <select id="rol_id" name="rol_id" value={rolId} onChange={(e) => cambiarRol(e.target.value)} className={campo}>
-            {roles.map((r) => <option key={r.id} value={r.id}>{r.nombre} ({r.permisos.length} permisos)</option>)}
+            {roles.map((r) => <option key={r.id} value={r.id}>{r.nombre}{r.descripcion ? ` — ${r.descripcion}` : ""} ({r.permisos.length} permisos)</option>)}
           </select>
         </div>
         <div>
@@ -102,13 +102,13 @@ export default function FormUsuario({
         <p className="mb-3 mt-1 text-xs text-slate-500 dark:text-slate-400">
           Se cargan los del rol; marca o desmarca para ajustarlos a este usuario.
         </p>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="space-y-3">
           {grupos.map(([g, lista]) => (
             <div key={g}>
               <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{g}</p>
-              <div className="space-y-1">
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                 {lista.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                  <label key={p.id} className="flex items-center gap-1.5 text-sm text-slate-700 dark:text-slate-300">
                     <input type="checkbox" name="permisos" value={p.id} checked={marcados.has(p.id)} onChange={() => toggle(p.id)} className="rounded" />
                     <span className="font-mono text-xs">{p.codigo}</span>
                   </label>

@@ -99,7 +99,21 @@ export async function buscarBoleta(tenantId: bigint, rifaId: bigint, numero: num
   if (!f) return { ...base, resultado: "no_existe", mensaje: "Ese número no existe en esta rifa." };
 
   if (f.estado === "reservada" || f.estado === "pagada") {
-    return { ...base, boletaId: String(f.id), resultado: "vendida", mensaje: "Esta boleta ya está vendida." };
+    // Si llegó a manos de quien la vendió por un traspaso aprobado, lo indica
+    // (transparencia sobre el origen de la venta para quien la busca después).
+    const traspasoFilas = await prisma.$queryRawUnsafe<{ solicitante_tipo: string; nombre: string | null }[]>(
+      `SELECT sb.solicitante_tipo, vd.nombre
+         FROM saas.solicitudes_boleta sb
+         LEFT JOIN saas.vendedores vd ON vd.id = sb.solicitante_vendedor_id
+        WHERE sb.boleta_id = $1::bigint AND sb.estado = 'aprobada'
+        ORDER BY sb.resuelto_en DESC LIMIT 1`,
+      f.id,
+    );
+    const traspaso = traspasoFilas[0];
+    const mensaje = traspaso && traspaso.solicitante_tipo === "vendedor" && traspaso.nombre
+      ? `Esta boleta ya está vendida. Fue un traspaso al vendedor ${traspaso.nombre}.`
+      : "Esta boleta ya está vendida.";
+    return { ...base, boletaId: String(f.id), resultado: "vendida", mensaje };
   }
   if (f.estado !== "disponible") {
     return { ...base, boletaId: String(f.id), resultado: "no_disponible", mensaje: `Boleta en estado '${f.estado}', no disponible.` };
@@ -335,11 +349,18 @@ export async function resolverSolicitud(
         // Conserva sede_id si la rifa es compartida (sigue siendo inventario de esa sede).
         await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE id=$2::bigint`, tal.id, s.boleta_id);
       } else {
-        // Vuelve al pool general del punto de venta solicitante.
-        await tx.$executeRawUnsafe(
-          `UPDATE saas.boletas SET talonario_id=NULL${compartida ? ", sede_id=$2::bigint" : ""} WHERE id=$1::bigint`,
-          s.boleta_id, s.solicitante_sede_id,
-        );
+        // Vuelve al pool general del punto de venta solicitante. En rifa NO
+        // compartida la boleta no lleva sede propia (la define la rifa), así que
+        // el SQL solo tiene un parámetro: pasar el segundo rompía el bind
+        // ("bind message supplies 2 parameters, but prepared statement requires 1").
+        if (compartida) {
+          await tx.$executeRawUnsafe(
+            `UPDATE saas.boletas SET talonario_id=NULL, sede_id=$2::bigint WHERE id=$1::bigint`,
+            s.boleta_id, s.solicitante_sede_id,
+          );
+        } else {
+          await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=NULL WHERE id=$1::bigint`, s.boleta_id);
+        }
       }
 
       await tx.$executeRawUnsafe(

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
-import { crearVendedor, cambiarEstadoVendedor, asignarTalonario, cerrarTalonario } from "@/lib/vendedores";
-import { crearAccesoVendedor } from "@/lib/portal-vendedor";
+import { crearVendedor, cambiarEstadoVendedor, editarVendedor, asignarTalonario, cerrarTalonario } from "@/lib/vendedores";
+import { crearAccesoVendedor, actualizarAccesoVendedor } from "@/lib/portal-vendedor";
 
 // Expande una lista tipo "7, 15, 42, 100-110" a un arreglo de números.
 function expandirNumeros(texto: string): number[] {
@@ -35,6 +35,21 @@ export async function crearAccesoVendedorAction(formData: FormData): Promise<voi
   redirect(res.ok ? `/app/vendedores/${vendedorId}?acceso=1` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
 }
 
+export async function actualizarAccesoVendedorAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("usuario.crear");
+  const vendedorId = String(formData.get("vendedor_id") ?? "0");
+  const password = String(formData.get("password") ?? "");
+  const res = await actualizarAccesoVendedor(
+    BigInt(vendedorId),
+    user.tenant.id,
+    String(formData.get("correo") ?? ""),
+    password || undefined,
+    user.id,
+  );
+  revalidatePath(`/app/vendedores/${vendedorId}`);
+  redirect(res.ok ? `/app/vendedores/${vendedorId}?acceso_actualizado=1` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
+}
+
 export interface VendedorFormState {
   error?: string;
 }
@@ -61,6 +76,31 @@ export async function crearVendedorAction(_prev: VendedorFormState, formData: Fo
   if (!res.ok) return { error: res.error };
   revalidatePath("/app/vendedores");
   redirect("/app/vendedores?creado=1");
+}
+
+export async function editarVendedorAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("vendedor.editar");
+  const vendedorId = String(formData.get("vendedor_id") ?? "0");
+  const correo = String(formData.get("correo") ?? "").trim();
+  const comision = String(formData.get("pct_comision") ?? "").trim();
+  const cupo = String(formData.get("cupo_max") ?? "").trim();
+  const sede = String(formData.get("sede_id") ?? "").trim();
+  const res = await editarVendedor(
+    BigInt(vendedorId),
+    {
+      ...(sede ? { sede_id: sede } : {}),
+      nombre: String(formData.get("nombre") ?? "").trim(),
+      documento: String(formData.get("documento") ?? "").trim(),
+      telefono: String(formData.get("telefono") ?? "").trim(),
+      ...(correo ? { correo } : {}),
+      ...(comision ? { pct_comision: comision } : {}),
+      ...(cupo ? { cupo_max: cupo } : {}),
+    },
+    user.tenant.id,
+    user.id,
+  );
+  revalidatePath(`/app/vendedores/${vendedorId}`);
+  redirect(res.ok ? `/app/vendedores/${vendedorId}?editado=1` : `/app/vendedores/${vendedorId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function cambiarEstadoVendedorAction(formData: FormData): Promise<void> {

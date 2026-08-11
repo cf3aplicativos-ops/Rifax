@@ -97,39 +97,43 @@ export async function getSession(): Promise<Sesion | null> {
     };
   }
 
-  // Usuario de tenant
+  // Usuario de tenant. Las consultas independientes se lanzan en paralelo
+  // (no una tras otra) para no acumular la latencia de red de cada viaje a
+  // la base de datos en cada navegación.
   if (!claims.sid) return null;
-  const sesion = await prisma.sesiones.findFirst({
-    where: { familia: claims.sid, revocada: false, expira_en: { gt: new Date() } },
-    select: { id: true },
-  });
+  const [sesion, u] = await Promise.all([
+    prisma.sesiones.findFirst({
+      where: { familia: claims.sid, revocada: false, expira_en: { gt: new Date() } },
+      select: { id: true },
+    }),
+    prisma.usuarios.findUnique({
+      where: { uuid: claims.sub },
+      include: {
+        roles: { include: { roles_permisos: { include: { permisos: true } } } },
+        tenants: true,
+        sedes: { select: { id: true, nombre: true } },
+      },
+    }),
+  ]);
   if (!sesion) return null;
-
-  const u = await prisma.usuarios.findUnique({
-    where: { uuid: claims.sub },
-    include: {
-      roles: { include: { roles_permisos: { include: { permisos: true } } } },
-      tenants: true,
-      sedes: { select: { id: true, nombre: true } },
-    },
-  });
   if (!u || u.estado !== "activo") return null;
   // Tenant suspendido/inactivo bloquea a todos sus usuarios.
   if (u.tenants.estado !== "activo") return null;
 
-  // Permisos efectivos: si el usuario tiene overrides propios, priman sobre el rol.
-  const overrides = await prisma.$queryRawUnsafe<{ codigo: string }[]>(
-    `SELECT p.codigo FROM saas.usuario_permisos up JOIN saas.permisos p ON p.id = up.permiso_id WHERE up.usuario_id = $1::bigint`,
-    u.id,
-  );
+  const [overrides, dc] = await Promise.all([
+    // Permisos efectivos: si el usuario tiene overrides propios, priman sobre el rol.
+    prisma.$queryRawUnsafe<{ codigo: string }[]>(
+      `SELECT p.codigo FROM saas.usuario_permisos up JOIN saas.permisos p ON p.id = up.permiso_id WHERE up.usuario_id = $1::bigint`,
+      u.id,
+    ),
+    // ¿Debe cambiar la contraseña temporal? (columna fuera del modelo Prisma)
+    prisma.$queryRawUnsafe<{ debe_cambiar_password: boolean }[]>(
+      `SELECT debe_cambiar_password FROM saas.usuarios WHERE id = $1::bigint`, u.id,
+    ),
+  ]);
   const permisos = overrides.length > 0
     ? overrides.map((o) => o.codigo)
     : u.roles.roles_permisos.map((rp) => rp.permisos.codigo);
-
-  // ¿Debe cambiar la contraseña temporal? (columna fuera del modelo Prisma)
-  const dc = await prisma.$queryRawUnsafe<{ debe_cambiar_password: boolean }[]>(
-    `SELECT debe_cambiar_password FROM saas.usuarios WHERE id = $1::bigint`, u.id,
-  );
 
   return {
     kind: "user",

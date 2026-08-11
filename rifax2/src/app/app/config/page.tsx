@@ -13,7 +13,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
   const [porTipo, branding] = await Promise.all([listarCatalogos(user.tenant.id), getBranding(user.tenant.id)]);
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <PageTitle icon="config">Configuración</PageTitle>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         Personaliza las listas desplegables del aplicativo. Si no agregas opciones, se usan las

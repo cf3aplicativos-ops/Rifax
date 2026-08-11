@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { crearVentaAction, type VentaFormState } from "../actions";
+import { EVENTO_TRASPASO_APROBADO, type DetalleTraspasoAprobado } from "@/components/NotificadorTraspasos";
 
 interface Rifa {
   id: string;
@@ -12,6 +13,7 @@ interface Rifa {
   numeroMax: number;
   sugeridos?: number[];
   disponibles?: number[];
+  boletaImagenUrl?: string | null;
 }
 
 interface EstadoBusqueda {
@@ -43,7 +45,8 @@ export default function FormVenta({
   const [numeros, setNumeros] = useState("");
   const [idem] = useState(() => globalThis.crypto.randomUUID());
 
-  // Búsqueda de boleta por número (única forma de agregarla a la venta).
+  // Búsqueda de boleta por número (junto con el clic/toque en la lista de
+  // disponibles, es la única forma de agregarla a la venta).
   const [numeroBusq, setNumeroBusq] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [resultado, setResultado] = useState<EstadoBusqueda | null>(null);
@@ -94,6 +97,36 @@ export default function FormVenta({
     setNumeroBusq("");
   }
 
+  // Un clic/toque sobre un número de las listas "disponibles" hace la misma
+  // verificación en tiempo real que buscarlo a mano (el estado pudo cambiar
+  // desde que se cargó la página) y, si sigue disponible, lo agrega directo;
+  // si ya no lo está, muestra el mismo resultado que la búsqueda manual.
+  async function seleccionarDisponible(n: number) {
+    if (unicos.includes(n) || buscando) return;
+    setNumeroBusq(String(n));
+    setResultado(null);
+    setMensajeSolicitud(null);
+    setBuscando(true);
+    try {
+      const r = await fetch(`/api/boletas/buscar?rifaId=${rifaId}&numero=${n}`, { cache: "no-store" });
+      const j = await r.json();
+      const estado: EstadoBusqueda = j.ok ? j.estado : { numero: n, resultado: "no_existe", mensaje: j.error ?? "Error al buscar.", puedeVenderDirecto: false, puedeSolicitar: false, solicitudPendienteId: null };
+      if (estado.puedeVenderDirecto) {
+        setNumeros((prev) => {
+          const a = prev.split(/[\s,]+/).filter(Boolean);
+          return a.includes(String(n)) ? prev : [...a, String(n)].join(", ");
+        });
+        setNumeroBusq("");
+      } else {
+        setResultado(estado);
+      }
+    } catch {
+      setResultado({ numero: n, resultado: "no_existe", mensaje: "Error de conexión al buscar.", puedeVenderDirecto: false, puedeSolicitar: false, solicitudPendienteId: null });
+    } finally {
+      setBuscando(false);
+    }
+  }
+
   async function solicitar() {
     if (!resultado || !resultado.puedeSolicitar) return;
     setSolicitando(true);
@@ -117,12 +150,47 @@ export default function FormVenta({
     }
   }
 
+  // Si el dueño de una boleta que se solicitó aprueba el traspaso mientras
+  // esta pantalla sigue abierta con la misma rifa, sube sola a "Boletas de
+  // esta venta" — sin que quien la pidió tenga que volver a buscarla. El
+  // aviso lo detecta NotificadorTraspasos (sondeo cada 15s) y lo redifunde
+  // como este evento; aquí solo falta confirmar el estado y agregarla.
+  async function agregarPorAprobacion(numero: number) {
+    if (unicos.includes(numero)) return;
+    try {
+      const r = await fetch(`/api/boletas/buscar?rifaId=${rifaId}&numero=${numero}`, { cache: "no-store" });
+      const j = await r.json();
+      const estado: EstadoBusqueda | null = j.ok ? j.estado : null;
+      if (estado?.puedeVenderDirecto) {
+        setNumeros((prev) => {
+          const a = prev.split(/[\s,]+/).filter(Boolean);
+          return a.includes(String(numero)) ? prev : [...a, String(numero)].join(", ");
+        });
+        setMensajeSolicitud(`Te aprobaron la boleta #${numero}: se agregó sola a esta venta.`);
+      }
+    } catch {
+      // Si falla la verificación, no se agrega sola; queda disponible para buscarla a mano.
+    }
+  }
+
+  useEffect(() => {
+    function onAprobado(e: Event) {
+      const detalle = (e as CustomEvent<DetalleTraspasoAprobado>).detail;
+      if (detalle.rifaId === rifaId) agregarPorAprobacion(detalle.numero);
+    }
+    window.addEventListener(EVENTO_TRASPASO_APROBADO, onAprobado);
+    return () => window.removeEventListener(EVENTO_TRASPASO_APROBADO, onAprobado);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rifaId, unicos]);
+
   return (
     <form action={action} className="mt-6 space-y-5 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
       <input type="hidden" name="idem" value={idem} />
-      {/* Los números solo se agregan mediante la búsqueda de más abajo (no se
-          digitan libremente): garantiza que cada uno pasó por la verificación
-          de estado (tuya / vendida / punto de venta / asignada a vendedor). */}
+      {/* Los números solo se agregan tras pasar por la verificación de estado
+          en tiempo real (tuya / vendida / punto de venta / asignada a
+          vendedor) — no se digitan libremente. Eso ocurre al buscar uno a
+          mano más abajo, o con un clic/toque sobre uno de la lista de
+          disponibles, que dispara la misma verificación. */}
       <input type="hidden" name="numeros" value={unicos.join(",")} />
 
       {esVendedor && vendedorNombre ? (
@@ -134,21 +202,38 @@ export default function FormVenta({
 
       <div>
         <label htmlFor="rifa_id" className={etiqueta}>Rifa</label>
-        <select id="rifa_id" name="rifa_id" value={rifaId} onChange={(e) => cambiarRifa(e.target.value)} className={campo}>
+        <select id="rifa_id" name="rifa_id" autoFocus value={rifaId} onChange={(e) => cambiarRifa(e.target.value)} className={campo}>
           {rifas.map((r) => <option key={r.id} value={r.id}>{r.codigo} — {r.nombre} ({cop.format(Number(r.precio))} c/u)</option>)}
         </select>
       </div>
 
-      {/* Lista informativa: solo para consultar, no selecciona. Para vender un
-          número hay que buscarlo abajo. */}
+      {/* Un clic o toque selecciona la boleta (verifica su estado en tiempo
+          real y la agrega directo si sigue disponible); si ya no lo está,
+          muestra el mismo resultado que buscarla a mano. */}
       {esVendedor ? (
         (rifa?.disponibles?.length ?? 0) > 0 ? (
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">Tus boletas disponibles (informativo, {rifa!.disponibles!.length}):</p>
             <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950/40">
-              {rifa!.disponibles!.map((n) => (
-                <span key={n} className="rounded bg-white px-1.5 py-0.5 font-mono text-xs text-slate-600 dark:bg-slate-900 dark:text-slate-400">{n}</span>
-              ))}
+              {rifa!.disponibles!.map((n) => {
+                const yaAgregada = unicos.includes(n);
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={buscando || yaAgregada}
+                    onClick={() => seleccionarDisponible(n)}
+                    aria-label={yaAgregada ? `Boleta ${n} ya agregada` : `Seleccionar boleta ${n}`}
+                    className={`rounded px-1.5 py-0.5 font-mono text-xs transition disabled:cursor-default ${
+                      yaAgregada
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "bg-white text-slate-600 hover:bg-indigo-600 hover:text-white disabled:opacity-60 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-indigo-600 dark:hover:text-white"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null
@@ -157,15 +242,32 @@ export default function FormVenta({
           <div>
             <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">Algunas boletas disponibles (informativo):</p>
             <div className="flex flex-wrap gap-1">
-              {rifa.sugeridos!.map((n) => (
-                <span key={n} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-400">{n}</span>
-              ))}
+              {rifa.sugeridos!.map((n) => {
+                const yaAgregada = unicos.includes(n);
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={buscando || yaAgregada}
+                    onClick={() => seleccionarDisponible(n)}
+                    aria-label={yaAgregada ? `Boleta ${n} ya agregada` : `Seleccionar boleta ${n}`}
+                    className={`rounded px-1.5 py-0.5 font-mono text-xs transition disabled:cursor-default ${
+                      yaAgregada
+                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                        : "bg-slate-100 text-slate-600 hover:bg-indigo-600 hover:text-white disabled:opacity-60 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-indigo-600 dark:hover:text-white"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null
       )}
 
-      {/* Buscar boleta por número: única forma de agregarla / solicitarla. */}
+      {/* Buscar boleta por número (para una que no esté en las listas de
+          arriba): también sirve para solicitarla si es de otro dueño. */}
       <div className="rounded-xl border border-slate-300 p-4 dark:border-slate-700">
         <label htmlFor="numero_busq" className={etiqueta}>Buscar boleta por número</label>
         <div className="flex gap-2">
@@ -220,9 +322,23 @@ export default function FormVenta({
           <p className="mb-1.5 text-xs font-medium text-slate-600 dark:text-slate-400">Boletas de esta venta:</p>
           <div className="flex flex-wrap gap-1.5">
             {unicos.map((n) => (
-              <span key={n} className="inline-flex items-center gap-1 rounded-md bg-[#1e293b] px-2 py-1 font-mono text-xs font-semibold text-[#f5c518]">
-                {n}
-                <button type="button" onClick={() => quitar(n)} aria-label={`Quitar ${n}`} className="text-slate-400 hover:text-white">×</button>
+              <span
+                key={n}
+                className="relative inline-flex h-11 min-w-[68px] items-center justify-center overflow-hidden rounded-md bg-[#1e293b] bg-cover bg-center px-2 shadow-sm"
+                style={rifa?.boletaImagenUrl ? { backgroundImage: `url(${rifa.boletaImagenUrl})` } : undefined}
+              >
+                {/* Capa oscura para que el número siga siendo legible sobre
+                    cualquier imagen de boleta que suba cada empresa. */}
+                {rifa?.boletaImagenUrl ? <span className="absolute inset-0 bg-black/45" /> : null}
+                <span className="relative font-mono text-sm font-bold tracking-wide text-[#f5c518]">{n}</span>
+                <button
+                  type="button"
+                  onClick={() => quitar(n)}
+                  aria-label={`Quitar ${n}`}
+                  className="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-black/40 text-[10px] leading-none text-white/90 transition hover:bg-black/70"
+                >
+                  ×
+                </button>
               </span>
             ))}
           </div>

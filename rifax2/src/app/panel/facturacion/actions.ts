@@ -8,11 +8,18 @@ import { generarFacturaTenant, generarFacturacionMasiva, marcarFacturaPagada, an
 
 const back = (qs: string) => redirect(`/panel/facturacion?${qs}`);
 
+const num = (v: FormDataEntryValue | null) => Number(String(v ?? "").replace(/[^\d.]/g, ""));
+
 export async function guardarPrecioAction(formData: FormData): Promise<void> {
   await requireSuper();
-  const precio = Number(String(formData.get("precio_basico") ?? "").replace(/[^\d.]/g, ""));
-  const corp = String(formData.get("precio_corporativo_texto") ?? "");
-  const res = await guardarConfigPlataforma(precio, corp);
+  const res = await guardarConfigPlataforma({
+    precioBasicoMensual: num(formData.get("precio_basico_mensual")),
+    precioBasicoSemestral: num(formData.get("precio_basico_semestral")),
+    precioBasicoAnual: num(formData.get("precio_basico_anual")),
+    precioCorporativoTexto: String(formData.get("precio_corporativo_texto") ?? ""),
+    sedesBasico: num(formData.get("sedes_basico")),
+    sedesCorporativo: num(formData.get("sedes_corporativo")),
+  });
   revalidatePath("/panel/facturacion");
   back(res.ok ? "precio=1" : `error=${encodeURIComponent(res.error)}`);
 }
@@ -39,14 +46,14 @@ export async function generarMasivaAction(formData: FormData): Promise<void> {
 
 export async function marcarPagadaAction(formData: FormData): Promise<void> {
   await requireSuper();
-  await marcarFacturaPagada(BigInt(String(formData.get("factura_id") ?? "0")));
+  const res = await marcarFacturaPagada(BigInt(String(formData.get("factura_id") ?? "0")));
   revalidatePath("/panel/facturacion");
-  back("pago=1");
+  back(res.ok ? "pago=1" : `error=${encodeURIComponent(res.error)}`);
 }
 
 export async function anularFacturaAction(formData: FormData): Promise<void> {
   await requireSuper();
-  await anularFactura(BigInt(String(formData.get("factura_id") ?? "0")));
+  const res = await anularFactura(BigInt(String(formData.get("factura_id") ?? "0")));
   revalidatePath("/panel/facturacion");
-  back("anulada=1");
+  back(res.ok ? "anulada=1" : `error=${encodeURIComponent(res.error)}`);
 }

@@ -3,10 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./icons";
 
-export interface NavItem { href: string; label: string; icon: string; exact?: boolean }
+// Evento global para el modo de pantalla completa: disparado por el control
+// de zoom (fuera del árbol de este componente) para ocultar/mostrar el menú.
+// Lleva el valor explícito deseado en `detail` (no "alternar") para que
+// distintos disparadores nunca puedan desincronizarse entre sí.
+export const EVENTO_ENFOQUE = "rifax:enfoque";
+export function alternarEnfoque(activar: boolean) {
+  window.dispatchEvent(new CustomEvent<boolean>(EVENTO_ENFOQUE, { detail: activar }));
+}
+
+export interface NavItem { href: string; label: string; icon: string; exact?: boolean; external?: boolean }
 
 // Menú lateral azul marino. Dos modos:
 //  - "rail" (admin): barra fija colapsable en escritorio + cajón en móvil.
@@ -31,7 +40,39 @@ export default function SideNav({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [enfoque, setEnfoque] = useState(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const onEnfoque = (e: Event) => setEnfoque((e as CustomEvent<boolean>).detail);
+    window.addEventListener(EVENTO_ENFOQUE, onEnfoque);
+    return () => window.removeEventListener(EVENTO_ENFOQUE, onEnfoque);
+  }, []);
+
+  // Cierre con Escape del cajón móvil (accesibilidad de teclado: un overlay
+  // que bloquea la pantalla debe poder cerrarse sin usar el ratón).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMobileOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+
+  // Botón para volver a mostrar el menú, siempre visible en modo enfoque
+  // (además del control de zoom, que también lo alterna). Dispara el mismo
+  // evento global (con el valor explícito) para que ambos disparadores
+  // queden sincronizados.
+  const RestaurarBtn = enfoque ? (
+    <button
+      onClick={() => alternarEnfoque(false)}
+      aria-label="Mostrar menú"
+      title="Mostrar menú"
+      className="fixed left-3 top-3 z-[190] flex items-center gap-1.5 rounded-full bg-[#1e293b] px-3 py-2 text-xs font-medium text-white shadow-lg transition hover:bg-slate-800"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
+      Mostrar menú
+    </button>
+  ) : null;
 
   const hamburger = mode === "hamburger";
   const activo = (n: NavItem) => (n.exact ? pathname === n.href : pathname === n.href || pathname.startsWith(n.href + "/"));
@@ -55,18 +96,32 @@ export default function SideNav({
 
   const NavLinks = (collapsedRail: boolean) => (
     <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-      {nav.map((n) => (
-        <Link
-          key={n.href}
-          href={n.href}
-          onClick={() => setMobileOpen(false)}
-          title={n.label}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${activo(n) ? ACTIVE : IDLE} ${collapsedRail ? "lg:justify-center" : ""}`}
-        >
-          <Icon name={n.icon} className="h-5 w-5 shrink-0" />
-          {!collapsedRail ? <span className="truncate">{n.label}</span> : null}
-        </Link>
-      ))}
+      {nav.map((n) =>
+        n.external ? (
+          <a
+            key={n.href}
+            href={n.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={n.label}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${IDLE} ${collapsedRail ? "lg:justify-center" : ""}`}
+          >
+            <Icon name={n.icon} className="h-5 w-5 shrink-0" />
+            {!collapsedRail ? <span className="truncate">{n.label}</span> : null}
+          </a>
+        ) : (
+          <Link
+            key={n.href}
+            href={n.href}
+            onClick={() => setMobileOpen(false)}
+            title={n.label}
+            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${activo(n) ? ACTIVE : IDLE} ${collapsedRail ? "lg:justify-center" : ""}`}
+          >
+            <Icon name={n.icon} className="h-5 w-5 shrink-0" />
+            {!collapsedRail ? <span className="truncate">{n.label}</span> : null}
+          </Link>
+        ),
+      )}
     </nav>
   );
 
@@ -81,7 +136,7 @@ export default function SideNav({
   const Drawer = mobileOpen ? (
     <div className={`fixed inset-0 z-40 ${hamburger ? "" : "lg:hidden"}`}>
       <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
-      <aside className={`absolute inset-y-0 left-0 flex w-64 flex-col ${SIDEBAR}`}>
+      <aside role="dialog" aria-modal="true" aria-label="Menú de navegación" className={`absolute inset-y-0 left-0 flex w-64 flex-col ${SIDEBAR}`}>
         <div className="flex items-center justify-between border-b border-white/10 p-3">
           {Marca(true)}
           {CerrarBtn}
@@ -102,17 +157,20 @@ export default function SideNav({
   if (hamburger) {
     return (
       <div className="relative min-h-screen">
-        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
-          {TresLineas}
-          <Link href={homeHref} className="flex items-center gap-2">
-            {logoUrl ? (
-              <Image src={logoUrl} alt={brand} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" />
-            ) : (
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--rifax-accent,#f5c518)] text-sm font-black text-slate-900">{brand.charAt(0).toUpperCase()}</span>
-            )}
-            <span className="font-bold text-slate-900 dark:text-white">{brand}</span>
-          </Link>
-        </header>
+        {enfoque ? null : (
+          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+            {TresLineas}
+            <Link href={homeHref} className="flex items-center gap-2">
+              {logoUrl ? (
+                <Image src={logoUrl} alt={brand} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" />
+              ) : (
+                <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--rifax-accent,#f5c518)] text-sm font-black text-slate-900">{brand.charAt(0).toUpperCase()}</span>
+              )}
+              <span className="font-bold text-slate-900 dark:text-white">{brand}</span>
+            </Link>
+          </header>
+        )}
+        {RestaurarBtn}
         {Drawer}
         <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
@@ -129,31 +187,39 @@ export default function SideNav({
   return (
     <div className="relative min-h-screen">
       {/* Sidebar escritorio */}
-      <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col lg:flex ${SIDEBAR} ${w} transition-all`}>
-        <div className="flex items-center justify-between border-b border-white/10 p-3">
-          {Marca(!collapsed)}
-          {!collapsed ? CollapseBtn : null}
-        </div>
-        {collapsed ? <div className="flex justify-center py-2">{CollapseBtn}</div> : null}
-        {NavLinks(collapsed)}
-        {footer ? <div className="border-t border-white/10 p-3">{footer(collapsed)}</div> : null}
-      </aside>
+      {enfoque ? null : (
+        <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col lg:flex ${SIDEBAR} ${w} transition-all`}>
+          <div className="flex items-center justify-between border-b border-white/10 p-3">
+            {Marca(!collapsed)}
+            {!collapsed ? CollapseBtn : null}
+          </div>
+          {collapsed ? <div className="flex justify-center py-2">{CollapseBtn}</div> : null}
+          {NavLinks(collapsed)}
+          {footer ? <div className="border-t border-white/10 p-3">{footer(collapsed)}</div> : null}
+        </aside>
+      )}
 
       {/* Topbar móvil */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/95">
-        {TresLineas}
-        <span className="flex items-center gap-2">
-          {logoUrl ? <Image src={logoUrl} alt={brand} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" /> : <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--rifax-accent,#f5c518)] text-sm font-black text-slate-900">{brand.charAt(0).toUpperCase()}</span>}
-          <span className="font-bold text-slate-900 dark:text-white">{brand}</span>
-        </span>
-        <span className="w-9" />
-      </header>
+      {enfoque ? null : (
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-300 bg-white/95 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-700 dark:bg-slate-900/95">
+          {TresLineas}
+          <span className="flex items-center gap-2">
+            {logoUrl ? <Image src={logoUrl} alt={brand} width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-contain" /> : <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--rifax-accent,#f5c518)] text-sm font-black text-slate-900">{brand.charAt(0).toUpperCase()}</span>}
+            <span className="font-bold text-slate-900 dark:text-white">{brand}</span>
+          </span>
+          <span className="w-9" />
+        </header>
+      )}
 
+      {RestaurarBtn}
       {Drawer}
 
       {/* Contenido */}
-      <div className={`transition-all ${collapsed ? "lg:pl-16" : "lg:pl-60"}`}>
-        <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">{children}</main>
+      <div className={`transition-all ${enfoque ? "" : collapsed ? "lg:pl-16" : "lg:pl-60"}`}>
+        {/* Los formularios de una sola columna ya llevan su propio max-w-2xl/xl
+            (ver auditoría frontend-nextjs), así que ensanchar este tope no los
+            vuelve a estirar — solo les da más aire a las tablas/listas. */}
+        <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
       </div>
     </div>
   );

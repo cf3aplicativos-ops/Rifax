@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { auditar } from "@/lib/audit";
 import { hashPassword } from "@/lib/auth/password";
 import { mensajeError } from "@/lib/errores";
+import { sendMail, mailPasswordCambiada } from "@/lib/mail";
+import { imagenesRifa } from "@/lib/rifas";
 
 type Resultado = { ok: true } | { ok: false; error: string };
 
@@ -48,6 +50,7 @@ export interface RifaVentaVendedor {
   numeroMin: number;
   numeroMax: number;
   disponibles: number[];
+  boletaImagenUrl: string | null;
 }
 
 export async function rifasVentaVendedor(tenantId: bigint, vendedorId: bigint): Promise<RifaVentaVendedor[]> {
@@ -82,6 +85,7 @@ export async function rifasVentaVendedor(tenantId: bigint, vendedorId: bigint): 
       numeroMin: rifa.numero_min,
       numeroMax: rifa.numero_max,
       disponibles: filas.map((f) => f.numero),
+      boletaImagenUrl: (await imagenesRifa(tenantId, rifa.id)).boleta,
     });
   }
   return salida;
@@ -135,11 +139,67 @@ export async function crearAccesoVendedor(
       const u = await tx.usuarios.create({
         data: { tenant_id: tenantId, sede_id: vendedor.sede_id, nombre: vendedor.nombre, correo: c, password_hash: hash, rol_id: rol.id, estado: "activo" },
       });
+      // Obliga a definir contraseña propia en el primer ingreso.
+      await tx.$executeRawUnsafe(`UPDATE saas.usuarios SET debe_cambiar_password = true WHERE id = $1::bigint`, u.id);
       await tx.vendedores.update({ where: { id: vendedorId }, data: { usuario_id: u.id } });
       await auditar(tx, { tenantId, actorId, accion: "usuario.crear", entidadTipo: "vendedor", entidadId: vendedorId, despues: { acceso: c, rol: "vendedor" } });
     });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: mensajeError(e, "Error al crear el acceso.") };
+  }
+}
+
+// Cambia el correo y/o la contraseña del acceso al portal de un vendedor que
+// ya lo tiene. `password` es opcional: si no se indica, se conserva la
+// actual (no puede mostrarse ni recuperarse, solo reemplazarse).
+export async function actualizarAccesoVendedor(
+  vendedorId: bigint,
+  tenantId: bigint,
+  correo: string,
+  password: string | undefined,
+  actorId: bigint,
+): Promise<Resultado> {
+  const c = correo.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c)) return { ok: false, error: "Correo inválido." };
+  if (password && password.length < 8) return { ok: false, error: "La contraseña debe tener al menos 8 caracteres." };
+
+  const vendedor = await prisma.vendedores.findFirst({ where: { id: vendedorId, tenant_id: tenantId } });
+  if (!vendedor) return { ok: false, error: "Vendedor no encontrado." };
+  if (!vendedor.usuario_id) return { ok: false, error: "Este vendedor todavía no tiene acceso al portal." };
+
+  const usuario = await prisma.usuarios.findUnique({ where: { id: vendedor.usuario_id } });
+  if (!usuario) return { ok: false, error: "Acceso no encontrado." };
+
+  if (c !== usuario.correo) {
+    const dup = await prisma.usuarios.findFirst({ where: { tenant_id: tenantId, correo: c, NOT: { id: usuario.id } } });
+    if (dup) return { ok: false, error: "Ya existe otro usuario con ese correo." };
+  }
+
+  try {
+    const hash = password ? await hashPassword(password) : null;
+    await prisma.$transaction(async (tx) => {
+      await tx.usuarios.update({ where: { id: usuario.id }, data: { correo: c, ...(hash ? { password_hash: hash } : {}) } });
+      if (hash) {
+        // Contraseña fijada por el admin: obliga a confirmarla en el
+        // próximo ingreso y cierra las sesiones activas del vendedor.
+        await tx.$executeRawUnsafe(`UPDATE saas.usuarios SET debe_cambiar_password = true WHERE id = $1::bigint`, usuario.id);
+        await tx.sesiones.updateMany({ where: { usuario_id: usuario.id, revocada: false }, data: { revocada: true } });
+      }
+      await auditar(tx, { tenantId, actorId, accion: "usuario.editar", entidadTipo: "vendedor", entidadId: vendedorId, despues: { acceso: c, password_cambiada: Boolean(hash) } });
+    });
+    if (hash) {
+      // Igual que en el "olvidé mi contraseña" self-service: la clave se
+      // envía al correo de la cuenta, nunca se muestra en pantalla. Un fallo
+      // de SMTP no debe revertir el cambio ya guardado, solo queda sin avisar.
+      try {
+        await sendMail({ to: c, ...mailPasswordCambiada({ nombre: usuario.nombre, password: password! }) });
+      } catch (e) {
+        console.error("[portal-vendedor] fallo al enviar el correo de contraseña actualizada:", e instanceof Error ? e.message : e);
+      }
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: mensajeError(e, "Error al actualizar el acceso.") };
   }
 }

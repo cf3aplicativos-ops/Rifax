@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission, requireUser } from "@/lib/auth/rbac";
-import { crearUsuario, cambiarRol, cambiarEstado, cambiarPasswordPropia } from "@/lib/usuarios";
+import { crearUsuario, editarUsuario, cambiarRol, cambiarEstado, cambiarPasswordPropia } from "@/lib/usuarios";
 import { restablecerUsuarioTenant } from "@/lib/reset-password";
 
 export interface UsuarioFormState {
@@ -31,6 +31,32 @@ export async function crearUsuarioAction(_prev: UsuarioFormState, formData: Form
   if (!res.ok) return { error: res.error };
   revalidatePath("/app/usuarios");
   redirect("/app/usuarios?creado=1");
+}
+
+export async function editarUsuarioAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("usuario.editar");
+  const usuarioId = String(formData.get("usuario_id") ?? "0");
+  const telefono = String(formData.get("telefono") ?? "").trim();
+  const sede = String(formData.get("sede_id") ?? "").trim();
+  const permisos = formData.getAll("permisos").map((v) => String(v)).filter(Boolean);
+  const password = String(formData.get("password") ?? "");
+  const res = await editarUsuario(
+    BigInt(usuarioId),
+    {
+      nombre: String(formData.get("nombre") ?? "").trim(),
+      correo: String(formData.get("correo") ?? "").trim(),
+      ...(telefono ? { telefono } : {}),
+      rol_id: String(formData.get("rol_id") ?? ""),
+      ...(sede ? { sede_id: sede } : {}),
+      ...(permisos.length > 0 ? { permisos } : {}),
+      ...(password ? { password } : {}),
+    },
+    user.tenant.id,
+    user.id,
+  );
+  revalidatePath("/app/usuarios");
+  revalidatePath(`/app/usuarios/${usuarioId}`);
+  redirect(res.ok ? `/app/usuarios/${usuarioId}?editado=1` : `/app/usuarios/${usuarioId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function cambiarRolAction(formData: FormData): Promise<void> {

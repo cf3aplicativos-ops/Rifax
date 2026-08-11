@@ -36,9 +36,9 @@ export default async function PanelHome({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/panel/restablecer" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Contraseñas</Link>
           <Link href="/panel/facturacion" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Facturación</Link>
           <Link href="/panel/carrusel" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Apariencia</Link>
+          <Link href="/panel/auditoria" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Auditoría</Link>
           <Link href="/panel/nuevo" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">+ Nueva empresa</Link>
         </div>
       </div>
@@ -89,6 +89,7 @@ export default async function PanelHome({
                       · creada {fechaHora(t.creado_en)}
                     </p>
                   </div>
+                  <Link href={`/panel/${t.id}`} className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">Editar</Link>
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-end gap-3 border-t border-slate-200 pt-4 dark:border-slate-700">

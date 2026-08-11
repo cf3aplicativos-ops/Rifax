@@ -36,11 +36,14 @@ export default async function VentasPage() {
               <tr>
                 <th className="px-4 py-3 font-medium">Código</th>
                 <th className="px-4 py-3 font-medium">Rifa</th>
+                <th className="px-4 py-3 font-medium">Boletas</th>
                 <th className="px-4 py-3 font-medium">Cliente</th>
+                <th className="px-4 py-3 font-medium">Vendedor / Punto de venta</th>
                 <th className="px-4 py-3 text-right font-medium">Total</th>
                 <th className="px-4 py-3 text-right font-medium">Saldo</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium">Fecha</th>
+                <th className="px-4 py-3 font-medium">Observaciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
@@ -50,9 +53,17 @@ export default async function VentasPage() {
                     <Link href={`/app/ventas/${v.id}`} className="font-mono text-xs text-indigo-600 hover:underline dark:text-indigo-400">{v.codigo}</Link>
                   </td>
                   <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{v.rifas.codigo}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-slate-400">{v.boletas.join(", ")}</td>
                   <td className="px-4 py-3 text-slate-900 dark:text-slate-100">
                     {v.clientes.nombre}
                     <span className="block text-xs text-slate-500 dark:text-slate-400">{v.clientes.telefono}</span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
+                    {v.vendedores ? (
+                      v.vendedores.nombre
+                    ) : (
+                      <span className="text-slate-500 dark:text-slate-400">Punto de venta: {v.sedes.nombre}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{money(v.total)}</td>
                   <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{money(v.saldo)}</td>
@@ -62,6 +73,7 @@ export default async function VentasPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{fecha(v.creado_en)}</td>
+                  <td className="px-4 py-3 max-w-xs text-xs text-slate-500 dark:text-slate-400">{v.observaciones ?? ""}</td>
                 </tr>
               ))}
             </tbody>

@@ -1,0 +1,770 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RIFAX — Manual de usuario</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand"><span class="mark">R</span> RIFAX</div>
+  <nav>
+    <a href="manual-usuario.html" class="active">Manual de usuario</a>
+    <a href="acerca-de.html">Acerca de</a>
+  </nav>
+</div>
+
+<div class="shell">
+  <aside class="toc">
+    <h4>Introducción</h4>
+    <ul>
+      <li><a href="#intro">Qué es RIFAX</a></li>
+      <li><a href="#tipos-acceso">Tipos de acceso</a></li>
+      <li><a href="#primeros-pasos">Primeros pasos</a></li>
+    </ul>
+    <h4>Portal del cliente</h4>
+    <ul>
+      <li><a href="#portal-cliente">Consultar mi compra</a></li>
+    </ul>
+    <h4>Portal de la empresa</h4>
+    <ul>
+      <li><a href="#dashboard">Panel principal</a></li>
+      <li><a href="#rifas">Rifas</a></li>
+      <li><a href="#rifa-compartida">Rifa compartida entre sedes</a></li>
+      <li><a href="#sedes">Sedes</a></li>
+      <li><a href="#vendedores">Vendedores</a></li>
+      <li><a href="#ventas">Ventas</a></li>
+      <li><a href="#traspasos">Traspaso de boletas</a></li>
+      <li><a href="#cartera">Cartera</a></li>
+      <li><a href="#conciliacion-ia">Conciliación con IA</a></li>
+      <li><a href="#comisiones">Comisiones</a></li>
+      <li><a href="#reportes">Reportes</a></li>
+      <li><a href="#notificaciones">Notificaciones</a></li>
+      <li><a href="#usuarios">Usuarios internos</a></li>
+      <li><a href="#configuracion">Configuración</a></li>
+      <li><a href="#perfil">Mi perfil</a></li>
+    </ul>
+    <h4>Portal del vendedor</h4>
+    <ul>
+      <li><a href="#portal-vendedor">App del vendedor</a></li>
+    </ul>
+    <h4>Panel de plataforma</h4>
+    <ul>
+      <li><a href="#panel-empresas">Empresas clientes</a></li>
+      <li><a href="#panel-facturacion">Facturación</a></li>
+      <li><a href="#panel-accesos">Recuperación de acceso</a></li>
+      <li><a href="#panel-apariencia">Apariencia pública</a></li>
+    </ul>
+    <h4>Referencia</h4>
+    <ul>
+      <li><a href="#planes">Planes comerciales</a></li>
+      <li><a href="#seguridad">Seguridad y confianza</a></li>
+      <li><a href="#faq">Preguntas frecuentes</a></li>
+    </ul>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <h1>Manual de usuario de RIFAX</h1>
+      <p class="lead">Guía completa de uso de la plataforma, explicada para cualquier persona del negocio: qué hace
+      cada pantalla, qué botones tocar y qué esperar como resultado. No requiere conocimientos técnicos.</p>
+    </div>
+
+    <section id="intro">
+      <h2>Qué es RIFAX</h2>
+      <p>RIFAX es una plataforma para que <strong>varias empresas</strong> gestionen sus rifas, vendedores, ventas
+      y cobros de forma independiente. Cada empresa (llamada <em>tenant</em> internamente, pero en este manual la
+      llamamos simplemente "la empresa") solo ve su propia información: rifas, vendedores, clientes y dinero. Nunca
+      la de otra empresa que también use RIFAX.</p>
+      <p>Por encima de todas las empresas está el <strong>dueño de la plataforma</strong> (super-administrador),
+      quien da de alta a las empresas clientes, les asigna un plan y les factura el servicio.</p>
+    </section>
+
+    <section id="tipos-acceso">
+      <h2>Tipos de acceso</h2>
+      <div class="grid-2">
+        <div class="card">
+          <span class="badge role-super">Super-administrador</span>
+          <p>Dueño de la plataforma. Entra por <code>/panel</code>. Administra empresas clientes, planes y
+          facturación de la plataforma.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-empresa">Empresa</span>
+          <p>Administradores, gerentes y cajeros de cada empresa cliente. Entran por <code>/app</code>. Gestionan
+          rifas, ventas, vendedores y cobros de su propia empresa.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-vendedor">Vendedor</span>
+          <p>Persona que vende boletas para una empresa. Entra por <code>/vendedor</code>, un portal simplificado
+          pensado para el celular.</p>
+        </div>
+        <div class="card">
+          <span class="badge role-cliente">Cliente</span>
+          <p>Comprador final. No necesita usuario ni contraseña: consulta su compra con su documento y teléfono
+          en la página pública de consulta.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="primeros-pasos">
+      <h2>Primeros pasos</h2>
+      <h3>Iniciar sesión</h3>
+      <ol class="steps">
+        <li>Ingresa a la dirección de la plataforma y escribe tu correo y contraseña.</li>
+        <li>El sistema te lleva automáticamente a tu área correspondiente: panel de plataforma, panel de empresa
+        o app de vendedor, según tu tipo de cuenta.</li>
+      </ol>
+      <div class="note tip">
+        <strong>¿Olvidaste tu contraseña?</strong> Usa el enlace "¿Olvidaste tu contraseña?" en la pantalla de
+        inicio de sesión y escribe tu correo registrado. Si coincide con tu cuenta, el sistema te genera y envía de
+        inmediato una <strong>contraseña temporal</strong> a ese mismo correo — no hace falta esperar a que un
+        administrador la procese.
+      </div>
+      <h3>Cambio de contraseña obligatorio</h3>
+      <p>La primera vez que ingresas con una contraseña temporal (recién creada tu cuenta, o después de un
+      restablecimiento), el sistema te lleva directo a una pantalla obligatoria para definir tu propia contraseña
+      nueva antes de dejarte continuar. Esto aplica a usuarios de empresa y a vendedores.</p>
+    </section>
+
+    <section id="portal-cliente">
+      <h2><span class="badge role-cliente">Cliente</span> Consultar mi compra</h2>
+      <p>Cualquier comprador puede consultar el estado de su compra sin necesidad de crear una cuenta, desde la
+      página pública de consulta.</p>
+      <ol class="steps">
+        <li>Escribe tu número de documento y tu número de teléfono (los dos deben coincidir exactamente con los
+        datos que el vendedor registró al momento de la venta).</li>
+        <li>El sistema muestra todas tus compras: los números de boleta que te pertenecen, cuánto has pagado y
+        cuánto saldo te queda pendiente.</li>
+        <li>Si ya se realizó el sorteo de alguna de tus rifas, también verás si alguno de tus números resultó
+        ganador.</li>
+        <li>Puedes imprimir o descargar esa información como comprobante.</li>
+      </ol>
+      <div class="note">
+        Es una consulta de solo lectura: no puedes registrar pagos ni hacer cambios desde ahí. Para eso debes
+        contactar al vendedor o a la empresa.
+      </div>
+    </section>
+
+    <section id="dashboard">
+      <h2><span class="badge role-empresa">Empresa</span> Panel principal</h2>
+      <p>Es la primera pantalla que ves al ingresar a la empresa. Resume el estado del negocio de un vistazo:</p>
+      <ul>
+        <li>Total recaudado, cartera pendiente, ventas realizadas y rifas activas.</li>
+        <li>Gráfica de boletas vendidas frente a disponibles.</li>
+        <li>Recaudo por sede y cartera vencida por antigüedad de mora.</li>
+        <li>Ranking de los mejores vendedores.</li>
+        <li>Resumen del estado de cada sede.</li>
+      </ul>
+      <p>Se puede imprimir directamente como informe gerencial.</p>
+    </section>
+
+    <section id="rifas">
+      <h2><span class="badge role-empresa">Empresa</span> Rifas</h2>
+      <h3>Crear una rifa</h3>
+      <ol class="steps">
+        <li>Ve a <strong>Rifas → Nueva rifa</strong>.</li>
+        <li>Define la sede, el rango de números (por ejemplo del 000 al 999), el precio de cada boleta, la
+        lotería de referencia y la fecha del sorteo.</li>
+        <li>La rifa se guarda como <strong>borrador</strong>: todavía no se puede vender.</li>
+        <li>Cuando esté lista, publícala. Esto genera todas las boletas del rango y las deja disponibles para
+        la venta.</li>
+      </ol>
+      <h3>Personalizar la rifa</h3>
+      <ul>
+        <li><strong>Logo de la rifa</strong>: imagen que identifica la rifa dentro del sistema.</li>
+        <li><strong>Imagen de la boleta</strong>: al vender, cada número agregado a la venta se muestra sobre
+        esta imagen (en <strong>Nueva venta</strong>, dentro de "Boletas de esta venta"), en vez del recuadro
+        liso genérico. Si la rifa no tiene una imagen cargada, se sigue viendo como hasta ahora.</li>
+        <li><strong>Premios</strong>: se pueden definir varios premios, incluyendo "premios anticipados" que se
+        sortean antes que el premio principal.</li>
+        <li><strong>Rifa compartida entre sedes</strong>: si varias sedes venden la misma rifa, se puede repartir
+        el rango de números entre ellas — ver el paso a paso más abajo.</li>
+      </ul>
+
+      <h3 id="rifa-compartida">Rifa compartida entre sedes ("Para todas las sedes")</h3>
+      <p>Pensada para cuando <strong>varias sedes de la misma empresa venden la misma rifa</strong> (un solo
+      premio, un solo sorteo), pero cada sede necesita saber qué números le tocan a ella para no vender por
+      encima de otra.</p>
+      <div class="note">
+        <strong>¿Y si cada sede prefiere manejar su propia rifa?</strong> No es obligatorio compartir: el
+        administrador de cada sede (ver <a href="#sedes">Sedes</a>) puede simplemente crear <strong>su propia
+        rifa</strong>, sin marcar "Para todas las sedes" — con su propio rango de números, su propio premio mayor
+        y sus propios premios anticipados, totalmente independiente de lo que hagan las demás sedes. La opción
+        de rifa compartida es solo para cuando de verdad quieren repartirse una misma rifa.
+      </div>
+
+      <h4>1. Al crear la rifa</h4>
+      <ol class="steps">
+        <li>Esta casilla solo aparece si la empresa tiene <strong>más de una sede</strong>. En <strong>Rifas →
+        Nueva rifa</strong>, marca <strong>"Para todas las sedes (compartida)"</strong>, justo debajo del selector
+        de sede.</li>
+        <li>Al marcarla, el selector de sede cambia de etiqueta a <em>"Sede de creación (los números se reparten
+        luego)"</em>: sigues eligiendo una sede ahí, pero es solo la que queda registrada como creadora de la
+        rifa — no determina todavía a quién pertenecen los números.</li>
+        <li>El resto de los datos se llenan una sola vez para toda la rifa, sin importar cuántas sedes la vendan:
+        nombre, lotería, precio de la boleta, cantidad de dígitos, fechas y, después, los premios (incluidos los
+        premios anticipados).</li>
+        <li>Al publicar la rifa se generan <strong>todas</strong> las boletas del rango completo de una sola vez
+        (por ejemplo, con 3 dígitos, las 1.000 boletas de una vez), pero ninguna pertenece todavía a una sede en
+        particular: quedan <strong>sin asignar</strong>.</li>
+      </ol>
+
+      <h4>2. Repartir los números entre las sedes</h4>
+      <p>En la ficha de la rifa aparece una sección nueva, <strong>"Distribución por sede"</strong>, que muestra
+      cuántas boletas siguen sin asignar y, ahí mismo, un formulario para repartirlas — se puede repetir tantas
+      veces como haga falta, una porción a la vez, hasta cubrir todo el rango (o dejar el resto para más
+      adelante):</p>
+      <ol class="steps">
+        <li>Elige la <strong>sede</strong> a la que le vas a asignar números.</li>
+        <li>Elige el <strong>modo de asignación</strong>:
+          <ul>
+            <li><strong>Rango consecutivo</strong>: un número inicial y uno final (por ejemplo, del 000 al 199
+            para la Sede Centro).</li>
+            <li><strong>Rango aleatorio</strong>: solo indicas cuántos números quieres, y el sistema los elige al
+            azar entre los que sigan sin asignar.</li>
+            <li><strong>Asignación (números específicos)</strong>: escribes números o rangos puntuales, por
+            ejemplo <code>7, 15, 100-150</code>.</li>
+          </ul>
+        </li>
+        <li>Presiona <strong>"Asignar a la sede"</strong>. Esos números quedan disponibles para que esa sede
+        (y los vendedores que le asigne) los venda.</li>
+      </ol>
+
+      <h4>3. Seguimiento y correcciones</h4>
+      <ul>
+        <li>Cada sede aparece en su propia tarjeta, con cuántos números tiene <strong>asignados</strong>,
+        <strong>disponibles</strong> y ya <strong>vendidos</strong>. Los que ya se vendieron dejan de aparecer en
+        la lista de disponibles, para no repartirlos por error dos veces.</li>
+        <li>Si hay que corregir un reparto, el botón <strong>"Liberar disponibles"</strong> de una sede devuelve
+        al fondo común "sin asignar" los números que esa sede tenía y todavía no había vendido — lo que ya vendió
+        no se toca — para poder repartirlos de nuevo, incluso a otra sede.</li>
+        <li>De ahí en adelante, cada sede solo puede vender y asignarle talonarios a sus vendedores dentro de los
+        números que tiene asignados a ella: el sistema no deja que una sede venda ni asigne un número que
+        pertenece a otra.</li>
+      </ul>
+
+      <h3>Realizar el sorteo</h3>
+      <p>Hay dos modalidades:</p>
+      <table>
+        <tr><th>Modalidad</th><th>Cómo funciona</th></tr>
+        <tr>
+          <td><strong>Verificable en el sistema</strong></td>
+          <td>El sistema genera un número al azar de forma que, después del sorteo, cualquiera puede comprobar
+          matemáticamente que el resultado no fue manipulado ni elegido de antemano.</td>
+        </tr>
+        <tr>
+          <td><strong>Lotería externa</strong></td>
+          <td>Se digita manualmente el número que salió en una lotería real (por ejemplo, la lotería de la que
+          la rifa toma su referencia), adjuntando una evidencia (como un enlace a los resultados oficiales).</td>
+        </tr>
+      </table>
+      <p>Después del sorteo, el sistema indica automáticamente si la boleta ganadora fue vendida y a quién, y
+      permite hacer seguimiento a la entrega del premio: pendiente, contactado, entregado o no reclamado. La rifa
+      se cierra sola cuando ya se sortearon todos sus premios.</p>
+      <h3>Cargar una rifa que ya se vendía por fuera del sistema</h3>
+      <p>Si una empresa ya empezó a vender una rifa en papel o en otro sistema y quiere continuar en RIFAX sin
+      perder lo avanzado:</p>
+      <ol class="steps">
+        <li>Descarga las plantillas de <strong>vendedores</strong> y de <strong>ventas</strong> (archivos que se
+        abren en Excel).</li>
+        <li>Llena cada plantilla con la información real: vendedores existentes, y las ventas ya realizadas con
+        sus números de boleta, datos del comprador y abonos recibidos.</li>
+        <li>Sube ambos archivos. El sistema crea automáticamente los vendedores, los clientes, reserva las
+        boletas correspondientes y deja registrado lo que ya se había pagado.</li>
+      </ol>
+      <h3>Editar una rifa</h3>
+      <p>Desde la ficha de la rifa, el bloque "✏️ Editar datos de la rifa" permite corregir el nombre, la
+      descripción, la lotería, el precio de la boleta y las fechas, en cualquier momento antes del sorteo. La
+      sede, la cantidad de dígitos y si es compartida no se pueden cambiar aquí, porque ya determinaron las
+      boletas que se generaron.</p>
+    </section>
+
+    <section id="sedes">
+      <h2><span class="badge role-empresa">Empresa</span> Sedes (puntos de venta)</h2>
+      <p>Una sede representa un punto de venta físico o un canal independiente de la empresa (por ejemplo, una
+      sucursal). Desde aquí se pueden:</p>
+      <ul>
+        <li>Crear nuevas sedes, hasta el número máximo permitido por el plan contratado — puede ser 1, 2 o
+        muchas más, según lo que autorice el super-administrador.</li>
+        <li>Editar el nombre, la dirección y el teléfono de una sede en cualquier momento (bloque "✏️ Editar
+        sede" en cada fila del listado).</li>
+        <li>Si la sede tiene su propio administrador, un enlace directo "gestionar sus credenciales" lleva a su
+        ficha de usuario, donde se le puede cambiar el correo, el rol, los permisos y la contraseña.</li>
+        <li>Activar o desactivar una sede existente.</li>
+        <li>Ver el desempeño individual de cada sede: recaudo, cartera, ventas, gráficas de boletas y ranking de
+        vendedores propio de esa sede. También se puede imprimir.</li>
+      </ul>
+      <div class="note tip">
+        <strong>Un administrador propio para cada sede.</strong> Al crear una sede, se puede marcar "Crear un
+        administrador propio para esta sede" y completar su nombre, correo y contraseña inicial — queda creado
+        junto con la sede, con el mismo rol de administrador pero acotado solo a ella: ve y gestiona únicamente
+        las rifas, ventas y cartera de esa sede, de forma completamente independiente de las demás (aunque todas
+        viven en la misma base de datos de la empresa). El administrador general que creó la empresa sigue
+        viendo todas las sedes.
+      </div>
+    </section>
+
+    <section id="vendedores">
+      <h2><span class="badge role-empresa">Empresa</span> Vendedores</h2>
+      <ul>
+        <li>Registrar un nuevo vendedor, con su porcentaje de comisión, un cupo máximo de boletas, y su
+        <strong>sede</strong>: una sede específica, o ninguna (lo que significa que atiende <strong>todas las
+        sedes</strong>).</li>
+        <li>El listado de vendedores y la ficha de cada uno siempre muestran su sede, o "Todas las sedes" si no
+        tiene una fija.</li>
+        <li>Asignarle <strong>talonarios</strong> (rangos de números de boleta) de las rifas activas.</li>
+        <li>Cerrar un talonario cuando el vendedor ya no lo va a seguir vendiendo: las boletas no vendidas de
+        ese talonario vuelven a quedar disponibles para el punto de venta.</li>
+        <li>Cambiar el estado del vendedor: activo, suspendido o inactivo.</li>
+        <li>Crear el acceso al portal móvil del vendedor (correo y contraseña temporal).</li>
+        <li>Editar los datos del vendedor (nombre, documento, teléfono, correo, sede, comisión, cupo máximo) desde
+        el bloque "✏️ Editar vendedor" en su ficha, disponible para quien puede ver sus datos personales.</li>
+        <li>Una vez el vendedor ya tiene acceso al portal, cambiar su correo de acceso y/o su contraseña desde el
+        bloque "Acceso al portal de vendedor" de su ficha: la contraseña se muestra siempre vacía con un
+        marcador (••••••••); en blanco conserva la actual, y una nueva (mínimo 8 caracteres) la reemplaza, se
+        envía por correo al vendedor y obliga a confirmarla en el próximo ingreso.</li>
+      </ul>
+      <div class="note warn">
+        <strong>Restricción por sede:</strong> si el vendedor tiene una sede fija, solo se le pueden asignar
+        boletas <strong>de esa sede</strong> (en una rifa compartida entre varias sedes, el sistema revisa
+        boleta por boleta). Si el vendedor no tiene sede fija (atiende todas las sedes), se le puede asignar
+        cualquier rango de boletas de cualquier sede.
+      </div>
+      <div class="note">
+        Los datos personales sensibles de un vendedor (por ejemplo su documento o teléfono) solo son visibles
+        para quien tenga el permiso específico para verlos.
+      </div>
+    </section>
+
+    <section id="ventas">
+      <h2><span class="badge role-empresa">Empresa</span> Ventas</h2>
+      <h3>Registrar una venta</h3>
+      <ol class="steps">
+        <li>Ve a <strong>Ventas → Nueva venta</strong>.</li>
+        <li>Elige la rifa. Verás una lista con los números que tienes disponibles para vender (un vendedor solo
+        ve los suyos; un administrador ve los de toda la empresa o su sede).</li>
+        <li>Para agregar un número, haz clic o tócalo en esa lista — el sistema verifica su estado en tiempo
+        real y lo agrega directo si sigue disponible. También puedes escribirlo y buscarlo manualmente (por
+        ejemplo, para uno que no aparezca en la lista o que quieras solicitarle a otro vendedor).</li>
+        <li>Completa los datos del comprador (documento, nombre, teléfono) y el canal de venta.</li>
+        <li>Guarda la venta. Si el comprador no paga el total de una vez, queda un saldo pendiente en cartera.</li>
+      </ol>
+      <p>Tanto el listado como el detalle de cada venta muestran <strong>quién la realizó</strong>: el nombre del
+      vendedor, o "Punto de venta" (con el nombre de la sede) si se vendió directamente sin un vendedor
+      asignado.</p>
+      <h3>Detalle de una venta</h3>
+      <p>Desde el detalle de cada venta se puede:</p>
+      <ul>
+        <li>Editar los datos del cliente.</li>
+        <li>Ver todas las boletas incluidas, el total, lo abonado y el saldo.</li>
+        <li>Registrar un nuevo abono (pago parcial).</li>
+        <li>Anular la venta: esto libera las boletas para que puedan venderse de nuevo.</li>
+        <li>Generar un <strong>recibo imprimible</strong> con el logo de la rifa o de la empresa.</li>
+      </ul>
+    </section>
+
+    <section id="traspasos">
+      <h2><span class="badge role-empresa">Empresa</span> <span class="badge role-vendedor">Vendedor</span>
+      Traspaso de boletas entre vendedores y punto de venta</h2>
+      <p>Esta función existe para un caso muy común: un vendedor tiene un cliente interesado en un número
+      específico, pero ese número no está en su propio talonario. En vez de decirle que no puede venderlo, puede
+      <strong>solicitarlo</strong> a quien lo tenga.</p>
+
+      <div class="note tip">
+        <strong>Única excepción al entorno propio de cada sede.</strong> Una empresa puede tener 1, 2 o muchas
+        sedes (sin límite fijo en el sistema, solo el que autorice su plan), y cada una puede estar en un lugar
+        distinto con su propio día a día: un usuario acotado a una sede solo ve las rifas, ventas y cartera de
+        <strong>esa</strong> sede. Los <strong>traspasos son la única excepción</strong>: la búsqueda de una
+        boleta puntual (por su número) consulta <strong>toda la empresa</strong>, sin importar a qué sede
+        pertenezca quien busca — de lo contrario nunca se podría encontrar ni solicitar una boleta que es de otra
+        sede o de otro vendedor.
+      </div>
+
+      <h3>¿Quién es el "dueño" de una boleta disponible?</h3>
+      <p>Toda boleta que todavía no se ha vendido pertenece a alguien dentro de la empresa:</p>
+      <div class="grid-2">
+        <div class="card">
+          <strong>Boleta dentro de un talonario</strong>
+          <p>Si el número forma parte de un talonario asignado a un vendedor, esa boleta es <strong>de ese
+          vendedor</strong>. Solo él puede venderla directamente.</p>
+        </div>
+        <div class="card">
+          <strong>Boleta sin talonario</strong>
+          <p>Si el número no está en ningún talonario, es <strong>del punto de venta</strong> (la sede). Cualquier
+          administrador o cajero de esa parte de la empresa puede venderla directamente.</p>
+        </div>
+      </div>
+
+      <h3>Cómo se busca una boleta puntual</h3>
+      <p>En la pantalla de "Nueva venta" (o en Traspasos), se escribe el número exacto y se busca. El sistema
+      siempre responde con uno de estos resultados:</p>
+      <table>
+        <tr><th>Resultado</th><th>Qué significa</th><th>Qué se puede hacer</th></tr>
+        <tr>
+          <td><span class="result-tag vendida">Vendida</span></td>
+          <td>Esa boleta ya tiene comprador.</td>
+          <td>Nada — no se puede pedir ni vender.</td>
+        </tr>
+        <tr>
+          <td><span class="result-tag tuya">Ya es tuya</span></td>
+          <td>La boleta ya está en tu talonario, o eres del punto de venta que la tiene.</td>
+          <td>Se vende directamente, sin pedir nada.</td>
+        </tr>
+        <tr>
+          <td><span class="result-tag otro">Asignada al vendedor [nombre]</span></td>
+          <td>Está disponible, pero es de otro vendedor.</td>
+          <td>Se puede <strong>solicitar</strong> a ese vendedor.</td>
+        </tr>
+        <tr>
+          <td><span class="result-tag otro">Disponible en el punto de venta</span></td>
+          <td>Está disponible y es de la sede, no de un vendedor puntual.</td>
+          <td>Se puede <strong>solicitar</strong> al punto de venta.</td>
+        </tr>
+      </table>
+
+      <h3>El flujo completo de una solicitud</h3>
+      <div class="flow">
+        <div class="box"><strong>1. Buscar</strong>Se escribe el número de boleta y se consulta su estado.</div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>2. Solicitar</strong>Si no es tuya y está disponible, se envía la solicitud a
+        su dueño. Solo puede haber una solicitud pendiente por boleta a la vez.</div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>3. Revisar</strong>El dueño la ve en su bandeja de "Traspasos" (solicitudes
+        recibidas).</div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>4. Decidir</strong>El dueño aprueba o rechaza, con un motivo opcional si
+        rechaza.</div>
+        <div class="arrow">→</div>
+        <div class="box"><strong>5. Resultado</strong>Si se aprueba, la boleta cambia de dueño. Si se rechaza,
+        no se mueve nada.</div>
+      </div>
+
+      <div class="note tip">
+        <strong>Avisos automáticos:</strong> mientras se tiene la aplicación abierta, aparece un aviso sonoro y
+        una tarjeta emergente, sin recargar la página, en tres momentos: al dueño de una boleta cuando le llega
+        una solicitud nueva; y a quien solicitó, tanto si su solicitud es <strong>aprobada</strong> (ya es suya)
+        como si es <strong>rechazada</strong> (mostrando el motivo, si el dueño lo indicó). Si además quien
+        solicitó tiene abierta la pantalla de <strong>Nueva venta</strong> con esa misma rifa, la boleta
+        aprobada sube sola a su lista de "Boletas de esta venta" — no hace falta volver a buscarla. Si se
+        rechaza, o si ya se vendió, sigue aplicando lo de siempre: el aviso correspondiente y ningún cambio en
+        la venta.
+      </div>
+
+      <h3>¿Quién puede autorizar la solicitud?</h3>
+      <ul>
+        <li>Si la boleta era de un <strong>vendedor</strong>, solo <strong>ese vendedor</strong> puede aprobar
+        o rechazar la solicitud — nadie más puede decidir por él, ni siquiera un administrador.</li>
+        <li>Si la boleta era del <strong>punto de venta</strong>, la puede resolver cualquier
+        <strong>administrador o gerente</strong> de la empresa, aunque no sea específicamente de esa sede.</li>
+      </ul>
+
+      <h3>Qué pasa exactamente al aprobar</h3>
+      <ol class="steps">
+        <li>El sistema comprueba en ese mismo instante que la boleta siga disponible (pudo venderse mientras la
+        solicitud esperaba respuesta). Si ya se vendió, la solicitud se rechaza sola, indicando ese motivo.</li>
+        <li>Si sigue disponible, la boleta pasa a ser del solicitante: si quien pidió fue un vendedor, la boleta
+        entra a uno de sus talonarios; si quien pidió fue el punto de venta, la boleta vuelve al inventario
+        general de esa sede.</li>
+        <li>Desde ese momento, si la boleta se vende, la <strong>comisión</strong> de esa venta es del nuevo
+        dueño, no del anterior. Si más adelante alguien busca ese número y ya está vendida, el mensaje también
+        indica que fue un traspaso y a qué vendedor, para que quede claro el origen de la venta.</li>
+        <li>La solicitud (aprobada o rechazada) queda visible en el historial de ambas partes, y todo el
+        movimiento se registra en la bitácora de auditoría de la empresa.</li>
+      </ol>
+
+      <h3>Ejemplos</h3>
+      <div class="card">
+        <strong>Ejemplo 1 — boleta de otro vendedor</strong>
+        <p>María es vendedora y tiene un cliente interesado en la boleta <strong>#245</strong>, pero ese número
+        está en el talonario de Pedro, otro vendedor. María la busca, el sistema le muestra "Asignada al
+        vendedor Pedro" y ella presiona <strong>Solicitar</strong>. Pedro ve la solicitud en su bandeja de
+        Traspasos y la <strong>aprueba</strong>. Desde ese momento la #245 es de María: la vende y la comisión
+        es suya. Si Pedro la hubiera <strong>rechazado</strong>, María vería el rechazo en "Enviadas" y la
+        boleta seguiría siendo de Pedro.</p>
+      </div>
+      <div class="card">
+        <strong>Ejemplo 2 — boleta del punto de venta</strong>
+        <p>La boleta <strong>#310</strong> no está asignada a ningún vendedor: pertenece al punto de venta
+        "Sede Centro". El vendedor Carlos la solicita. Como es una boleta del punto de venta, cualquier
+        administrador o gerente de la empresa puede aprobarla, no solo el encargado de Sede Centro. Al
+        aprobarla, la #310 pasa al inventario de Carlos.</p>
+      </div>
+    </section>
+
+    <section id="cartera">
+      <h2><span class="badge role-empresa">Empresa</span> Cartera (cuentas por cobrar)</h2>
+      <p>Lista todas las ventas con saldo pendiente, clasificadas automáticamente según cuántos días llevan sin
+      pagarse: al día, mora temprana, mora media y mora avanzada. Muestra el total pendiente por cada categoría,
+      lo que permite priorizar el cobro.</p>
+    </section>
+
+    <section id="conciliacion-ia">
+      <h2><span class="badge role-empresa">Empresa</span> Conciliación con IA <span class="badge">plan Corporativo</span></h2>
+      <p>Ayuda a identificar, con inteligencia artificial, a qué venta pendiente corresponde cada pago recibido.
+      Está pensada para ahorrar el trabajo manual de revisar uno por uno los movimientos de un extracto bancario
+      o los reportes de los vendedores.</p>
+
+      <h3>Regla más importante: la IA nunca registra nada por sí sola</h3>
+      <div class="note warn">
+        En los tres modos, la IA solo <strong>sugiere</strong> coincidencias. Nada se guarda en el sistema hasta
+        que un administrador revisa la lista de sugerencias, decide cuáles son correctas y presiona el botón de
+        <strong>confirmar</strong>. Es exactamente el mismo control que registrar un abono a mano, solo que la
+        IA ya hizo la búsqueda por ti.
+      </div>
+
+      <h3>Los tres modos</h3>
+      <table>
+        <tr><th>Modo</th><th>Qué se sube</th><th>Contra qué compara</th></tr>
+        <tr>
+          <td><strong>Extracto bancario</strong> (recomendado)</td>
+          <td>Movimientos pegados como texto (fecha, descripción y monto, uno por línea) <strong>o el PDF del
+          extracto</strong> descargado directamente del banco (máximo 8MB) — la IA lee el PDF y reconoce los
+          movimientos sola.</td>
+          <td>Toda la cartera pendiente de la empresa.</td>
+        </tr>
+        <tr>
+          <td><strong>Reporte de vendedor</strong></td>
+          <td>El texto que envió un vendedor (por ejemplo, copiado de WhatsApp) contando lo que recaudó.</td>
+          <td>Solo la cartera pendiente atribuida a ese vendedor.</td>
+        </tr>
+        <tr>
+          <td><strong>Comprobantes (imagen)</strong></td>
+          <td>Fotos o capturas de pantalla de comprobantes de transferencia.</td>
+          <td>Toda la cartera pendiente de la empresa.</td>
+        </tr>
+      </table>
+
+      <h3>Paso a paso</h3>
+      <ol class="steps">
+        <li>Elige el modo y pega el texto (o sube las imágenes) según corresponda, y presiona "Analizar con
+        IA".</li>
+        <li>Aparece una tabla de revisión: cada movimiento detectado, junto con la venta que la IA cree que le
+        corresponde, un porcentaje de <strong>confianza</strong> y una breve explicación. Las coincidencias con
+        70% de confianza o más vienen preseleccionadas; las demás quedan sin marcar para que las revises con más
+        cuidado.</li>
+        <li>Puedes marcar o desmarcar cualquier fila. Las filas sin ninguna venta sugerida no se pueden
+        seleccionar.</li>
+        <li>Al presionar <strong>"Confirmar y registrar"</strong>, solo se registran los abonos de las filas
+        marcadas — igual que si se hicieran uno por uno desde la venta.</li>
+        <li>Si alguna coincidencia ya no se puede aplicar en ese momento (por ejemplo, la venta se pagó por otro
+        medio mientras se revisaba), el sistema lo informa después de confirmar, sin afectar las demás.</li>
+      </ol>
+
+      <div class="note">
+        Esta función requiere que la plataforma tenga configurado un proveedor de inteligencia artificial. Si no
+        lo está, la pantalla se ve igual pero el análisis muestra un aviso claro en vez de fallar en silencio.
+      </div>
+    </section>
+
+    <section id="comisiones">
+      <h2><span class="badge role-empresa">Empresa</span> Comisiones</h2>
+      <p>Muestra, por cada vendedor, cuánto ha recaudado, cuánto le corresponde de comisión (recaudado ×
+      porcentaje pactado), cuánto ya se le pagó y cuánto está pendiente. Desde aquí se puede <strong>liquidar</strong>
+      (pagar) la comisión de un vendedor individual, o de todos a la vez (esta opción de liquidación masiva está
+      disponible en el plan Corporativo).</p>
+      <p>Debajo del consolidado hay un informe aparte, <strong>Detalle por venta</strong>: una fila por cada
+      venta con comisión, con el número de cada boleta, el vendedor, la rifa, el cliente y la comisión de esa
+      venta puntual — para auditar de dónde sale la comisión total de cada vendedor. Ambos se pueden descargar
+      por separado (Consolidado CSV y Detallado CSV).</p>
+    </section>
+
+    <section id="reportes">
+      <h2><span class="badge role-empresa">Empresa</span> Reportes</h2>
+      <ul>
+        <li>Resumen de recaudado, facturado y por cobrar.</li>
+        <li>Avance de venta por cada rifa: cuántas boletas están pagadas, reservadas o todavía disponibles.</li>
+        <li><strong>Ventas por vendedor y sede</strong>: cuántas ventas, cuánto facturó y cuánto ha recaudado
+        cada vendedor (o cada punto de venta, para las ventas sin vendedor asignado).</li>
+        <li>Descarga en archivos compatibles con Excel de ventas, vendedores, cartera y avance.</li>
+        <li>El listado de <strong>Ventas</strong> (pantalla y CSV) incluye el <strong>número de cada boleta</strong>
+        vendida en esa venta, y una columna de <strong>Observaciones</strong>: si alguna de esas boletas llegó a
+        manos de quien la vendió por un traspaso aprobado, se anota de qué vendedor a qué vendedor (por ejemplo,
+        "Boleta #245: traspasada de Pedro a María.").</li>
+        <li>Para quien tenga el permiso correspondiente: una herramienta que <strong>verifica que el historial
+        de auditoría de la empresa no haya sido alterado</strong>, con opción de descargarlo.</li>
+      </ul>
+      <div class="note">
+        La cadena de integridad es compartida por toda la plataforma, no solo por tu empresa. Si el
+        super-administrador de la plataforma purga historial de más de un año, esta pantalla lo indica
+        explícitamente (con la fecha) — ese reinicio queda documentado y no se cuenta como una alteración.
+      </div>
+    </section>
+
+    <section id="notificaciones">
+      <h2><span class="badge role-empresa">Empresa</span> Notificaciones</h2>
+      <p>Muestra la cola de mensajes salientes de la empresa, con su estado: pendiente, en proceso, enviado o
+      fallido. Se pueden procesar manualmente con un botón, y la plataforma también los procesa automáticamente
+      una vez al día.</p>
+    </section>
+
+    <section id="usuarios">
+      <h2><span class="badge role-empresa">Empresa</span> Usuarios internos</h2>
+      <ul>
+        <li>Crear usuarios internos (administradores, gerentes, cajeros) con un rol, permisos específicos y una
+        sede asignada.</li>
+        <li>Cambiar el rol o el estado de cualquier usuario.</li>
+        <li>Restablecer la contraseña de un usuario, generándole una temporal.</li>
+        <li>Editar cualquier usuario ya creado: nombre, correo, teléfono, rol, sede y permisos personalizados,
+        desde el botón "Editar" en su fila.</li>
+        <li>Desde ese mismo formulario de edición, cambiar su contraseña: el campo se muestra siempre vacío con
+        un marcador (••••••••) — si se deja en blanco la contraseña actual no cambia; si se escribe una nueva
+        (mínimo 8 caracteres), se reemplaza, se envía por correo a la dirección registrada de ese usuario (igual
+        que con "¿Olvidaste tu contraseña?") y el usuario deberá confirmarla en su próximo ingreso (sus sesiones
+        activas quedan cerradas).</li>
+      </ul>
+      <div class="note tip">
+        <strong>Sedes independientes, un solo administrador general de consulta.</strong> Cuando una empresa tiene
+        más de una sede, cada una opera su propio día a día (rifas, ventas, cartera, vendedores) por separado —
+        todo dentro de la misma base de datos de la empresa. Para tener a alguien que vea el avance de
+        <strong>todas</strong> las sedes sin poder modificar nada, créalo con el rol <strong>"auditor"</strong> y
+        déjalo <strong>sin sede asignada</strong>: verá el panel principal, los reportes y la cartera de la
+        empresa completa (desglosados por sede), pero no podrá crear, editar, anular ni publicar nada — el rol
+        solo trae permisos de consulta.
+      </div>
+    </section>
+
+    <section id="configuracion">
+      <h2><span class="badge role-empresa">Empresa</span> Configuración</h2>
+      <ul>
+        <li><strong>Marca de la empresa</strong>: logo, imagen de fondo y color propio, que se reflejan en todo
+        el portal y en los recibos impresos.</li>
+        <li><strong>Listas desplegables personalizables</strong>: canales de venta, orígenes de los abonos,
+        canales de mensajería y loterías que usa la empresa. Si no se personalizan, el sistema usa una lista de
+        valores predeterminados.</li>
+      </ul>
+    </section>
+
+    <section id="perfil">
+      <h2><span class="badge role-empresa">Empresa</span> <span class="badge role-vendedor">Vendedor</span>
+      Mi perfil</h2>
+      <p>Cualquier usuario puede ver su propio nombre, correo, empresa, rol, sede y cantidad de permisos que
+      tiene asignados, y cambiar su propia contraseña cuando lo desee.</p>
+    </section>
+
+    <section id="portal-vendedor">
+      <h2><span class="badge role-vendedor">Vendedor</span> App del vendedor</h2>
+      <p>Portal simplificado pensado para el celular, con accesos rápidos en forma de iconos grandes y
+      táctiles:</p>
+      <ul>
+        <li><strong>Inicio</strong>: resumen de talonarios activos, boletas disponibles, recaudo propio, y
+        ventas recientes.</li>
+        <li><strong>Registrar venta</strong>: igual que en el portal de la empresa, pero el vendedor solo ve
+        sus propias rifas y boletas.</li>
+        <li><strong>Mis comisiones</strong>: cuánto ha recaudado, su comisión ganada, lo pagado y lo pendiente.</li>
+        <li><strong>Traspasos</strong>: solicitar boletas de otro vendedor o del punto de venta, y autorizar o
+        rechazar las solicitudes que le lleguen a él (ver la sección de <a href="#traspasos">Traspaso de
+        boletas</a> para el detalle completo).</li>
+      </ul>
+    </section>
+
+    <section id="panel-empresas">
+      <h2><span class="badge role-super">Super-administrador</span> Empresas clientes</h2>
+      <ul>
+        <li>Ver el listado completo de empresas: estado (activa, suspendida, inactiva), plan contratado, sedes y
+        usuarios usados frente a los autorizados, mora pendiente y próxima fecha de pago.</li>
+        <li>Dar de alta una nueva empresa: nombre, logo, plan, fecha de inicio y periodicidad de pago (con la
+        que se genera automáticamente su calendario de vencimientos), junto con el usuario administrador
+        inicial de esa empresa.</li>
+        <li>Editar cualquier campo de una empresa ya creada (botón "Editar" en su ficha): nombre, identificador,
+        cupos de sedes/usuarios y vigencia. Si cambia la periodicidad del plan o la fecha de inicio, el
+        calendario de vencimientos se regenera.</li>
+        <li>Cambiar el plan de una empresa o ampliar su número de sedes autorizadas.</li>
+        <li>Cambiar el estado de una empresa: al suspenderla o inactivarla se cierra automáticamente el acceso
+        de todos sus usuarios.</li>
+        <li>Eliminar por completo una empresa y todos sus datos, mediante un asistente de confirmación en
+        varios pasos para evitar borrados accidentales.</li>
+        <li>Recibe un aviso emergente cuando una o más empresas están a 5 días o menos de su fecha de
+        vencimiento (o ya vencidas).</li>
+      </ul>
+    </section>
+
+    <section id="panel-facturacion">
+      <h2><span class="badge role-super">Super-administrador</span> Facturación de la plataforma</h2>
+      <ul>
+        <li>Configurar los tres precios del plan Básico (mensual, semestral, anual) y el número de sedes
+        incluidas en cada plan (Básico y Corporativo); el plan Corporativo se cotiza a la medida de cada
+        empresa (texto libre).</li>
+        <li>Generar facturas de forma individual o masiva por periodo, para todas las empresas activas (el
+        monto del plan Básico se calcula según la periodicidad de pago de cada empresa).</li>
+        <li>Marcar facturas como pagadas — esto extiende automáticamente la fecha de vencimiento de la empresa
+        — o anularlas.</li>
+        <li>Consultar el historial completo de facturación y la mora acumulada por cada empresa.</li>
+      </ul>
+    </section>
+
+    <section id="panel-accesos">
+      <h2><span class="badge role-super">Super-administrador</span> Recuperación de acceso</h2>
+      <p>El enlace "¿Olvidaste tu contraseña?" del login resuelve las solicitudes solo: valida el correo contra
+      la cuenta registrada y envía la contraseña temporal por correo de inmediato, sin que el
+      super-administrador tenga que intervenir.</p>
+    </section>
+
+    <section id="panel-apariencia">
+      <h2><span class="badge role-super">Super-administrador</span> Apariencia pública de la plataforma</h2>
+      <p>Permite administrar la imagen de fondo de la pantalla de inicio de sesión y el carrusel de fotos y
+      textos que se muestra en la página pública de inicio de RIFAX.</p>
+    </section>
+
+    <section id="planes">
+      <h2>Planes comerciales</h2>
+      <p>Las sedes incluidas y los precios del plan Básico son configurables por el super-administrador; estos
+      son los valores por defecto.</p>
+      <table>
+        <tr><th>Plan</th><th>Pensado para</th><th>Incluye</th></tr>
+        <tr>
+          <td><strong>Básico</strong></td>
+          <td>Empresas más pequeñas.</td>
+          <td>1 sede, usuarios ilimitados. $180.000/mes (mensual), $140.000/mes (semestral), $120.000/mes
+          (anual).</td>
+        </tr>
+        <tr>
+          <td><strong>Corporativo</strong></td>
+          <td>Empresas más grandes.</td>
+          <td>2 sedes, usuarios ilimitados, liquidación masiva de comisiones, y espacio reservado para
+          integraciones adicionales (pasarela de pagos, mensajería por WhatsApp/SMS, soporte prioritario),
+          precio a medida según lo acordado con cada cliente.</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="seguridad">
+      <h2>Seguridad y confianza</h2>
+      <ul>
+        <li>Cada empresa solo puede ver y administrar su propia información; nunca la de otra empresa.</li>
+        <li>Cada acción importante (crear, modificar, eliminar) queda registrada en un historial que no se
+        puede alterar sin dejar evidencia, y existe una función para comprobar que ese historial sigue intacto.</li>
+        <li>Antes de vender una boleta, el sistema verifica en el momento que nadie más la esté vendiendo al
+        mismo tiempo, evitando la venta duplicada de un mismo número.</li>
+        <li>El acceso de cada persona está limitado a lo que su rol y permisos le autorizan a ver o hacer.</li>
+        <li>Las contraseñas nunca se guardan ni se muestran en texto plano, y toda contraseña temporal obliga a
+        definir una nueva en el primer ingreso.</li>
+      </ul>
+    </section>
+
+    <section id="faq">
+      <h2>Preguntas frecuentes</h2>
+      <h4>Un vendedor intenta vender un número que no está en su talonario, ¿qué debe hacer?</h4>
+      <p>Buscarlo por número en "Nueva venta". Si está disponible pero es de otro vendedor o del punto de venta,
+      debe solicitarlo y esperar la aprobación (ver <a href="#traspasos">Traspaso de boletas</a>).</p>
+      <h4>¿Se puede vender una boleta que ya está reservada por otra persona?</h4>
+      <p>No. El sistema comprueba la disponibilidad en el momento exacto de la venta, así que nunca se puede
+      vender dos veces el mismo número.</p>
+      <h4>¿Qué pasa si anulo una venta por error?</h4>
+      <p>Las boletas de esa venta vuelven a quedar disponibles inmediatamente para venderse de nuevo.</p>
+      <h4>¿Un vendedor puede ver las ventas de otros vendedores?</h4>
+      <p>No, cada vendedor solo ve sus propias ventas y sus propias boletas asignadas.</p>
+      <h4>¿Qué pasa si una empresa se atrasa en el pago del plan?</h4>
+      <p>El super-administrador de la plataforma puede suspender el acceso de la empresa hasta que se
+      regularice el pago; al suspenderla se cierran automáticamente las sesiones de todos sus usuarios.</p>
+    </section>
+  </main>
+</div>
+
+<footer class="page-footer">
+  RIFAX — Manual de usuario · Consulta también <a href="acerca-de.html">Acerca de</a>.
+</footer>
+
+</body>
+</html>

@@ -3,6 +3,15 @@
 import { useState } from "react";
 import { purgarTenantAction } from "./actions";
 
+// Declarado fuera del componente: si se define dentro de BorrarWizard, React
+// lo trata como un tipo de componente distinto en cada render (pierde estado
+// e impide la reconciliación normal).
+function Punto({ n, paso }: { n: number; paso: number }) {
+  return (
+    <span className={`grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${paso >= n ? "bg-red-600 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-700"}`}>{n}</span>
+  );
+}
+
 // Borrado de la base de datos de un cliente con verificación en TRES pasos.
 export default function BorrarWizard({ tenantId, slug, nombre }: { tenantId: string; slug: string; nombre: string }) {
   const [open, setOpen] = useState(false);
@@ -21,10 +30,6 @@ export default function BorrarWizard({ tenantId, slug, nombre }: { tenantId: str
     );
   }
 
-  const Punto = ({ n }: { n: number }) => (
-    <span className={`grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${paso >= n ? "bg-red-600 text-white" : "bg-slate-200 text-slate-500 dark:bg-slate-700"}`}>{n}</span>
-  );
-
   return (
     <form action={purgarTenantAction} className="ml-auto w-full rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/40">
       <input type="hidden" name="tenant_id" value={tenantId} />
@@ -36,7 +41,7 @@ export default function BorrarWizard({ tenantId, slug, nombre }: { tenantId: str
 
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Punto n={1} /><span className="h-px w-4 bg-red-300" /><Punto n={2} /><span className="h-px w-4 bg-red-300" /><Punto n={3} />
+          <Punto n={1} paso={paso} /><span className="h-px w-4 bg-red-300" /><Punto n={2} paso={paso} /><span className="h-px w-4 bg-red-300" /><Punto n={3} paso={paso} />
         </div>
         <button type="button" onClick={cerrar} className="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400">Cancelar</button>
       </div>
@@ -57,10 +62,10 @@ export default function BorrarWizard({ tenantId, slug, nombre }: { tenantId: str
 
       {paso === 2 ? (
         <div>
-          <label className="mb-1 block text-xs text-red-700 dark:text-red-300">
+          <label htmlFor="borrar-confirm-slug" className="mb-1 block text-xs text-red-700 dark:text-red-300">
             Escribe el identificador <span className="font-mono font-bold">{slug}</span> para confirmar la empresa:
           </label>
-          <input value={slugTxt} onChange={(e) => setSlugTxt(e.target.value)} placeholder={slug} autoFocus className="w-56 rounded-lg border border-red-300 bg-white px-2 py-1.5 text-sm dark:border-red-900 dark:bg-slate-950 dark:text-slate-100" />
+          <input id="borrar-confirm-slug" value={slugTxt} onChange={(e) => setSlugTxt(e.target.value)} placeholder={slug} autoFocus className="w-56 rounded-lg border border-red-300 bg-white px-2 py-1.5 text-sm dark:border-red-900 dark:bg-slate-950 dark:text-slate-100" />
           <div className="mt-3 flex gap-2">
             <button type="button" onClick={() => setPaso(1)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">Atrás</button>
             <button type="button" disabled={slugTxt !== slug} onClick={() => setPaso(3)} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-50">
@@ -72,10 +77,10 @@ export default function BorrarWizard({ tenantId, slug, nombre }: { tenantId: str
 
       {paso === 3 ? (
         <div>
-          <label className="mb-1 block text-xs text-red-700 dark:text-red-300">
+          <label htmlFor="borrar-confirm-frase" className="mb-1 block text-xs text-red-700 dark:text-red-300">
             Último paso: escribe <span className="font-mono font-bold">ELIMINAR</span> para borrar definitivamente:
           </label>
-          <input value={frase} onChange={(e) => setFrase(e.target.value)} placeholder="ELIMINAR" autoFocus className="w-56 rounded-lg border border-red-300 bg-white px-2 py-1.5 text-sm dark:border-red-900 dark:bg-slate-950 dark:text-slate-100" />
+          <input id="borrar-confirm-frase" value={frase} onChange={(e) => setFrase(e.target.value)} placeholder="ELIMINAR" autoFocus className="w-56 rounded-lg border border-red-300 bg-white px-2 py-1.5 text-sm dark:border-red-900 dark:bg-slate-950 dark:text-slate-100" />
           <div className="mt-3 flex gap-2">
             <button type="button" onClick={() => setPaso(2)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:text-slate-300">Atrás</button>
             <button type="submit" disabled={frase.trim().toUpperCase() !== "ELIMINAR"} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-700 disabled:opacity-50">

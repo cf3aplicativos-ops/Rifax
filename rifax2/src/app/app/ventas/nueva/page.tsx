@@ -3,6 +3,7 @@ import { PageTitle } from "@/components/icons";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { rifasActivas, boletasDisponibles } from "@/lib/ventas";
+import { imagenesRifa } from "@/lib/rifas";
 import { rifasVentaVendedor } from "@/lib/portal-vendedor";
 import { opcionesDe } from "@/lib/catalogos";
 import FormVenta from "./form";
@@ -22,7 +23,7 @@ export default async function NuevaVentaPage() {
     });
     if (!vend) {
       return (
-        <div className="mx-auto max-w-3xl">
+        <div>
           <Link href="/vendedor" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver</Link>
           <PageTitle icon="nuevo" className="mt-2">Nueva venta</PageTitle>
           <p className="mt-6 rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
@@ -33,7 +34,7 @@ export default async function NuevaVentaPage() {
     }
     const rifas = await rifasVentaVendedor(user.tenant.id, vend.id);
     return (
-      <div className="mx-auto max-w-3xl">
+      <div>
         <Link href="/vendedor" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver</Link>
         <PageTitle icon="nuevo" className="mt-2">Nueva venta</PageTitle>
         {rifas.length === 0 ? (
@@ -59,11 +60,12 @@ export default async function NuevaVentaPage() {
       numeroMax: r.numero_max,
       // En rifa compartida, sugiere solo las boletas de la sede del usuario (si está acotado).
       sugeridos: await boletasDisponibles(user.tenant.id, r.id, 10, r.compartida ? (user.sede?.id ?? null) : null),
+      boletaImagenUrl: (await imagenesRifa(user.tenant.id, r.id)).boleta,
     })),
   );
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div>
       <Link href="/app/ventas" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
         ← Volver a ventas
       </Link>

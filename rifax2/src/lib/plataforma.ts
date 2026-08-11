@@ -8,24 +8,83 @@ import { esPlan } from "@/lib/planes";
 type Resultado = { ok: true } | { ok: false; error: string };
 
 // ---------- Configuración global ----------
-export async function getConfigPlataforma(): Promise<{ precioBasico: number; precioCorporativoTexto: string }> {
+export interface ConfigPlataforma {
+  precioBasicoMensual: number;
+  precioBasicoSemestral: number;
+  precioBasicoAnual: number;
+  precioCorporativoTexto: string;
+  sedesBasico: number;
+  sedesCorporativo: number;
+}
+
+const CONFIG_DEFAULT: ConfigPlataforma = {
+  precioBasicoMensual: 180000,
+  precioBasicoSemestral: 140000,
+  precioBasicoAnual: 120000,
+  precioCorporativoTexto: "A medida",
+  sedesBasico: 1,
+  sedesCorporativo: 2,
+};
+
+export async function getConfigPlataforma(): Promise<ConfigPlataforma> {
   try {
-    const filas = await prisma.$queryRawUnsafe<{ precio_basico: string; precio_corporativo_texto: string }[]>(
-      `SELECT precio_basico::text, precio_corporativo_texto FROM saas.plataforma_config WHERE id = 1`,
+    const filas = await prisma.$queryRawUnsafe<
+      { precio_basico_mensual: string; precio_basico_semestral: string; precio_basico_anual: string; precio_corporativo_texto: string; sedes_basico: number; sedes_corporativo: number }[]
+    >(
+      `SELECT precio_basico_mensual::text, precio_basico_semestral::text, precio_basico_anual::text,
+              precio_corporativo_texto, sedes_basico, sedes_corporativo
+         FROM saas.plataforma_config WHERE id = 1`,
     );
     const f = filas[0];
-    return { precioBasico: f ? Number(f.precio_basico) : 99000, precioCorporativoTexto: f?.precio_corporativo_texto ?? "A medida" };
+    if (!f) return CONFIG_DEFAULT;
+    return {
+      precioBasicoMensual: Number(f.precio_basico_mensual),
+      precioBasicoSemestral: Number(f.precio_basico_semestral),
+      precioBasicoAnual: Number(f.precio_basico_anual),
+      precioCorporativoTexto: f.precio_corporativo_texto,
+      sedesBasico: f.sedes_basico,
+      sedesCorporativo: f.sedes_corporativo,
+    };
   } catch {
-    return { precioBasico: 99000, precioCorporativoTexto: "A medida" };
+    return CONFIG_DEFAULT;
   }
 }
 
-export async function guardarConfigPlataforma(precioBasico: number, precioCorporativoTexto: string): Promise<Resultado> {
-  if (!Number.isFinite(precioBasico) || precioBasico < 0) return { ok: false, error: "El precio del plan básico debe ser un número ≥ 0." };
+// Precio mensual del plan básico según la periodicidad de pago escogida.
+export function precioBasicoPorPeriodicidad(config: ConfigPlataforma, periodicidadPago: string): number {
+  if (periodicidadPago === "semestral") return config.precioBasicoSemestral;
+  if (periodicidadPago === "anual") return config.precioBasicoAnual;
+  return config.precioBasicoMensual;
+}
+
+export async function guardarConfigPlataforma(input: {
+  precioBasicoMensual: number;
+  precioBasicoSemestral: number;
+  precioBasicoAnual: number;
+  precioCorporativoTexto: string;
+  sedesBasico: number;
+  sedesCorporativo: number;
+}): Promise<Resultado> {
+  const precios = [input.precioBasicoMensual, input.precioBasicoSemestral, input.precioBasicoAnual];
+  if (precios.some((p) => !Number.isFinite(p) || p < 0)) return { ok: false, error: "Los precios del plan básico deben ser números ≥ 0." };
+  if (!Number.isInteger(input.sedesBasico) || input.sedesBasico < 1) return { ok: false, error: "Las sedes del plan básico deben ser un entero ≥ 1." };
+  if (!Number.isInteger(input.sedesCorporativo) || input.sedesCorporativo < 1) return { ok: false, error: "Las sedes del plan corporativo deben ser un entero ≥ 1." };
   await prisma.$executeRawUnsafe(
-    `UPDATE saas.plataforma_config SET precio_basico = $1::numeric, precio_corporativo_texto = $2::text, actualizado_en = now() WHERE id = 1`,
-    String(precioBasico),
-    precioCorporativoTexto.trim() || "A medida",
+    `UPDATE saas.plataforma_config SET
+       precio_basico_mensual = $1::numeric,
+       precio_basico_semestral = $2::numeric,
+       precio_basico_anual = $3::numeric,
+       precio_corporativo_texto = $4::text,
+       sedes_basico = $5::smallint,
+       sedes_corporativo = $6::smallint,
+       actualizado_en = now()
+     WHERE id = 1`,
+    String(input.precioBasicoMensual),
+    String(input.precioBasicoSemestral),
+    String(input.precioBasicoAnual),
+    input.precioCorporativoTexto.trim() || "A medida",
+    input.sedesBasico,
+    input.sedesCorporativo,
   );
   return { ok: true };
 }

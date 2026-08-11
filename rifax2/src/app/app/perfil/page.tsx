@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default async function PerfilPage() {
   const user = await requireUser();
   return (
-    <div className="mx-auto max-w-xl">
+    <div>
       <PageTitle icon="perfil">Mi perfil</PageTitle>
       <div className="mt-6 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
         <dl className="grid grid-cols-2 gap-4 text-sm">

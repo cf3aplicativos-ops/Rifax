@@ -7,7 +7,7 @@ export default async function LoginPage() {
   const fondo = await getLoginFondo();
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-50 px-4 dark:bg-slate-950">
+    <main className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 ${fondo ? "" : "bg-slate-50 dark:bg-slate-950"}`}>
       {/* Fondo configurable: imagen que se ajusta a la pantalla + degradado. */}
       {fondo ? (
         <>
@@ -19,7 +19,9 @@ export default async function LoginPage() {
         </>
       ) : null}
 
-      <LoginForm />
+      <div className="flex flex-col items-center gap-3">
+        <LoginForm />
+      </div>
     </main>
   );
 }

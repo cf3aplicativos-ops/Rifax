@@ -3,14 +3,16 @@
 import Link from "next/link";
 import SideNav, { type NavItem } from "@/components/side-nav";
 import { Icon } from "@/components/icons";
+import NotificadorTraspasos from "@/components/NotificadorTraspasos";
+import InstalarApp from "@/components/InstalarApp";
 import { logoutUserAction } from "./actions";
 
 export type { NavItem };
 
 export default function AppShell({
-  nav, tenant, sede, userName, userRol, logoUrl, children,
+  nav, tenant, sede, userName, userRol, logoUrl, puedeTraspasar, children,
 }: {
-  nav: NavItem[]; tenant: string; sede: string; userName: string; userRol: string; logoUrl: string | null; children: React.ReactNode;
+  nav: NavItem[]; tenant: string; sede: string; userName: string; userRol: string; logoUrl: string | null; puedeTraspasar: boolean; children: React.ReactNode;
 }) {
   const footer = (collapsed: boolean) => (
     <>
@@ -30,6 +32,8 @@ export default function AppShell({
 
   return (
     <SideNav nav={nav} brand={tenant} subtitle={sede} logoUrl={logoUrl} homeHref="/app" footer={footer}>
+      {puedeTraspasar ? <NotificadorTraspasos hrefTraspasos="/app/traspasos" /> : null}
+      <InstalarApp />
       {children}
     </SideNav>
   );

@@ -15,7 +15,7 @@ export default async function NuevoUsuarioPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
       <Link href="/app/usuarios" className="text-sm text-slate-500 transition hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a usuarios</Link>
       <PageTitle icon="nuevo" className="mt-2">Nuevo usuario</PageTitle>
       <FormUsuario

@@ -6,6 +6,22 @@
   /* Acento de marca RIFAX (amarillo). El aplicativo del tenant puede
      sobrescribirlo con su color configurado. */
   --rifax-accent: #f5c518;
+  /* Color por defecto de los botones primarios de toda la aplicación
+     (#F5C518). Dentro de /app y /vendedor, cada empresa lo puede cambiar
+     desde Configuración; ese valor por-empresa sobrescribe estas variables
+     en un <style> propio de la página (mayor prioridad en cascada). Fuera
+     de un tenant (login, panel de plataforma, consulta pública, landing)
+     siempre queda en el valor por defecto. */
+  --color-indigo-50: #f5c51814;
+  --color-indigo-500: #f5c518;
+  --color-indigo-600: #f5c518;
+  --color-indigo-700: #d8ad15;
+}
+
+/* Texto oscuro por defecto sobre el botón amarillo (mismo criterio de
+   contraste que aplica el branding por-empresa). */
+.bg-indigo-600 {
+  color: #1e293b;
 }
 
 @theme inline {
@@ -26,4 +42,15 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
