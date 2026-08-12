@@ -7,6 +7,7 @@ import type { NavItem } from "@/components/side-nav";
 
 const nav: NavItem[] = [
   { href: "/vendedor", label: "Inicio", icon: "inicio", exact: true },
+  { href: "/vendedor/clientes", label: "Mis clientes", icon: "usuarios" },
   { href: "/vendedor/comisiones", label: "Mis comisiones", icon: "comisiones" },
   { href: "/vendedor/traspasos", label: "Traspasos", icon: "traspaso" },
   { href: "/app/ventas/nueva", label: "Registrar venta", icon: "nuevo" },

@@ -52,6 +52,7 @@ export default async function VendedorHome() {
       {/* Accesos rápidos con íconos tocables */}
       <div className="grid grid-cols-3 gap-3">
         <Tile href="/app/ventas/nueva" icon="nuevo" label="Registrar venta" destacado />
+        <Tile href="/vendedor/clientes" icon="usuarios" label="Mis clientes" />
         <Tile href="/vendedor/comisiones" icon="comisiones" label="Mis comisiones" />
         <Tile href="/vendedor/traspasos" icon="traspaso" label="Traspasos" />
       </div>
