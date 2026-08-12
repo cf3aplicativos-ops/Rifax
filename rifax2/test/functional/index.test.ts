@@ -11,7 +11,8 @@ import { crearSede, editarSede } from "@/lib/sedes";
 import { estadoSedes } from "@/lib/dashboard";
 import { crearUsuario, editarUsuario, cambiarRol, cambiarEstado as cambiarEstadoUsuario, listarRoles } from "@/lib/usuarios";
 import { crearVendedor, editarVendedor, asignarTalonario, cambiarEstadoVendedor, cerrarTalonario } from "@/lib/vendedores";
-import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede } from "@/lib/rifas";
+import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede, cerrarRifa } from "@/lib/rifas";
+import { rankingVendedores } from "@/lib/reportes";
 import { crearVenta, registrarAbono, anularVenta, listarVentas, buscarVentasParaAbono, ventaEnAlcance, ventaEnAlcanceOtraSede, ventaEnAlcanceParaRecibo } from "@/lib/ventas";
 import { crearSolicitudTraspaso, resolverSolicitud, buscarBoleta, contextoDeUsuario } from "@/lib/traspasos";
 import { crearAccesoVendedor, actualizarAccesoVendedor } from "@/lib/portal-vendedor";
@@ -27,7 +28,7 @@ import { parseCsv, expandirNumeros, importarVendedores, importarVentas } from "@
 import { TIPOS, opcionesDe, listarCatalogos, agregarItem, toggleItem } from "@/lib/catalogos";
 import { obtenerIntegraciones, guardarIntegraciones } from "@/lib/integraciones";
 import { listarCartera, resumirCartera } from "@/lib/cartera";
-import { actualizarCliente, cambiarEstadoCliente, estadoCliente } from "@/lib/clientes";
+import { actualizarCliente, cambiarEstadoCliente, estadoCliente, buscarClientePorDocumento } from "@/lib/clientes";
 import { resumenOutbox, listarOutbox, procesarOutbox } from "@/lib/outbox";
 
 let ctx: ContextoPrueba;
@@ -431,10 +432,15 @@ describe("Rifas y boletas", () => {
     const vSinCambio = await prisma.vendedores.findUnique({ where: { id: vendedorAId } });
     expect(vSinCambio?.estado).toBe("activo"); // el cambio no se aplicó
 
+    // Cuenta ANTES/DESPUÉS (en vez de asumir que 60-61 están libres): otra
+    // prueba anterior asigna 5 boletas AL AZAR sobre el mismo rango 0-99, así
+    // que estos números pueden o no estar ya ocupados de forma legítima —
+    // lo único que debe ser cierto es que el intento rechazado no cambió nada.
+    const antesAsignar = await prisma.boletas.count({ where: { rifa_id: rifaId, numero: { in: [60, 61] }, talonario_id: { not: null } } });
     const asignar = await asignarTalonario({ rifaId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 60, fin: 61 }, ctx.tenantId, ctx.adminId, ctx.sedeBId);
     expect(asignar.ok).toBe(false);
-    const sinAsignar = await prisma.boletas.count({ where: { rifa_id: rifaId, numero: { in: [60, 61] }, talonario_id: { not: null } } });
-    expect(sinAsignar).toBe(0);
+    const despuesAsignar = await prisma.boletas.count({ where: { rifa_id: rifaId, numero: { in: [60, 61] }, talonario_id: { not: null } } });
+    expect(despuesAsignar).toBe(antesAsignar);
 
     const talonarioA = await prisma.talonarios.findFirst({ where: { vendedor_id: vendedorAId, rifa_id: rifaId, estado: { not: "cerrado" } } });
     expect(talonarioA).not.toBeNull();
@@ -1162,7 +1168,7 @@ describe("Cartera y clientes", () => {
     );
     expect(disponible.length).toBeGreaterThan(0);
     const venta = await crearVenta(
-      { rifa_id: String(rifaRevisionId), numeros: [disponible[0].numero], cliente: { nombre: "Cliente Cartera", telefono: "3008880000" } },
+      { rifa_id: String(rifaRevisionId), numeros: [disponible[0].numero], cliente: { nombre: "Cliente Cartera", telefono: "3008880099" } },
       ctx.tenantId, ctx.adminId,
     );
     expect(venta.ok).toBe(true);
@@ -1187,7 +1193,7 @@ describe("Cartera y clientes", () => {
     );
     const clienteId = clienteFilas[0].id;
 
-    const editar = await actualizarCliente(ctx.tenantId, clienteId, { nombre: "Cliente Cartera Editado", telefono: "3008880000" }, ctx.adminId);
+    const editar = await actualizarCliente(ctx.tenantId, clienteId, { nombre: "Cliente Cartera Editado", telefono: "3008880099" }, ctx.adminId);
     expect(editar.ok).toBe(true);
     const cliente = await prisma.clientes.findUnique({ where: { id: clienteId } });
     expect(cliente?.nombre).toBe("Cliente Cartera Editado");
@@ -1471,5 +1477,131 @@ describe("purgar_tenant(): el reinicio de cadena queda documentado (tenant secun
     const despues = await estadoAuditoriaGlobal();
     expect(despues.integra).toBe(true); // la garantía central de este fix: no se reporta como alterada
     expect(despues.totalReinicios).toBeGreaterThanOrEqual(reiniciosAntes); // el hueco (si lo hubo) quedó documentado, no oculto
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 15 de la solicitud del usuario: ranking de vendedores + cerrar rifa.
+// Rifa propia y desechable, para no interferir con el estado de `rifaId`
+// (compartida con casi toda la suite, ya termina en 'sorteada').
+
+describe("Ranking de vendedores y cierre de rifa", () => {
+  it("rankingVendedores refleja las ventas reales, ordenado por recaudado; cerrarRifa bloquea nuevas ventas", async () => {
+    const hoy = new Date();
+    const enUnDia = new Date(hoy.getTime() + 86_400_000);
+    const creada = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Ranking", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creada.ok).toBe(true);
+    if (!creada.ok) return;
+    const rifaRankingId = creada.rifa.id;
+    const publicada = await publicarRifa(ctx.tenantId, rifaRankingId, ctx.adminId);
+    expect(publicada.ok).toBe(true);
+
+    // vendedorA vende 2 boletas, vendedorC (sin sede fija) vende 1: A debe
+    // quedar primero por recaudado (ambas boletas al mismo precio).
+    const asigA = await asignarTalonario({ rifaId: rifaRankingId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 0, fin: 1 }, ctx.tenantId, ctx.adminId);
+    expect(asigA.ok).toBe(true);
+    const asigC = await asignarTalonario({ rifaId: rifaRankingId, vendedorId: vendedorCId, tipo: "consecutiva", inicio: 2, fin: 2 }, ctx.tenantId, ctx.adminId);
+    expect(asigC.ok).toBe(true);
+
+    const ventaA = await crearVenta(
+      { rifa_id: String(rifaRankingId), numeros: [0, 1], cliente: { nombre: "Cliente Ranking A", telefono: "3007770001" }, vendedor_id: String(vendedorAId) },
+      ctx.tenantId, ctx.adminId,
+    );
+    expect(ventaA.ok).toBe(true);
+    const ventaC = await crearVenta(
+      { rifa_id: String(rifaRankingId), numeros: [2], cliente: { nombre: "Cliente Ranking C", telefono: "3007770002" }, vendedor_id: String(vendedorCId) },
+      ctx.tenantId, ctx.adminId,
+    );
+    expect(ventaC.ok).toBe(true);
+    if (!ventaA.ok || !ventaC.ok) return;
+    // El recaudado del ranking se basa en ABONOS, no en el total facturado
+    // (una venta a crédito sin pagar no debe sumar recaudo): se paga de contado.
+    await registrarAbono(ctx.tenantId, ventaA.data.ventaId, { monto: ventaA.data.total, origen: "efectivo" }, ctx.adminId);
+    await registrarAbono(ctx.tenantId, ventaC.data.ventaId, { monto: ventaC.data.total, origen: "efectivo" }, ctx.adminId);
+
+    const ranking = await rankingVendedores(ctx.tenantId, rifaRankingId);
+    expect(ranking).toHaveLength(2);
+    expect(ranking[0].posicion).toBe(1);
+    expect(ranking[0].vendedorId).toBe(String(vendedorAId));
+    expect(ranking[0].boletas).toBe(2);
+    expect(Number(ranking[0].recaudado)).toBe(Number(ventaA.data.total));
+    expect(ranking[1].posicion).toBe(2);
+    expect(ranking[1].vendedorId).toBe(String(vendedorCId));
+
+    // Cerrar antes de tiempo desde un estado inválido (ya cerrada) se rechaza.
+    const cerrar1 = await cerrarRifa(ctx.tenantId, rifaRankingId, ctx.adminId);
+    expect(cerrar1.ok).toBe(true);
+    const cerrar2 = await cerrarRifa(ctx.tenantId, rifaRankingId, ctx.adminId);
+    expect(cerrar2.ok).toBe(false);
+
+    const rifaRow = await prisma.rifas.findUnique({ where: { id: rifaRankingId } });
+    expect(rifaRow?.estado).toBe("cerrada");
+
+    // Ya cerrada, no se pueden vender más boletas (regla ya existente de crearVenta).
+    const ventaTrasCierre = await crearVenta(
+      { rifa_id: String(rifaRankingId), numeros: [3], cliente: { nombre: "Cliente Tarde", telefono: "3007770003" } },
+      ctx.tenantId, ctx.adminId,
+    );
+    expect(ventaTrasCierre.ok).toBe(false);
+
+    // El ranking se sigue pudiendo consultar después de cerrada (no se borra nada).
+    const rankingTrasCierre = await rankingVendedores(ctx.tenantId, rifaRankingId);
+    expect(rankingTrasCierre).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 15 (continuación): base de datos de clientes con autocompletar por
+// documento, identificando la sede y el vendedor de su última compra — SIN
+// filtrar por sede (a propósito: un cliente puede haber comprado en otra).
+
+describe("Autocompletar cliente por documento", () => {
+  it("encuentra al cliente por documento y reporta la sede/vendedor de su última compra, sin importar la sede de quien busca", async () => {
+    const hoy = new Date();
+    const enUnDia = new Date(hoy.getTime() + 86_400_000);
+    const creada = await crearRifa(
+      {
+        sede_id: String(ctx.sedeBId), nombre: "Rifa QA Autocompletar", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creada.ok).toBe(true);
+    if (!creada.ok) return;
+    const rifaAutoId = creada.rifa.id;
+    await publicarRifa(ctx.tenantId, rifaAutoId, ctx.adminId);
+
+    const asig = await asignarTalonario({ rifaId: rifaAutoId, vendedorId: vendedorBId, tipo: "consecutiva", inicio: 0, fin: 0 }, ctx.tenantId, ctx.adminId);
+    expect(asig.ok).toBe(true);
+
+    const venta = await crearVenta(
+      {
+        rifa_id: String(rifaAutoId), numeros: [0],
+        cliente: { nombre: "Cliente Autocompletar", telefono: "3009990099", documento: "CC-AUTOCOMPLETE-1" },
+        vendedor_id: String(vendedorBId),
+      },
+      ctx.tenantId, ctx.adminId,
+    );
+    expect(venta.ok).toBe(true);
+
+    // Sin coincidencia.
+    const noEncontrado = await buscarClientePorDocumento(ctx.tenantId, "CC-NO-EXISTE-NUNCA");
+    expect(noEncontrado).toBeNull();
+
+    // Con coincidencia: trae los datos del cliente y la sede/vendedor de su
+    // última compra — vendedorB es de Sede QA B, así que esto confirma que
+    // la búsqueda NO se limita a la sede de quien la ejecuta.
+    const encontrado = await buscarClientePorDocumento(ctx.tenantId, "CC-AUTOCOMPLETE-1");
+    expect(encontrado).not.toBeNull();
+    expect(encontrado?.nombre).toBe("Cliente Autocompletar");
+    expect(encontrado?.telefono).toBe("3009990099");
+    expect(encontrado?.ultimaSede).toBe("Sede QA B");
+    expect(encontrado?.ultimoVendedor).toBe("QA Vendedor B");
   });
 });

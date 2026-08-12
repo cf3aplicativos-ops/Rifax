@@ -97,6 +97,53 @@ export async function ventasPorVendedor(tenantId: bigint, sedeId: bigint | null)
   }));
 }
 
+export interface RankingVendedor {
+  posicion: number;
+  vendedorId: string;
+  vendedorNombre: string;
+  sedeNombre: string;
+  boletas: number;
+  ventas: number;
+  recaudado: string;
+}
+
+// Ranking de vendedores de UNA rifa (punto 15): solo vendedores reales (no
+// "Punto de venta"), ordenado por recaudado. Se calcula en vivo a partir de
+// ventas/abonos/boletas — no se congela una copia al cerrar la rifa, así que
+// siempre refleja el estado real (por ejemplo, si se anula una venta después).
+export async function rankingVendedores(tenantId: bigint, rifaId: bigint): Promise<RankingVendedor[]> {
+  const filas = await prisma.$queryRawUnsafe<
+    { vendedor_id: bigint; vendedor_nombre: string; sede_nombre: string; boletas: bigint; ventas: bigint; recaudado: string }[]
+  >(
+    `WITH por_venta AS (
+       SELECT v.id, v.vendedor_id, v.estado,
+              COALESCE((SELECT SUM(a.monto) FROM saas.abonos a WHERE a.venta_id = v.id), 0) AS abonado,
+              (SELECT COUNT(*) FROM saas.ventas_boletas vb WHERE vb.venta_id = v.id) AS num_boletas
+         FROM saas.ventas v
+        WHERE v.tenant_id = $1::bigint AND v.rifa_id = $2::bigint AND v.vendedor_id IS NOT NULL
+     )
+     SELECT pv.vendedor_id, ve.nombre AS vendedor_nombre, COALESCE(s.nombre, 'Todas las sedes') AS sede_nombre,
+            COALESCE(SUM(pv.num_boletas) FILTER (WHERE pv.estado <> 'anulada'), 0) AS boletas,
+            COUNT(*) FILTER (WHERE pv.estado <> 'anulada') AS ventas,
+            COALESCE(SUM(pv.abonado), 0)::text AS recaudado
+       FROM por_venta pv
+       JOIN saas.vendedores ve ON ve.id = pv.vendedor_id
+       LEFT JOIN saas.sedes s ON s.id = ve.sede_id
+      GROUP BY pv.vendedor_id, ve.nombre, s.nombre
+      ORDER BY SUM(pv.abonado) DESC, COALESCE(SUM(pv.num_boletas) FILTER (WHERE pv.estado <> 'anulada'), 0) DESC`,
+    tenantId, rifaId,
+  );
+  return filas.map((f, i) => ({
+    posicion: i + 1,
+    vendedorId: String(f.vendedor_id),
+    vendedorNombre: f.vendedor_nombre,
+    sedeNombre: f.sede_nombre,
+    boletas: Number(f.boletas),
+    ventas: Number(f.ventas),
+    recaudado: f.recaudado,
+  }));
+}
+
 export interface EstadoAuditoria {
   integra: boolean; rotaEnId: string | null; totalEventos: number;
   ultimaPurgaGlobal: Date | null;

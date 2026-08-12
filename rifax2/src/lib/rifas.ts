@@ -549,3 +549,28 @@ export async function publicarRifa(tenantId: bigint, rifaId: bigint, actorId: bi
     return { ok: false as const, error: mensajeError(e, "Error al publicar.") };
   }
 }
+
+// Dar por finalizada/cerrada una rifa (punto 15): deja de poder venderse
+// (crearVenta ya exige estado='activa') y congela premios/premios
+// anticipados. Se permite desde 'activa' (cierre anticipado, p. ej. se
+// agotaron las boletas o el admin decide terminarla) o 'sorteada' (ya se
+// jugaron todos los premios) — nunca desde 'borrador' ni si ya está cerrada.
+export async function cerrarRifa(tenantId: bigint, rifaId: bigint, actorId: bigint) {
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const rifa = await tx.rifas.findFirst({ where: { id: rifaId, tenant_id: tenantId }, select: { estado: true, codigo: true } });
+      if (!rifa) return { ok: false as const, error: "Rifa no encontrada." };
+      if (!["activa", "sorteada"].includes(rifa.estado)) {
+        return { ok: false as const, error: `No se puede cerrar una rifa en estado '${rifa.estado}'.` };
+      }
+      await tx.rifas.update({ where: { id: rifaId }, data: { estado: "cerrada" } });
+      await auditar(tx, {
+        tenantId, actorId, accion: "rifa.cerrar", entidadTipo: "rifa", entidadId: rifaId,
+        antes: { estado: rifa.estado }, despues: { estado: "cerrada", rifa: rifa.codigo },
+      });
+      return { ok: true as const };
+    });
+  } catch (e) {
+    return { ok: false, error: mensajeError(e, "Error al cerrar la rifa.") };
+  }
+}

@@ -1,8 +1,17 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { crearVentaAction, type VentaFormState } from "../actions";
 import { EVENTO_TRASPASO_APROBADO, type DetalleTraspasoAprobado } from "@/components/NotificadorTraspasos";
+
+interface ClienteAutocompletado {
+  nombre: string;
+  telefono: string;
+  correo: string | null;
+  documento: string;
+  ultimaSede: string | null;
+  ultimoVendedor: string | null;
+}
 
 interface Rifa {
   id: string;
@@ -52,6 +61,37 @@ export default function FormVenta({
   const [resultado, setResultado] = useState<EstadoBusqueda | null>(null);
   const [solicitando, setSolicitando] = useState(false);
   const [mensajeSolicitud, setMensajeSolicitud] = useState<string | null>(null);
+
+  // Autocompletar cliente por documento (informativo, en TODAS las sedes del
+  // tenant): se busca al salir del campo, nunca sobrescribe datos que ya se
+  // hayan escrito a mano — muestra un botón para cargarlos si el cajero quiere.
+  const nombreRef = useRef<HTMLInputElement>(null);
+  const telefonoRef = useRef<HTMLInputElement>(null);
+  const correoRef = useRef<HTMLInputElement>(null);
+  const [buscandoCliente, setBuscandoCliente] = useState(false);
+  const [clienteEncontrado, setClienteEncontrado] = useState<ClienteAutocompletado | null>(null);
+
+  async function buscarCliente(documento: string) {
+    setClienteEncontrado(null);
+    if (documento.trim().length < 3) return;
+    setBuscandoCliente(true);
+    try {
+      const r = await fetch(`/api/clientes/buscar?documento=${encodeURIComponent(documento.trim())}`, { cache: "no-store" });
+      const j = await r.json();
+      if (j.ok && j.cliente) setClienteEncontrado(j.cliente);
+    } catch {
+      // Silencioso: es solo una ayuda informativa, no bloquea la venta.
+    } finally {
+      setBuscandoCliente(false);
+    }
+  }
+
+  function usarDatosCliente() {
+    if (!clienteEncontrado) return;
+    if (nombreRef.current) nombreRef.current.value = clienteEncontrado.nombre;
+    if (telefonoRef.current) telefonoRef.current.value = clienteEncontrado.telefono;
+    if (correoRef.current) correoRef.current.value = clienteEncontrado.correo ?? "";
+  }
 
   const rifa = useMemo(() => rifas.find((r) => r.id === rifaId), [rifas, rifaId]);
   const unicos = useMemo(
@@ -352,22 +392,43 @@ export default function FormVenta({
         <legend className="px-1 text-sm font-semibold text-slate-700 dark:text-slate-300">Cliente</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
+            <label htmlFor="documento" className={etiqueta}>Documento <span className="text-slate-400">(opcional, autocompleta si ya compró antes)</span></label>
+            <input
+              id="documento"
+              name="documento"
+              onBlur={(e) => buscarCliente(e.target.value)}
+              className={campo}
+            />
+          </div>
+          <div>
             <label htmlFor="nombre" className={etiqueta}>Nombre</label>
-            <input id="nombre" name="nombre" required minLength={2} className={campo} />
+            <input id="nombre" name="nombre" ref={nombreRef} required minLength={2} className={campo} />
           </div>
           <div>
             <label htmlFor="telefono" className={etiqueta}>Teléfono</label>
-            <input id="telefono" name="telefono" required minLength={7} placeholder="3001234567" className={campo} />
+            <input id="telefono" name="telefono" ref={telefonoRef} required minLength={7} placeholder="3001234567" className={campo} />
           </div>
           <div>
             <label htmlFor="correo" className={etiqueta}>Correo <span className="text-slate-400">(opcional)</span></label>
-            <input id="correo" name="correo" type="email" className={campo} />
-          </div>
-          <div>
-            <label htmlFor="documento" className={etiqueta}>Documento <span className="text-slate-400">(opcional)</span></label>
-            <input id="documento" name="documento" className={campo} />
+            <input id="correo" name="correo" ref={correoRef} type="email" className={campo} />
           </div>
         </div>
+
+        {buscandoCliente ? <p className="text-xs text-slate-500 dark:text-slate-400">Buscando cliente…</p> : null}
+        {clienteEncontrado ? (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300">
+            <span>
+              Cliente encontrado: <strong>{clienteEncontrado.nombre}</strong> · {clienteEncontrado.telefono}
+              {clienteEncontrado.ultimaSede ? (
+                <> · última compra en <strong>{clienteEncontrado.ultimaSede}</strong>{clienteEncontrado.ultimoVendedor ? ` (vendedor ${clienteEncontrado.ultimoVendedor})` : ""}</>
+              ) : null}
+            </span>
+            <button type="button" onClick={usarDatosCliente} className="rounded-md bg-indigo-600 px-2 py-1 font-semibold text-white transition hover:bg-indigo-700">
+              Usar estos datos
+            </button>
+          </div>
+        ) : null}
+
         <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
           <input type="checkbox" name="consentimiento" className="rounded" />
           Autoriza el tratamiento de sus datos (Ley 1581/2012)

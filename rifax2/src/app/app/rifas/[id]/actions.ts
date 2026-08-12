@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
-import { agregarPremio, agregarPremioAnticipado, editarPremioAnticipado, eliminarPremioAnticipado, eliminarPremio, guardarLogoRifa, guardarBoletaRifa, asignarBoletasSede, liberarBoletasSede, editarRifa } from "@/lib/rifas";
+import { agregarPremio, agregarPremioAnticipado, editarPremioAnticipado, eliminarPremioAnticipado, eliminarPremio, guardarLogoRifa, guardarBoletaRifa, asignarBoletasSede, liberarBoletasSede, editarRifa, cerrarRifa } from "@/lib/rifas";
 import { ejecutarSorteo, cambiarEntregaGanador } from "@/lib/sorteos";
 
 export async function editarRifaAction(formData: FormData): Promise<void> {
@@ -178,6 +178,14 @@ export async function ejecutarSorteoAction(formData: FormData): Promise<void> {
   );
   revalidatePath(`/app/rifas/${rifaId}`);
   redirect(res.ok ? `/app/rifas/${rifaId}?sorteo=${res.data?.numeroGanador}&ganador=${res.data?.conGanador ? 1 : 0}` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function cerrarRifaAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("rifa.cerrar");
+  const rifaId = String(formData.get("rifa_id") ?? "0");
+  const res = await cerrarRifa(user.tenant.id, BigInt(rifaId), user.id);
+  revalidatePath(`/app/rifas/${rifaId}`);
+  redirect(res.ok ? `/app/rifas/${rifaId}?cerrada=1` : `/app/rifas/${rifaId}?error=${encodeURIComponent(res.error)}`);
 }
 
 export async function cambiarEntregaAction(formData: FormData): Promise<void> {

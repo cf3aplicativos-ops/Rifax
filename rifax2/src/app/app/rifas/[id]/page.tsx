@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { obtenerRifa, imagenesRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables } from "@/lib/rifas";
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
+import { rankingVendedores } from "@/lib/reportes";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
-import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction, editarRifaAction } from "./actions";
+import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction, editarRifaAction, cerrarRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
 import PremiosAnticipados, { type PA } from "./premios-anticipados";
 import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
@@ -20,7 +21,7 @@ export default async function RifaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; editada?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; editada?: string; cerrada?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -30,12 +31,13 @@ export default async function RifaDetalle({
 
   const rifa = await obtenerRifa(user.tenant.id, rifaId);
   if (!rifa) notFound();
-  const [sorteos, pendientes, loterias, imgs, compartida] = await Promise.all([
+  const [sorteos, pendientes, loterias, imgs, compartida, ranking] = await Promise.all([
     listarSorteos(user.tenant.id, rifaId),
     premiosPendientes(user.tenant.id, rifaId),
     opcionesDe(user.tenant.id, "loteria"),
     imagenesRifa(user.tenant.id, rifaId),
     esCompartida(user.tenant.id, rifaId),
+    rankingVendedores(user.tenant.id, rifaId),
   ]);
   const logoUrl = imgs.logo;
   const boletaUrl = imgs.boleta;
@@ -43,6 +45,7 @@ export default async function RifaDetalle({
 
   const puedeEditar = hasPermission(user, "rifa.editar");
   const puedeSortear = hasPermission(user, "sorteo.ejecutar");
+  const puedeCerrar = hasPermission(user, "rifa.cerrar");
 
   // Datos de distribución por sede (solo rifas compartidas).
   let distrib: { sedes: { id: string; nombre: string }[]; sinAsignar: number; filas: FilaSede[] } | null = null;
@@ -146,6 +149,7 @@ export default async function RifaDetalle({
       {sp.boleta ? <Aviso tipo="ok">Imagen de la boleta actualizada.</Aviso> : null}
       {sp.asignadas && sp.asignadas !== "0" ? <Aviso tipo="ok">{sp.asignadas} boleta(s) asignada(s) a la sede.</Aviso> : null}
       {sp.liberadas ? <Aviso tipo="ok">{sp.liberadas} boleta(s) liberada(s).</Aviso> : null}
+      {sp.cerrada ? <Aviso tipo="ok">Rifa finalizada y cerrada. Ya no se pueden vender más boletas.</Aviso> : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
       {/* LOGO DE LA RIFA (para el recibo) */}
@@ -318,6 +322,60 @@ export default async function RifaDetalle({
           </form>
         ) : null}
       </section>
+
+      {/* RANKING DE VENDEDORES (#15) */}
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Ranking de vendedores</h2>
+        {ranking.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Aún no hay ventas de vendedores en esta rifa.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                <tr>
+                  <th className="px-4 py-3 font-medium">#</th>
+                  <th className="px-4 py-3 font-medium">Vendedor</th>
+                  <th className="px-4 py-3 font-medium">Sede</th>
+                  <th className="px-4 py-3 text-right font-medium">Boletas</th>
+                  <th className="px-4 py-3 text-right font-medium">Ventas</th>
+                  <th className="px-4 py-3 text-right font-medium">Recaudado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 bg-white dark:divide-slate-800 dark:bg-slate-950">
+                {ranking.map((r) => (
+                  <tr key={r.vendedorId}>
+                    <td className="px-4 py-3 font-semibold text-slate-900 dark:text-white">
+                      {r.posicion === 1 ? "🥇" : r.posicion === 2 ? "🥈" : r.posicion === 3 ? "🥉" : r.posicion}
+                    </td>
+                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{r.vendedorNombre}</td>
+                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.sedeNombre}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{r.boletas.toLocaleString("es-CO")}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700 dark:text-slate-300">{r.ventas.toLocaleString("es-CO")}</td>
+                    <td className="px-4 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-100">{money(r.recaudado)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* FINALIZAR Y CERRAR RIFA (#15) */}
+      {puedeCerrar && ["activa", "sorteada"].includes(rifa.estado) ? (
+        <section className="mt-10 rounded-xl border border-amber-300 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/30">
+          <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-300">Finalizar y cerrar rifa</h2>
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-400">
+            Deja la rifa como cerrada: no se podrán vender más boletas. El ranking de arriba queda disponible para
+            consultar en cualquier momento. Esta acción no se puede deshacer desde aquí.
+          </p>
+          <form action={cerrarRifaAction} className="mt-3">
+            <input type="hidden" name="rifa_id" value={String(rifa.id)} />
+            <button type="submit" className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-700">
+              Finalizar y cerrar rifa
+            </button>
+          </form>
+        </section>
+      ) : null}
     </div>
   );
 }
