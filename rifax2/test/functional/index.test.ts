@@ -11,7 +11,7 @@ import { crearSede, editarSede } from "@/lib/sedes";
 import { estadoSedes } from "@/lib/dashboard";
 import { crearUsuario, editarUsuario, cambiarRol, cambiarEstado as cambiarEstadoUsuario, listarRoles } from "@/lib/usuarios";
 import { crearVendedor, editarVendedor, asignarTalonario, cambiarEstadoVendedor, cerrarTalonario } from "@/lib/vendedores";
-import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede, cerrarRifa } from "@/lib/rifas";
+import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede, cerrarRifa, trasladarRifa } from "@/lib/rifas";
 import { rankingVendedores } from "@/lib/reportes";
 import { crearVenta, registrarAbono, anularVenta, listarVentas, buscarVentasParaAbono, ventaEnAlcance, ventaEnAlcanceOtraSede, ventaEnAlcanceParaRecibo } from "@/lib/ventas";
 import { crearSolicitudTraspaso, resolverSolicitud, buscarBoleta, contextoDeUsuario } from "@/lib/traspasos";
@@ -1603,5 +1603,102 @@ describe("Autocompletar cliente por documento", () => {
     expect(encontrado?.telefono).toBe("3009990099");
     expect(encontrado?.ultimaSede).toBe("Sede QA B");
     expect(encontrado?.ultimoVendedor).toBe("QA Vendedor B");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 13: traslado de vendedores (con sus números abonados) de una rifa
+// finalizada a una rifa nueva.
+
+describe("Traslado de vendedores entre rifas", () => {
+  it("traslada el mismo número al mismo vendedor cuando sigue disponible; omite fuera de rango, ya ocupado y vendedor inactivo; exige origen cerrada y destino activa", async () => {
+    const hoy = new Date();
+    const enUnDia = new Date(hoy.getTime() + 86_400_000);
+
+    // Origen: 3 dígitos (0-999), para poder probar el caso "fuera de rango" en el destino (2 dígitos).
+    const creadaOrigen = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Traslado Origen", numero_digitos: "3", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creadaOrigen.ok).toBe(true);
+    if (!creadaOrigen.ok) return;
+    const rifaOrigenId = creadaOrigen.rifa.id;
+    await publicarRifa(ctx.tenantId, rifaOrigenId, ctx.adminId);
+
+    // #7 vendido por vendedorA -> debe trasladarse.
+    await asignarTalonario({ rifaId: rifaOrigenId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 7, fin: 7 }, ctx.tenantId, ctx.adminId);
+    await crearVenta({ rifa_id: String(rifaOrigenId), numeros: [7], cliente: { nombre: "Cliente Traslado 7", telefono: "3001110007" }, vendedor_id: String(vendedorAId) }, ctx.tenantId, ctx.adminId);
+
+    // #8 vendido SIN vendedor (punto de venta) -> nunca es candidato.
+    await crearVenta({ rifa_id: String(rifaOrigenId), numeros: [8], cliente: { nombre: "Cliente Traslado 8", telefono: "3001110008" } }, ctx.tenantId, ctx.adminId);
+
+    // #150 vendido por vendedorC -> queda fuera del rango del destino (2 dígitos, 0-99).
+    await asignarTalonario({ rifaId: rifaOrigenId, vendedorId: vendedorCId, tipo: "consecutiva", inicio: 150, fin: 150 }, ctx.tenantId, ctx.adminId);
+    await crearVenta({ rifa_id: String(rifaOrigenId), numeros: [150], cliente: { nombre: "Cliente Traslado 150", telefono: "3001110150" }, vendedor_id: String(vendedorCId) }, ctx.tenantId, ctx.adminId);
+
+    // #9 vendido por vendedorC -> en el destino ya estará ocupado antes del traslado.
+    await asignarTalonario({ rifaId: rifaOrigenId, vendedorId: vendedorCId, tipo: "consecutiva", inicio: 9, fin: 9 }, ctx.tenantId, ctx.adminId);
+    await crearVenta({ rifa_id: String(rifaOrigenId), numeros: [9], cliente: { nombre: "Cliente Traslado 9", telefono: "3001110009" }, vendedor_id: String(vendedorCId) }, ctx.tenantId, ctx.adminId);
+
+    // #10 vendido por vendedorC, que luego queda inactivo antes del traslado.
+    await asignarTalonario({ rifaId: rifaOrigenId, vendedorId: vendedorCId, tipo: "consecutiva", inicio: 10, fin: 10 }, ctx.tenantId, ctx.adminId);
+    await crearVenta({ rifa_id: String(rifaOrigenId), numeros: [10], cliente: { nombre: "Cliente Traslado 10", telefono: "3001110010" }, vendedor_id: String(vendedorCId) }, ctx.tenantId, ctx.adminId);
+
+    // Destino: 2 dígitos (0-99), activa.
+    const creadaDestino = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Traslado Destino", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creadaDestino.ok).toBe(true);
+    if (!creadaDestino.ok) return;
+    const rifaDestinoId = creadaDestino.rifa.id;
+    await publicarRifa(ctx.tenantId, rifaDestinoId, ctx.adminId);
+
+    // Rechaza: origen todavía no está cerrada.
+    const antesDeCerrar = await trasladarRifa(ctx.tenantId, rifaOrigenId, rifaDestinoId, ctx.adminId);
+    expect(antesDeCerrar.ok).toBe(false);
+
+    // #9 ya ocupado de antemano en el destino (venta directa, sin vendedor).
+    await crearVenta({ rifa_id: String(rifaDestinoId), numeros: [9], cliente: { nombre: "Cliente Ya Estaba", telefono: "3001119999" } }, ctx.tenantId, ctx.adminId);
+
+    // vendedorC queda inactivo antes del traslado (afecta a #10, y también a #150 y #9 pero esos ya se omiten por otro motivo).
+    const suspender = await cambiarEstadoVendedor(vendedorCId, ctx.tenantId, "inactivo", ctx.adminId);
+    expect(suspender.ok).toBe(true);
+
+    const cerrado = await cerrarRifa(ctx.tenantId, rifaOrigenId, ctx.adminId);
+    expect(cerrado.ok).toBe(true);
+
+    // Rechaza: destino no está activa (todavía en borrador).
+    const creadaBorrador = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Traslado Borrador", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creadaBorrador.ok).toBe(true);
+    if (creadaBorrador.ok) {
+      const destinoBorrador = await trasladarRifa(ctx.tenantId, rifaOrigenId, creadaBorrador.rifa.id, ctx.adminId);
+      expect(destinoBorrador.ok).toBe(false);
+    }
+
+    const resultado = await trasladarRifa(ctx.tenantId, rifaOrigenId, rifaDestinoId, ctx.adminId);
+    expect(resultado.ok).toBe(true);
+    if (!resultado.ok) return;
+    expect(resultado.data.trasladados).toBe(1);
+    expect(resultado.data.omitidos).toHaveLength(3);
+    expect(resultado.data.omitidos.map((o) => o.numero).sort((a, b) => a - b)).toEqual([9, 10, 150]);
+
+    const boleta7Destino = await prisma.boletas.findFirst({ where: { rifa_id: rifaDestinoId, numero: 7 }, include: { talonarios: { select: { vendedor_id: true } } } });
+    expect(boleta7Destino?.talonarios?.vendedor_id).toBe(vendedorAId);
+
+    // Restaura vendedorC para no dejar residuos entre pruebas.
+    await cambiarEstadoVendedor(vendedorCId, ctx.tenantId, "activo", ctx.adminId);
   });
 });

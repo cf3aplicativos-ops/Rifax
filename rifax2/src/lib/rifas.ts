@@ -574,3 +574,111 @@ export async function cerrarRifa(tenantId: bigint, rifaId: bigint, actorId: bigi
     return { ok: false, error: mensajeError(e, "Error al cerrar la rifa.") };
   }
 }
+
+// Rifas 'cerrada' del tenant, para elegir el origen al trasladar vendedores.
+export async function rifasCerradas(tenantId: bigint, excluirId: bigint) {
+  return prisma.rifas.findMany({
+    where: { tenant_id: tenantId, estado: "cerrada", id: { not: excluirId } },
+    orderBy: { id: "desc" },
+    select: { id: true, codigo: true, nombre: true },
+  });
+}
+
+export interface OmisionTraslado { numero: number; vendedor: string; motivo: string }
+
+// Traslado de vendedores entre rifas (punto 13): al terminar una rifa y
+// abrir una nueva, cada vendedor "pasa" con los números que tenía ABONADOS
+// (vendidos a un cliente, con vendedor asignado, en cualquier estado no
+// anulado) en la rifa vieja — el mismo número queda reservado para el mismo
+// vendedor en la rifa nueva, para que el cliente conserve "su número de la
+// suerte". Sedes y usuarios no necesitan traslado: ya pertenecen a la
+// empresa, no a una rifa puntual. Exclusivo del rol admin (permiso
+// `rifa.trasladar`, ver actions.ts) — "previa autorización del
+// administrador de la empresa".
+export async function trasladarRifa(
+  tenantId: bigint, rifaOrigenId: bigint, rifaDestinoId: bigint, actorId: bigint,
+): Promise<{ ok: true; data: { trasladados: number; omitidos: OmisionTraslado[] } } | { ok: false; error: string }> {
+  if (rifaOrigenId === rifaDestinoId) return { ok: false, error: "La rifa de origen y la de destino deben ser distintas." };
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(`SELECT pg_advisory_xact_lock(hashtext('talonarios_rifa_' || $1::text))`, String(rifaDestinoId));
+
+        const origen = await tx.rifas.findFirst({ where: { id: rifaOrigenId, tenant_id: tenantId }, select: { estado: true, codigo: true } });
+        if (!origen) return { ok: false as const, error: "Rifa de origen no encontrada." };
+        if (origen.estado !== "cerrada") return { ok: false as const, error: "La rifa de origen debe estar cerrada." };
+
+        const destino = await tx.rifas.findFirst({ where: { id: rifaDestinoId, tenant_id: tenantId }, select: { estado: true, codigo: true, numero_min: true, numero_max: true } });
+        if (!destino) return { ok: false as const, error: "Rifa de destino no encontrada." };
+        if (destino.estado !== "activa") return { ok: false as const, error: "La rifa de destino debe estar activa (publicada)." };
+
+        // Números vendidos (no anulados) con vendedor asignado en la rifa de origen.
+        const candidatos = await tx.$queryRawUnsafe<{ numero: number; vendedor_id: bigint; vendedor_nombre: string; vendedor_estado: string }[]>(
+          `SELECT DISTINCT b.numero, ve.id AS vendedor_id, ve.nombre AS vendedor_nombre, ve.estado AS vendedor_estado
+             FROM saas.boletas b
+             JOIN saas.ventas_boletas vb ON vb.boleta_id = b.id
+             JOIN saas.ventas v ON v.id = vb.venta_id
+             JOIN saas.vendedores ve ON ve.id = v.vendedor_id
+            WHERE b.rifa_id = $1::bigint AND v.tenant_id = $2::bigint AND v.estado <> 'anulada'
+            ORDER BY b.numero`,
+          rifaOrigenId, tenantId,
+        );
+
+        let trasladados = 0;
+        const omitidos: OmisionTraslado[] = [];
+        const talonarioPorVendedor = new Map<string, bigint>();
+
+        for (const c of candidatos) {
+          if (c.vendedor_estado !== "activo") {
+            omitidos.push({ numero: c.numero, vendedor: c.vendedor_nombre, motivo: "El vendedor ya no está activo." });
+            continue;
+          }
+          if (c.numero < destino.numero_min || c.numero > destino.numero_max) {
+            omitidos.push({ numero: c.numero, vendedor: c.vendedor_nombre, motivo: "Ese número no existe en el rango de la rifa nueva." });
+            continue;
+          }
+          const boletaDestino = await tx.$queryRawUnsafe<{ id: bigint; estado: string; talonario_id: bigint | null }[]>(
+            `SELECT id, estado, talonario_id FROM saas.boletas WHERE rifa_id=$1::bigint AND numero=$2::int FOR UPDATE`,
+            rifaDestinoId, c.numero,
+          );
+          const b = boletaDestino[0];
+          if (!b || b.estado !== "disponible" || b.talonario_id !== null) {
+            omitidos.push({ numero: c.numero, vendedor: c.vendedor_nombre, motivo: "Ya no está disponible en la rifa nueva." });
+            continue;
+          }
+
+          const vendedorKey = String(c.vendedor_id);
+          let talonarioId = talonarioPorVendedor.get(vendedorKey);
+          if (!talonarioId) {
+            const existente = await tx.talonarios.findFirst({
+              where: { tenant_id: tenantId, rifa_id: rifaDestinoId, vendedor_id: c.vendedor_id, estado: { not: "cerrado" } },
+              select: { id: true },
+            });
+            if (existente) {
+              talonarioId = existente.id;
+            } else {
+              const creado = await tx.talonarios.create({
+                data: { tenant_id: tenantId, rifa_id: rifaDestinoId, vendedor_id: c.vendedor_id, numero_inicio: c.numero, numero_fin: c.numero, estado: "asignado", tipo: "aleatoria" },
+                select: { id: true },
+              });
+              talonarioId = creado.id;
+            }
+            talonarioPorVendedor.set(vendedorKey, talonarioId);
+          }
+          await tx.$executeRawUnsafe(`UPDATE saas.boletas SET talonario_id=$1::bigint WHERE id=$2::bigint`, talonarioId, b.id);
+          trasladados++;
+        }
+
+        await auditar(tx, {
+          tenantId, actorId, accion: "rifa.trasladar", entidadTipo: "rifa", entidadId: rifaDestinoId,
+          antes: { rifaOrigen: origen.codigo }, despues: { rifaDestino: destino.codigo, trasladados, omitidos: omitidos.length },
+        });
+
+        return { ok: true as const, data: { trasladados, omitidos } };
+      },
+      { timeout: 120_000, maxWait: 10_000 },
+    );
+  } catch (e) {
+    return { ok: false, error: mensajeError(e, "Error al trasladar la rifa.") };
+  }
+}

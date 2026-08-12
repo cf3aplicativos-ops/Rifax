@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
-import { obtenerRifa, imagenesRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables } from "@/lib/rifas";
+import { obtenerRifa, imagenesRifa, esCompartida, distribucionPorSede, boletasDisponiblesSede, sedesOperables, rifasCerradas } from "@/lib/rifas";
 import { listarSorteos, premiosPendientes } from "@/lib/sorteos";
 import { rankingVendedores } from "@/lib/reportes";
 import { opcionesDe } from "@/lib/catalogos";
 import { money, fecha } from "@/lib/format";
-import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction, editarRifaAction, cerrarRifaAction } from "./actions";
+import { agregarPremioAction, agregarPremioAnticipadoAction, ejecutarSorteoAction, cambiarEntregaAction, eliminarPremioAction, guardarLogoRifaAction, guardarBoletaRifaAction, editarRifaAction, cerrarRifaAction, trasladarRifaAction } from "./actions";
 import { Icon } from "@/components/icons";
 import PremiosAnticipados, { type PA } from "./premios-anticipados";
 import DistribucionSedes, { type FilaSede } from "./distribucion-sedes";
@@ -21,7 +21,7 @@ export default async function RifaDetalle({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; editada?: string; cerrada?: string; error?: string }>;
+  searchParams: Promise<{ premio?: string; anticipado?: string; sorteo?: string; ganador?: string; entrega?: string; logo?: string; boleta?: string; asignadas?: string; liberadas?: string; editada?: string; cerrada?: string; trasladados?: string; omitidos?: string; error?: string }>;
 }) {
   const user = await requirePermission("rifa.ver");
   const { id } = await params;
@@ -46,6 +46,8 @@ export default async function RifaDetalle({
   const puedeEditar = hasPermission(user, "rifa.editar");
   const puedeSortear = hasPermission(user, "sorteo.ejecutar");
   const puedeCerrar = hasPermission(user, "rifa.cerrar");
+  const puedeTrasladar = hasPermission(user, "rifa.trasladar") && user.rol === "admin";
+  const rifasOrigen = puedeTrasladar && rifa.estado === "activa" ? await rifasCerradas(user.tenant.id, rifaId) : [];
 
   // Datos de distribución por sede (solo rifas compartidas).
   let distrib: { sedes: { id: string; nombre: string }[]; sinAsignar: number; filas: FilaSede[] } | null = null;
@@ -150,6 +152,12 @@ export default async function RifaDetalle({
       {sp.asignadas && sp.asignadas !== "0" ? <Aviso tipo="ok">{sp.asignadas} boleta(s) asignada(s) a la sede.</Aviso> : null}
       {sp.liberadas ? <Aviso tipo="ok">{sp.liberadas} boleta(s) liberada(s).</Aviso> : null}
       {sp.cerrada ? <Aviso tipo="ok">Rifa finalizada y cerrada. Ya no se pueden vender más boletas.</Aviso> : null}
+      {sp.trasladados ? (
+        <Aviso tipo="ok">
+          {sp.trasladados} número(s) trasladado(s) con su vendedor.
+          {sp.omitidos && sp.omitidos !== "0" ? ` ${sp.omitidos} no se pudieron trasladar (ya no disponibles en esta rifa, fuera de rango, o vendedor inactivo) — detalle en Auditoría.` : ""}
+        </Aviso>
+      ) : null}
       {sp.error ? <Aviso tipo="error">{sp.error}</Aviso> : null}
 
       {/* LOGO DE LA RIFA (para el recibo) */}
@@ -375,6 +383,28 @@ export default async function RifaDetalle({
             </button>
           </form>
         </section>
+      ) : null}
+
+      {/* TRASLADO DE VENDEDORES DESDE UNA RIFA FINALIZADA (#13) */}
+      {puedeTrasladar && rifa.estado === "activa" ? (
+        rifasOrigen.length === 0 ? null : (
+          <section className="mt-10 rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Traer vendedores de una rifa finalizada</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Cada vendedor que tenía números vendidos (con cliente) en la rifa elegida recibe automáticamente el
+              mismo número reservado aquí, si sigue disponible y existe en el rango de esta rifa. Solo el
+              administrador de la empresa puede hacer esto.
+            </p>
+            <form action={trasladarRifaAction} className="mt-3 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="rifa_destino_id" value={String(rifa.id)} />
+              <select name="rifa_origen_id" required className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                <option value="">Elige la rifa finalizada de origen…</option>
+                {rifasOrigen.map((r) => <option key={String(r.id)} value={String(r.id)}>{r.codigo} — {r.nombre}</option>)}
+              </select>
+              <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Trasladar vendedores</button>
+            </form>
+          </section>
+        )
       ) : null}
     </div>
   );
