@@ -528,6 +528,27 @@ export async function eliminarAbono(tenantId: bigint, abonoId: bigint, actorId: 
   }
 }
 
+// Limpieza de carritos abandonados de la compra en línea (punto 4): una
+// venta 'pendiente_pago' con canal 'web' cuyo cliente nunca completó el pago
+// en Wompi (ni intentó, así que jamás llega ningún webhook) se queda
+// reservando esos números para siempre si nadie la anula. Se ejecuta desde
+// el cron ya existente (ver /api/cron/outbox), a nivel de plataforma (todos
+// los tenants), igual que el propio outbox.
+export async function limpiarComprasWebAbandonadas(minutosLimite = 30): Promise<{ anuladas: number }> {
+  const corte = new Date(Date.now() - minutosLimite * 60 * 1000);
+  const candidatas = await prisma.ventas.findMany({
+    where: { canal: "web", estado: "pendiente_pago", creado_en: { lt: corte } },
+    select: { id: true, tenant_id: true },
+    take: 200,
+  });
+  let anuladas = 0;
+  for (const v of candidatas) {
+    const res = await anularVenta(v.tenant_id, v.id, "Carrito abandonado: sin confirmación de pago tras el tiempo límite.", null);
+    if (res.ok) anuladas++;
+  }
+  return { anuladas };
+}
+
 export async function anularVenta(
   tenantId: bigint,
   ventaId: bigint,

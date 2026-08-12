@@ -13,7 +13,7 @@ import { crearUsuario, editarUsuario, cambiarRol, cambiarEstado as cambiarEstado
 import { crearVendedor, editarVendedor, asignarTalonario, cambiarEstadoVendedor, cerrarTalonario } from "@/lib/vendedores";
 import { crearRifa, publicarRifa, agregarPremio, asignarBoletasSede, liberarBoletasSede, cerrarRifa, trasladarRifa } from "@/lib/rifas";
 import { rankingVendedores } from "@/lib/reportes";
-import { crearVenta, registrarAbono, anularVenta, listarVentas, buscarVentasParaAbono, ventaEnAlcance, ventaEnAlcanceOtraSede, ventaEnAlcanceParaRecibo } from "@/lib/ventas";
+import { crearVenta, registrarAbono, anularVenta, listarVentas, buscarVentasParaAbono, ventaEnAlcance, ventaEnAlcanceOtraSede, ventaEnAlcanceParaRecibo, limpiarComprasWebAbandonadas } from "@/lib/ventas";
 import { crearSolicitudTraspaso, resolverSolicitud, buscarBoleta, contextoDeUsuario } from "@/lib/traspasos";
 import { crearAccesoVendedor, actualizarAccesoVendedor } from "@/lib/portal-vendedor";
 import type { TenantUser } from "@/lib/auth/session";
@@ -1856,5 +1856,70 @@ describe("Landing pública y dominio propio", () => {
     expect(vacio.ok).toBe(true);
     const brandingLimpio = await getBranding(ctx.tenantId);
     expect(brandingLimpio.dominioPersonalizado).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Limpieza de carritos abandonados (seguimiento del punto 4): una venta
+// 'pendiente_pago' de canal 'web' que nunca recibió confirmación de pago se
+// libera automáticamente pasado el tiempo límite.
+
+describe("Limpieza de carritos abandonados (compra en línea)", () => {
+  it("anula solo las ventas web pendientes más viejas que el límite, liberando sus boletas", async () => {
+    const hoy = new Date();
+    const enUnDia = new Date(hoy.getTime() + 86_400_000);
+    const creada = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Carrito Abandonado", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creada.ok).toBe(true);
+    if (!creada.ok) return;
+    const rifaCarritoId = creada.rifa.id;
+    await publicarRifa(ctx.tenantId, rifaCarritoId, ctx.adminId);
+
+    // Wompi ya quedó configurado para ctx.tenantId por la suite de "Compra pública en línea".
+    const compraVieja = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaCarritoId, numeros: [1],
+      cliente: { nombre: "Cliente Carrito Viejo", telefono: "3009990010", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraVieja.ok).toBe(true);
+    const compraReciente = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaCarritoId, numeros: [2],
+      cliente: { nombre: "Cliente Carrito Reciente", telefono: "3009990011", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraReciente.ok).toBe(true);
+    if (!compraVieja.ok || !compraVieja.data || !compraReciente.ok || !compraReciente.data) return;
+
+    const refVieja = new URL(compraVieja.data.checkoutUrl).searchParams.get("reference")!;
+    const refReciente = new URL(compraReciente.data.checkoutUrl).searchParams.get("reference")!;
+    const ventaVieja = await prisma.ventas.findFirst({ where: { codigo: refVieja } });
+    const ventaReciente = await prisma.ventas.findFirst({ where: { codigo: refReciente } });
+    expect(ventaVieja?.estado).toBe("pendiente_pago");
+    expect(ventaReciente?.estado).toBe("pendiente_pago");
+
+    // Con el límite normal (30 min), ninguna de las dos es "vieja" todavía: no se toca nada.
+    const barridoNormal = await limpiarComprasWebAbandonadas(30);
+    const ventaViejaSinTocar = await prisma.ventas.findUnique({ where: { id: ventaVieja!.id } });
+    expect(ventaViejaSinTocar?.estado).toBe("pendiente_pago");
+
+    // Con límite 0 (equivalente a "más vieja que este instante"), sí se anulan.
+    const barrido = await limpiarComprasWebAbandonadas(0);
+    expect(barrido.anuladas).toBeGreaterThanOrEqual(2); // al menos las dos de esta prueba (puede haber otras del resto de la suite)
+
+    const ventaViejaDespues = await prisma.ventas.findUnique({ where: { id: ventaVieja!.id } });
+    const ventaRecienteDespues = await prisma.ventas.findUnique({ where: { id: ventaReciente!.id } });
+    expect(ventaViejaDespues?.estado).toBe("anulada");
+    expect(ventaRecienteDespues?.estado).toBe("anulada");
+
+    const boleta1 = await prisma.boletas.findFirst({ where: { rifa_id: rifaCarritoId, numero: 1 } });
+    const boleta2 = await prisma.boletas.findFirst({ where: { rifa_id: rifaCarritoId, numero: 2 } });
+    expect(boleta1?.estado).toBe("disponible");
+    expect(boleta2?.estado).toBe("disponible");
+    expect(barridoNormal.anuladas).toBe(0); // ninguna era lo bastante vieja en ese primer barrido
   });
 });
