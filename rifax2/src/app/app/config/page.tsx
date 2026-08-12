@@ -5,7 +5,7 @@ import { listarCatalogos, TIPOS } from "@/lib/catalogos";
 import { getBranding } from "@/lib/branding";
 import { obtenerIntegraciones } from "@/lib/integraciones";
 import PasswordInput from "@/components/PasswordInput";
-import { agregarItemAction, toggleItemAction, guardarBrandingAction, guardarIntegracionesAction } from "./actions";
+import { agregarItemAction, toggleItemAction, guardarBrandingAction, guardarDominioAction, guardarIntegracionesAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +60,39 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
             <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar marca</button>
           </div>
         </form>
+      </section>
+
+      {/* LANDING PÚBLICA Y DOMINIO PROPIO (#4a / #4b) */}
+      <section id="dominio" className="mt-6 rounded-xl border border-slate-300 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-white">Landing pública y dominio propio</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          Tu empresa ya tiene una página pública con tus rifas activas y compra en línea, con la marca de arriba:
+        </p>
+        <a
+          href={`/e/${user.tenant.slug}`} target="_blank" rel="noreferrer"
+          className="mt-2 inline-block rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-sm text-indigo-600 hover:underline dark:bg-slate-800 dark:text-indigo-400"
+        >
+          rifax2.vercel.app/e/{user.tenant.slug} ↗
+        </a>
+
+        <form action={guardarDominioAction} className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+          <div>
+            <label className="mb-1 block text-sm text-slate-700 dark:text-slate-300">Tu dominio propio <span className="text-slate-400">(opcional, ej: rifasjuan.com)</span></label>
+            <input name="dominio" defaultValue={branding.dominioPersonalizado ?? ""} placeholder="rifasjuan.com" className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" />
+          </div>
+          <button type="submit" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700">Guardar dominio</button>
+        </form>
+
+        {branding.dominioPersonalizado ? (
+          <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            <p className="font-semibold">Pasos para activar {branding.dominioPersonalizado}:</p>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs">
+              <li>En el proveedor donde compraste el dominio, crea un registro <strong>CNAME</strong> que apunte <span className="font-mono">{branding.dominioPersonalizado}</span> a <span className="font-mono">cname.vercel-dns.com</span> (si es el dominio raíz sin "www", usa un registro <strong>A</strong> hacia <span className="font-mono">76.76.21.21</span>).</li>
+              <li>Los cambios de DNS pueden tardar desde minutos hasta un par de horas en propagarse.</li>
+              <li><strong>Paso final pendiente:</strong> avísanos cuando el DNS esté configurado — el dominio todavía no queda conectado automáticamente al sitio; falta agregarlo del lado de la plataforma (Vercel) una sola vez.</li>
+            </ol>
+          </div>
+        ) : null}
       </section>
 
       {/* INTEGRACIONES (#7): pasarela de pagos, WhatsApp y SMS */}

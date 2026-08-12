@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/lib/auth/rbac";
 import { agregarItem, toggleItem } from "@/lib/catalogos";
-import { guardarBranding } from "@/lib/branding";
+import { guardarBranding, guardarDominioPersonalizado } from "@/lib/branding";
 import { guardarIntegraciones } from "@/lib/integraciones";
 
 export async function guardarBrandingAction(formData: FormData): Promise<void> {
@@ -24,6 +24,13 @@ export async function guardarBrandingAction(formData: FormData): Promise<void> {
   );
   revalidatePath("/app", "layout");
   redirect(res.ok ? "/app/config?ok=1" : `/app/config?error=${encodeURIComponent(res.error)}`);
+}
+
+export async function guardarDominioAction(formData: FormData): Promise<void> {
+  const user = await requirePermission("config.gestionar");
+  const res = await guardarDominioPersonalizado(user.tenant.id, String(formData.get("dominio") ?? ""), user.id);
+  revalidatePath("/app/config");
+  redirect(res.ok ? "/app/config?ok=1#dominio" : `/app/config?error=${encodeURIComponent(res.error)}#dominio`);
 }
 
 export async function guardarIntegracionesAction(formData: FormData): Promise<void> {

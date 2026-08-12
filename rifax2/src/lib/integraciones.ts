@@ -27,6 +27,23 @@ export interface IntegracionesUI {
   smsApiKeyConfigurada: boolean;
 }
 
+export interface CredencialesWompi {
+  sandbox: boolean;
+  publicKey: string;
+  privateKey: string;
+  eventsSecret: string;
+}
+
+// Únicamente para uso interno del flujo de pago (construir el checkout,
+// verificar el checksum del webhook) — a diferencia de `obtenerIntegraciones`,
+// esta SÍ devuelve los secretos en claro. Nunca debe llegar a un componente
+// cliente ni a una respuesta HTTP directamente.
+export async function obtenerCredencialesWompi(tenantId: bigint): Promise<CredencialesWompi | null> {
+  const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: tenantId } });
+  if (!fila?.wompi_public_key || !fila.wompi_private_key || !fila.wompi_events_secret) return null;
+  return { sandbox: fila.wompi_sandbox, publicKey: fila.wompi_public_key, privateKey: fila.wompi_private_key, eventsSecret: fila.wompi_events_secret };
+}
+
 export async function obtenerIntegraciones(tenantId: bigint): Promise<IntegracionesUI> {
   const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: tenantId } });
   return {

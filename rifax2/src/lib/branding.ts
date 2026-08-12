@@ -19,7 +19,31 @@ export async function getBranding(tenantId: bigint) {
     logoUrl: c?.logo_url ?? null,
     fondoUrl: c?.fondo_url ?? null,
     colorPrimario: c?.color_primario ?? "#f5c518",
+    dominioPersonalizado: c?.dominio_personalizado ?? null,
   };
+}
+
+// Dominio propio por empresa (punto 4b): solo se guarda el dato y se
+// muestran las instrucciones DNS — la conexión real del dominio al proyecto
+// de Vercel no se automatiza (decisión explícita del usuario), así que hasta
+// que alguien lo agregue ahí manualmente, el dominio no sirve tráfico real
+// aunque el DNS ya apunte bien.
+const DOMINIO_REGEX = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i;
+
+export async function guardarDominioPersonalizado(tenantId: bigint, dominioCrudo: string, actorId: bigint): Promise<Resultado> {
+  const dominio = dominioCrudo.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+  if (dominio && !DOMINIO_REGEX.test(dominio)) {
+    return { ok: false, error: "Dominio inválido. Escribe solo el dominio, por ejemplo: rifasjuan.com (sin https:// ni /)." };
+  }
+  await prisma.$transaction(async (tx) => {
+    await tx.tenant_config.upsert({
+      where: { tenant_id: tenantId },
+      create: { tenant_id: tenantId, dominio_personalizado: dominio || null },
+      update: { dominio_personalizado: dominio || null, actualizado_en: new Date() },
+    });
+    await auditar(tx, { tenantId, actorId, accion: "config.dominio", entidadTipo: "tenant", entidadId: tenantId, despues: { dominio: dominio || null } });
+  });
+  return { ok: true };
 }
 
 async function fileADataUri(file: File | null, clase: "logo" | "fondo"): Promise<string | null | { error: string }> {

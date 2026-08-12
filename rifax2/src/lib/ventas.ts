@@ -236,7 +236,7 @@ export async function rifasActivas(tenantId: bigint, sedeId: bigint | null) {
 export async function crearVenta(
   input: unknown,
   tenantId: bigint,
-  actorId: bigint,
+  actorId: bigint | null, // null = compra pública en línea, sin usuario del panel detrás
   idempotencyKey?: string | null,
 ): Promise<Resultado<{ ventaId: bigint; codigo: string; total: string; idempotente: boolean }>> {
   const parsed = crearVentaSchema.safeParse(input);
@@ -364,7 +364,9 @@ export async function registrarAbono(
   tenantId: bigint,
   ventaId: bigint,
   datos: { monto: number | string; origen?: "pasarela" | "comprobante" | "efectivo" | "ajuste" },
-  actorId: bigint,
+  // null = acción del sistema (p. ej. confirmación automática de un webhook
+  // de pago), sin un usuario humano detrás; auditar() ya admite actor nulo.
+  actorId: bigint | null,
 ): Promise<Resultado<{ saldo: string; estado: string }>> {
   if (!(Number(datos.monto) > 0)) return { ok: false, error: "El monto debe ser positivo." };
   const montoTexto = String(datos.monto);
@@ -530,7 +532,7 @@ export async function anularVenta(
   tenantId: bigint,
   ventaId: bigint,
   motivo: string,
-  actorId: bigint,
+  actorId: bigint | null, // null = acción del sistema (p. ej. pago rechazado en un webhook)
 ): Promise<Resultado<{ estado: string }>> {
   if (!motivo?.trim()) return { ok: false, error: "El motivo de anulación es obligatorio." };
   try {

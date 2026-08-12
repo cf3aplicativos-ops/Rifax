@@ -27,6 +27,10 @@ import { solicitarResetAutomatico } from "@/lib/reset-password";
 import { parseCsv, expandirNumeros, importarVendedores, importarVentas } from "@/lib/importar";
 import { TIPOS, opcionesDe, listarCatalogos, agregarItem, toggleItem } from "@/lib/catalogos";
 import { obtenerIntegraciones, guardarIntegraciones } from "@/lib/integraciones";
+import { iniciarCompraPublica } from "@/lib/compra-publica";
+import { firmaIntegridadCheckout } from "@/lib/wompi";
+import { getBranding, guardarDominioPersonalizado } from "@/lib/branding";
+import { obtenerLandingTenant } from "@/lib/landing";
 import { listarCartera, resumirCartera } from "@/lib/cartera";
 import { actualizarCliente, cambiarEstadoCliente, estadoCliente, buscarClientePorDocumento } from "@/lib/clientes";
 import { resumenOutbox, listarOutbox, procesarOutbox } from "@/lib/outbox";
@@ -1700,5 +1704,157 @@ describe("Traslado de vendedores entre rifas", () => {
 
     // Restaura vendedorC para no dejar residuos entre pruebas.
     await cambiarEstadoVendedor(vendedorCId, ctx.tenantId, "activo", ctx.adminId);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 4 (compra en línea): iniciarCompraPublica crea la venta reservando
+// boletas con las mismas barreras de siempre, resuelve el vendedor dueño de
+// los números elegidos, y arma la URL del checkout de Wompi correctamente.
+
+describe("Compra pública en línea (Wompi)", () => {
+  it("rechaza si la empresa no tiene Wompi configurado", async () => {
+    const hoy = new Date();
+    const enUnDia = new Date(hoy.getTime() + 86_400_000);
+    const creada = await crearRifa(
+      {
+        sede_id: String(ctx.sedeAId), nombre: "Rifa QA Compra Web", numero_digitos: "2", precio_boleta: "10000",
+        fecha_apertura: hoy.toISOString().slice(0, 10), fecha_cierre_ventas: enUnDia.toISOString().slice(0, 10), fecha_sorteo: enUnDia.toISOString().slice(0, 10),
+      },
+      ctx.tenantId, null, ctx.adminId,
+    );
+    expect(creada.ok).toBe(true);
+    if (!creada.ok) return;
+    const rifaWebId = creada.rifa.id;
+    await publicarRifa(ctx.tenantId, rifaWebId, ctx.adminId);
+
+    // El tenant de pruebas ya pudo quedar con Wompi configurado por la
+    // suite de "Integraciones" (corre antes en este archivo) — se borra
+    // explícitamente para probar el caso "sin configurar" de verdad.
+    await prisma.$executeRawUnsafe(`DELETE FROM saas.tenant_integraciones WHERE tenant_id=$1::bigint`, ctx.tenantId);
+    const sinWompi = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaWebId, numeros: [1],
+      cliente: { nombre: "Cliente Web", telefono: "3007778001", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(sinWompi.ok).toBe(false);
+
+    // Configura Wompi (sandbox) para el resto de la prueba.
+    const guardado = await guardarIntegraciones(
+      ctx.tenantId,
+      { wompi_sandbox: true, wompi_public_key: "pub_test_qa", wompi_private_key: "prv_test_qa", wompi_events_secret: "ev_test_qa", whatsapp_phone_number_id: "", whatsapp_token: "", sms_remitente: "", sms_api_key: "" },
+      ctx.adminId,
+    );
+    expect(guardado.ok).toBe(true);
+
+    await asignarTalonario({ rifaId: rifaWebId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 5, fin: 5 }, ctx.tenantId, ctx.adminId);
+    await asignarTalonario({ rifaId: rifaWebId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 7, fin: 7 }, ctx.tenantId, ctx.adminId);
+    await asignarTalonario({ rifaId: rifaWebId, vendedorId: vendedorCId, tipo: "consecutiva", inicio: 10, fin: 10 }, ctx.tenantId, ctx.adminId);
+
+    // Número SIN vendedor (punto de venta): la venta queda sin vendedor_id.
+    const compraLibre = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaWebId, numeros: [6],
+      cliente: { nombre: "Cliente Web Libre", telefono: "3007778002", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraLibre.ok).toBe(true);
+    if (compraLibre.ok && compraLibre.data) {
+      expect(compraLibre.data.checkoutUrl.startsWith("https://checkout.wompi.co/p/?")).toBe(true);
+      const q = new URL(compraLibre.data.checkoutUrl).searchParams;
+      expect(q.get("public-key")).toBe("pub_test_qa");
+      const ventaLibre = await prisma.ventas.findFirst({ where: { codigo: q.get("reference")! } });
+      expect(ventaLibre?.vendedor_id).toBeNull();
+      expect(ventaLibre?.estado).toBe("pendiente_pago");
+      expect(ventaLibre?.canal).toBe("web");
+      const montoCentavos = Math.round(Number(ventaLibre!.total) * 100);
+      expect(q.get("signature:integrity")).toBe(firmaIntegridadCheckout(q.get("reference")!, montoCentavos, "COP", "ev_test_qa"));
+    }
+
+    // Número de vendedorA solo: la venta queda atribuida a vendedorA.
+    const compraVendedor = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaWebId, numeros: [5],
+      cliente: { nombre: "Cliente Web Vendedor", telefono: "3007778003", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraVendedor.ok).toBe(true);
+    if (compraVendedor.ok && compraVendedor.data) {
+      const ref = new URL(compraVendedor.data.checkoutUrl).searchParams.get("reference")!;
+      const v = await prisma.ventas.findFirst({ where: { codigo: ref } });
+      expect(v?.vendedor_id).toBe(vendedorAId);
+    }
+
+    // Mezcla vendedorA (#7) + sin vendedor (#8): queda atribuida a vendedorA (no se rechaza).
+    const compraMixta = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaWebId, numeros: [7, 8],
+      cliente: { nombre: "Cliente Web Mixto", telefono: "3007778004", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraMixta.ok).toBe(true);
+    if (compraMixta.ok && compraMixta.data) {
+      const ref = new URL(compraMixta.data.checkoutUrl).searchParams.get("reference")!;
+      const v = await prisma.ventas.findFirst({ where: { codigo: ref } });
+      expect(v?.vendedor_id).toBe(vendedorAId);
+    }
+
+    // Dos vendedores distintos (#10 de vendedorC + #11, que asignamos a vendedorA) en la misma compra: se rechaza.
+    await asignarTalonario({ rifaId: rifaWebId, vendedorId: vendedorAId, tipo: "consecutiva", inicio: 11, fin: 11 }, ctx.tenantId, ctx.adminId);
+    const compraMezclaProhibida = await iniciarCompraPublica({
+      slug: ctx.slug, rifaId: rifaWebId, numeros: [10, 11],
+      cliente: { nombre: "Cliente Web Prohibido", telefono: "3007778005", consentimiento_datos: true },
+      origen: "https://rifax2-test.local",
+    });
+    expect(compraMezclaProhibida.ok).toBe(false);
+
+    // La confirmación real de pago (lo que hace el webhook) reutiliza
+    // registrarAbono/anularVenta con actorId null — confirma que ese camino
+    // (usado por un sistema automático, sin usuario humano) funciona igual.
+    if (compraLibre.ok && compraLibre.data) {
+      const ref = new URL(compraLibre.data.checkoutUrl).searchParams.get("reference")!;
+      const v = await prisma.ventas.findFirst({ where: { codigo: ref } });
+      const abono = await registrarAbono(ctx.tenantId, v!.id, { monto: v!.total.toString(), origen: "pasarela" }, null);
+      expect(abono.ok).toBe(true);
+      const vDespues = await prisma.ventas.findUnique({ where: { id: v!.id } });
+      expect(vDespues?.estado).toBe("pagada");
+    }
+    if (compraVendedor.ok && compraVendedor.data) {
+      const ref = new URL(compraVendedor.data.checkoutUrl).searchParams.get("reference")!;
+      const v = await prisma.ventas.findFirst({ where: { codigo: ref } });
+      const anulada = await anularVenta(ctx.tenantId, v!.id, "Pago rechazado en Wompi (DECLINED).", null);
+      expect(anulada.ok).toBe(true);
+      const boleta5 = await prisma.boletas.findFirst({ where: { rifa_id: rifaWebId, numero: 5 } });
+      expect(boleta5?.estado).toBe("disponible"); // se liberó
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Punto 4a/4b: landing pública por empresa y dominio propio (solo datos +
+// validación; la conexión real del dominio en Vercel es manual, ver docs).
+
+describe("Landing pública y dominio propio", () => {
+  it("obtenerLandingTenant trae solo rifas activas de la empresa, con branding", async () => {
+    const datos = await obtenerLandingTenant(ctx.slug);
+    expect(datos).not.toBeNull();
+    expect(datos?.tenant.slug).toBe(ctx.slug);
+    // rifaId (la principal de la suite) quedó 'sorteada', no debe aparecer entre las activas.
+    expect(datos?.rifas.some((r) => String(r.id) === String(rifaId))).toBe(false);
+
+    const inexistente = await obtenerLandingTenant("empresa-que-no-existe-nunca-qa");
+    expect(inexistente).toBeNull();
+  });
+
+  it("guardarDominioPersonalizado valida el formato y se refleja en getBranding", async () => {
+    const invalido = await guardarDominioPersonalizado(ctx.tenantId, "no es un dominio", ctx.adminId);
+    expect(invalido.ok).toBe(false);
+
+    const valido = await guardarDominioPersonalizado(ctx.tenantId, "https://RifasDeJuan.COM/", ctx.adminId);
+    expect(valido.ok).toBe(true);
+    const branding = await getBranding(ctx.tenantId);
+    expect(branding.dominioPersonalizado).toBe("rifasdejuan.com"); // normalizado: sin protocolo, sin barra, minúsculas
+
+    const vacio = await guardarDominioPersonalizado(ctx.tenantId, "", ctx.adminId);
+    expect(vacio.ok).toBe(true);
+    const brandingLimpio = await getBranding(ctx.tenantId);
+    expect(brandingLimpio.dominioPersonalizado).toBeNull();
   });
 });
