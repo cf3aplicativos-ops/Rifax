@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { requireUser, hasPermission } from "@/lib/auth/rbac";
 import { estadoSedes, boletasPorEstado, carteraPorTramo, topVendedores, topVendedoresTenant } from "@/lib/dashboard";
 import { money } from "@/lib/format";
@@ -15,6 +16,7 @@ const estadoClase: Record<string, string> = {
 
 export default async function AppHome({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
   const user = await requireUser();
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const { denied } = await searchParams;
 
   const sede = user.sede?.id ?? null;
@@ -48,7 +50,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
 
   return (
     <div>
-      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
+      <style nonce={nonce}>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       {denied ? (
         <p className="mb-6 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
           No tienes el permiso <code className="font-mono">{denied}</code> para esa sección.

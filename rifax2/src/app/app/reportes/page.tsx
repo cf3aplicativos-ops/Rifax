@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
 import { resumenVentas, avancePorRifa, verificarAuditoria, ventasPorVendedor } from "@/lib/reportes";
@@ -9,6 +10,7 @@ const pct = (p: number, t: number) => (t > 0 ? Math.round((p / t) * 100) : 0);
 
 export default async function ReportesPage() {
   const user = await requirePermission("reporte.ver");
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const veAud = hasPermission(user, "reporte.auditoria");
   const sede = user.sede?.id ?? null;
   const [resumen, avance, porVendedor, aud] = await Promise.all([
@@ -29,7 +31,7 @@ export default async function ReportesPage() {
 
   return (
     <div>
-      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
+      <style nonce={nonce}>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PageTitle icon="reportes">Reportes</PageTitle>
         {/* Enlaces a rutas de API que devuelven un archivo adjunto (Content-Disposition),

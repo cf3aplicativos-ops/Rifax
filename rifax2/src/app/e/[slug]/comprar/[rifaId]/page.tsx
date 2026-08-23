@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { boletasDisponibles } from "@/lib/ventas";
 import { brandCss } from "@/lib/color";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ComprarPage({ params }: { params: Promise<{ slug: string; rifaId: string }> }) {
   const { slug, rifaId: rifaIdStr } = await params;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   let rifaId: bigint;
   try { rifaId = BigInt(rifaIdStr); } catch { notFound(); }
 
@@ -30,7 +32,7 @@ export default async function ComprarPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <style>{brandCss(config?.color_primario ?? "#f5c518")}</style>
+      <style nonce={nonce}>{brandCss(config?.color_primario ?? "#f5c518")}</style>
       <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-4">
           <Link href={`/e/${slug}`} className="text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← {tenant.nombre}</Link>

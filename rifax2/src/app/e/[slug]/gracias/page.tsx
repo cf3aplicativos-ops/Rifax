@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { brandCss } from "@/lib/color";
 import { money } from "@/lib/format";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function GraciasPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ venta?: string }> }) {
   const { slug } = await params;
   const { venta: ventaIdStr } = await searchParams;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   const tenant = await prisma.tenants.findFirst({ where: { slug, estado: "activo" }, select: { id: true, nombre: true } });
   const config = tenant ? await prisma.tenant_config.findUnique({ where: { tenant_id: tenant.id } }) : null;
@@ -27,7 +29,7 @@ export default async function GraciasPage({ params, searchParams }: { params: Pr
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <style>{brandCss(config?.color_primario ?? "#f5c518")}</style>
+      <style nonce={nonce}>{brandCss(config?.color_primario ?? "#f5c518")}</style>
       <main className="mx-auto max-w-md px-4 py-16 text-center">
         {venta?.estado === "pagada" ? (
           <>

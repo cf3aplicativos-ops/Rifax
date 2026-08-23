@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { obtenerLandingTenant } from "@/lib/landing";
 import { brandCss } from "@/lib/color";
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 // (nombre de la rifa donde la landing general muestra su mensaje genérico).
 export default async function LandingEmpresa({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const datos = await obtenerLandingTenant(slug);
   if (!datos) notFound();
   const { tenant, rifas } = datos;
@@ -37,7 +39,7 @@ export default async function LandingEmpresa({ params }: { params: Promise<{ slu
 
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <style>{brandCss(tenant.colorPrimario)}</style>
+      <style nonce={nonce}>{brandCss(tenant.colorPrimario)}</style>
 
       {/* NAV */}
       <header className="sticky top-0 z-20 border-b border-slate-300/70 bg-white/80 backdrop-blur dark:border-slate-700/70 dark:bg-slate-950/80">

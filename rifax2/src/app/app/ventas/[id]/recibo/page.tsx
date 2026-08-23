@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { getBranding } from "@/lib/branding";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ReciboPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePermission("venta.ver");
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const { id } = await params;
   let ventaId: bigint;
   try { ventaId = BigInt(id); } catch { notFound(); }
@@ -43,7 +45,7 @@ export default async function ReciboPage({ params }: { params: Promise<{ id: str
   return (
     <div>
       {/* En impresión se oculta el header de la app y los controles */}
-      <style>
+      <style nonce={nonce}>
         {"@media print{header{display:none!important}.no-print{display:none!important}body{background:#fff!important}}" +
           ".rifax-boleta-pill{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}"}
       </style>

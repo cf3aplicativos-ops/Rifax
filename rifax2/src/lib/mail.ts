@@ -42,6 +42,15 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
+// El enlace es un token de un solo uso ya armado (host + ruta + token); no
+// hay más entrada de usuario que interpolar aquí, así que no necesita escape.
+export function mailEnlaceReset(args: { enlace: string }) {
+  return {
+    subject: "Confirma el restablecimiento de tu contraseña en RIFAX",
+    html: `<p>Recibimos una solicitud para restablecer tu contraseña en RIFAX.</p><p>Confirma haciendo clic en este enlace (válido 30 minutos, se puede usar una sola vez):</p><p><a href="${args.enlace}">${args.enlace}</a></p><p>Si no solicitaste este cambio, ignora este correo: tu contraseña actual sigue siendo válida.</p>`,
+  };
+}
+
 export function mailPasswordTemporal(args: { nombre: string; password: string }) {
   const nombre = escapeHtml(args.nombre);
   const password = escapeHtml(args.password);

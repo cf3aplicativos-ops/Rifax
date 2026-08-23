@@ -23,10 +23,11 @@ import { listarVencimientos, proximosVencimientosCriticos, registrarPagoVencimie
 import { editarTenant, cambiarEstadoTenant, cambiarMaxSedes, purgarAuditoria, estadoAuditoriaGlobal, historialPurgasAuditoria, crearTenant, purgarTenant } from "@/lib/superadmin";
 import { getConfigPlataforma, precioBasicoPorPeriodicidad, cambiarPlanTenant } from "@/lib/plataforma";
 import { generarFacturaTenant, marcarFacturaPagada, anularFactura } from "@/lib/facturacion";
-import { solicitarResetAutomatico } from "@/lib/reset-password";
+import { solicitarResetAutomatico, confirmarReset } from "@/lib/reset-password";
 import { parseCsv, expandirNumeros, importarVendedores, importarVentas } from "@/lib/importar";
 import { TIPOS, opcionesDe, listarCatalogos, agregarItem, toggleItem } from "@/lib/catalogos";
-import { obtenerIntegraciones, guardarIntegraciones } from "@/lib/integraciones";
+import { obtenerIntegraciones, guardarIntegraciones, obtenerCredencialesWompi } from "@/lib/integraciones";
+import { desencriptar } from "@/lib/crypto-integraciones";
 import { iniciarCompraPublica } from "@/lib/compra-publica";
 import { firmaIntegridadCheckout } from "@/lib/wompi";
 import { getBranding, guardarDominioPersonalizado } from "@/lib/branding";
@@ -819,7 +820,7 @@ describe("Traspasos de boletas", () => {
     );
     expect(duplicada.ok).toBe(false);
 
-    const solicitudId = BigInt(solicitud.data.solicitudId);
+    const solicitudId = BigInt(solicitud.data!.solicitudId);
     const aprobar = await resolverSolicitud(
       ctx.tenantId, solicitudId, true,
       { tipo: "vendedor", vendedorId: vendedorAId, nombre: "QA Vendedor A" },
@@ -884,7 +885,7 @@ describe("Traspasos de boletas", () => {
     );
     expect(solicitud.ok).toBe(true);
     if (!solicitud.ok) return;
-    const solicitudId = BigInt(solicitud.data.solicitudId);
+    const solicitudId = BigInt(solicitud.data!.solicitudId);
 
     const rechazar = await resolverSolicitud(
       ctx.tenantId, solicitudId, false,
@@ -1025,12 +1026,23 @@ describe("Sorteos (commit-reveal)", () => {
 
 // ---------------------------------------------------------------------------
 
-describe("Reset automático de contraseña", () => {
-  it("cambia la contraseña del admin de prueba y no revela si el correo no existe", async () => {
+describe("Reset automático de contraseña (token de un solo uso)", () => {
+  const ORIGEN = "https://rifax2.vercel.app";
+
+  it("solicitar NO cambia la contraseña todavía; confirmar sí, y revoca el token", async () => {
     const hashAntes = (await prisma.usuarios.findUnique({ where: { id: ctx.adminId } }))?.password_hash;
 
-    const res = await solicitarResetAutomatico(ctx.adminCorreo);
-    expect(res.ok).toBe(true); // siempre responde ok, exista o no el correo
+    const solicitud = await solicitarResetAutomatico(ctx.adminCorreo, ORIGEN);
+    expect(solicitud.ok).toBe(true); // siempre responde ok, exista o no el correo
+    if (!solicitud.ok) return;
+    const token = solicitud.data!.token;
+
+    // Solicitar por sí solo no toca la contraseña ni la sesión todavía.
+    const hashTrasSolicitar = (await prisma.usuarios.findUnique({ where: { id: ctx.adminId } }))?.password_hash;
+    expect(hashTrasSolicitar).toBe(hashAntes);
+
+    const confirmacion = await confirmarReset(token);
+    expect(confirmacion.ok).toBe(true);
 
     const hashDespues = (await prisma.usuarios.findUnique({ where: { id: ctx.adminId } }))?.password_hash;
     expect(hashDespues).not.toBe(hashAntes);
@@ -1041,12 +1053,22 @@ describe("Reset automático de contraseña", () => {
     );
     expect(debeCambiar[0].debe_cambiar_password).toBe(true);
 
-    const inexistente = await solicitarResetAutomatico(`no-existe-${ctx.slug}@rifax-test.local`);
+    // El mismo token no se puede volver a usar (ya quedó marcado "usado").
+    const reintento = await confirmarReset(token);
+    expect(reintento.ok).toBe(false);
+
+    const inexistente = await solicitarResetAutomatico(`no-existe-${ctx.slug}@rifax-test.local`, ORIGEN);
     expect(inexistente.ok).toBe(true); // misma respuesta genérica, no revela nada
+    if (inexistente.ok) expect(inexistente.data).toBeUndefined(); // y no genera ningún token real
   });
 
-  it("rechaza un correo con formato inválido", async () => {
-    const res = await solicitarResetAutomatico("no-es-un-correo");
+  it("rechaza un token inexistente o con formato inválido al confirmar", async () => {
+    const res = await confirmarReset("token-que-nunca-existio");
+    expect(res.ok).toBe(false);
+  });
+
+  it("rechaza un correo con formato inválido al solicitar", async () => {
+    const res = await solicitarResetAutomatico("no-es-un-correo", ORIGEN);
     expect(res.ok).toBe(false);
   });
 });
@@ -1292,9 +1314,20 @@ describe("Integraciones (Wompi, WhatsApp, SMS)", () => {
     // El objeto que ve la pantalla NUNCA trae el valor real del secreto en ningún campo.
     expect(JSON.stringify(despues)).not.toContain("secreto");
 
-    // Confirma en la fila cruda que el secreto sí quedó guardado (no se perdió).
+    // La fila cruda NUNCA guarda el secreto en texto plano (cifrado en reposo,
+    // AES-256-GCM) — pero descifrado, sí corresponde al valor original.
     const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: ctx.tenantId } });
-    expect(fila?.wompi_private_key).toBe("prv_test_secreto");
+    expect(fila?.wompi_private_key).not.toBe("prv_test_secreto");
+    expect(desencriptar(fila!.wompi_private_key!)).toBe("prv_test_secreto");
+    expect(desencriptar(fila!.wompi_events_secret!)).toBe("evt_secreto");
+    expect(desencriptar(fila!.whatsapp_token!)).toBe("wa_token_secreto");
+    expect(desencriptar(fila!.sms_api_key!)).toBe("sms_key_secreto");
+
+    // obtenerCredencialesWompi (el único punto que sí devuelve secretos en
+    // claro, para uso interno del flujo de pago) descifra correctamente.
+    const cred = await obtenerCredencialesWompi(ctx.tenantId);
+    expect(cred?.privateKey).toBe("prv_test_secreto");
+    expect(cred?.eventsSecret).toBe("evt_secreto");
   });
 
   it("guardar de nuevo con los campos de secreto en blanco CONSERVA los valores anteriores", async () => {
@@ -1316,9 +1349,10 @@ describe("Integraciones (Wompi, WhatsApp, SMS)", () => {
 
     const fila = await prisma.tenant_integraciones.findUnique({ where: { tenant_id: ctx.tenantId } });
     expect(fila?.wompi_public_key).toBe("pub_test_123_editada"); // el campo público sí cambió
-    expect(fila?.wompi_private_key).toBe("prv_test_secreto"); // el secreto se conservó
-    expect(fila?.whatsapp_token).toBe("wa_token_secreto");
-    expect(fila?.sms_api_key).toBe("sms_key_secreto");
+    // El secreto se conservó (descifrado sigue siendo el mismo valor original).
+    expect(desencriptar(fila!.wompi_private_key!)).toBe("prv_test_secreto");
+    expect(desencriptar(fila!.whatsapp_token!)).toBe("wa_token_secreto");
+    expect(desencriptar(fila!.sms_api_key!)).toBe("sms_key_secreto");
   });
 });
 

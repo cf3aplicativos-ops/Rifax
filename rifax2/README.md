@@ -65,5 +65,6 @@ npm run dev
 | `SMTP_USER`              | Cuenta remitente (login SMTP). |
 | `SMTP_PASSWORD`          | Contraseña de aplicación del remitente (p. ej. Gmail App Password). |
 | `MAIL_FROM`              | Remitente visible en los correos. Por defecto, igual a `SMTP_USER`. |
+| `INTEGRACIONES_ENCRYPTION_KEY` | Cifra en reposo los secretos de integraciones por tenant (llave privada y secreto de eventos de Wompi, token de WhatsApp, api key de SMS — ver `src/lib/crypto-integraciones.ts`). Cualquier cadena sirve (se deriva a una clave AES-256 con SHA-256); **si cambia, los secretos ya guardados dejan de poder descifrarse** — no rotarla sin volver a guardar las credenciales de cada empresa. |
 
 > `.env*` está en `.gitignore`: los secretos nunca se suben al repo.

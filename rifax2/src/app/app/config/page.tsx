@@ -87,7 +87,7 @@ export default async function ConfigPage({ searchParams }: { searchParams: Promi
           <div className="mt-4 rounded-lg bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
             <p className="font-semibold">Pasos para activar {branding.dominioPersonalizado}:</p>
             <ol className="mt-2 list-decimal space-y-1 pl-5 text-xs">
-              <li>En el proveedor donde compraste el dominio, crea un registro <strong>CNAME</strong> que apunte <span className="font-mono">{branding.dominioPersonalizado}</span> a <span className="font-mono">cname.vercel-dns.com</span> (si es el dominio raíz sin "www", usa un registro <strong>A</strong> hacia <span className="font-mono">76.76.21.21</span>).</li>
+              <li>En el proveedor donde compraste el dominio, crea un registro <strong>CNAME</strong> que apunte <span className="font-mono">{branding.dominioPersonalizado}</span> a <span className="font-mono">cname.vercel-dns.com</span> (si es el dominio raíz sin &quot;www&quot;, usa un registro <strong>A</strong> hacia <span className="font-mono">76.76.21.21</span>).</li>
               <li>Los cambios de DNS pueden tardar desde minutos hasta un par de horas en propagarse.</li>
               <li><strong>Paso final pendiente:</strong> avísanos cuando el DNS esté configurado — el dominio todavía no queda conectado automáticamente al sitio; falta agregarlo del lado de la plataforma (Vercel) una sola vez.</li>
             </ol>

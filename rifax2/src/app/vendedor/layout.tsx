@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth/rbac";
 import { getBranding } from "@/lib/branding";
 import { brandCss } from "@/lib/color";
@@ -20,10 +21,11 @@ export default async function VendedorLayout({ children }: { children: React.Rea
   // Solo para rol vendedor; otros roles usan el panel /app.
   if (user.rol !== "vendedor") redirect("/app");
   const branding = await getBranding(user.tenant.id);
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">
-      <style>{brandCss(branding.colorPrimario)}</style>
+      <style nonce={nonce}>{brandCss(branding.colorPrimario)}</style>
       <VendedorShell nav={nav} tenant={user.tenant.nombre} userName={user.nombre} logoUrl={branding.logoUrl}>
         {children}
       </VendedorShell>

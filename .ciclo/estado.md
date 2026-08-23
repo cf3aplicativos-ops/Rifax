@@ -116,14 +116,12 @@ esta skill hasta ahora.
 - [ ] Ambientes separados y documentados — no hay evidencia de un ambiente de
       *staging*/*preview* separado de producción; los despliegues son
       `vercel deploy --prod` directos según la bitácora
-- [ ] Integración continua ejecutando pruebas — **no existe `.github/workflows/`**;
-      la disciplina de build+test es 100% manual, sostenida por el protocolo
-      escrito en `bitacora.md`, no automatizada. Además, **`npm run build` no
-      ejecuta ESLint** (confirmado: hay 3 errores de lint activos ahora mismo —
-      `react/no-unescaped-entities` x2 y `react-hooks/set-state-in-effect` x1 —
-      que un build limpio no detecta), hallazgo que la propia auditoría de
-      DevOps ya había señalado el 2026-08-06 sin que se haya corregido el
-      proceso (solo se corrigieron los errores de esa fecha puntual)
+- [ ] Integración continua ejecutando pruebas — **sigue sin existir
+      `.github/workflows/`**; la disciplina de build+test sigue siendo 100%
+      manual. **Los 3 errores de lint activos se corrigieron en I-audit-062**
+      (2026-08-23), pero `npm run build` sigue sin correr ESLint por sí solo —
+      la causa raíz (nadie fuerza el lint en el pipeline) no está resuelta,
+      solo el síntoma puntual de hoy
 - [x] Migraciones versionadas — a favor de Rifax: 24 archivos SQL numerados en
       `prisma/sql/`, aplicados con `prisma db execute` + `db pull` (SQL como
       fuente de verdad, documentado explícitamente en el README) — más disciplina
@@ -182,30 +180,58 @@ construcción, pruebas y documentación avanzan juntas, no por separado.**
       manejo de fallos de SMTP (no revierte el cambio de contraseña si el correo
       falla) y de Groq (mensaje claro si no hay `GROQ_API_KEY`), pero no hay
       evidencia de prueba de caída de Wompi o Neon bajo carga
-- [ ] Dependencias sin vulnerabilidades críticas — **`npm audit --omit=dev`
-      reporta 12 vulnerabilidades (11 "high", 1 "moderate")**, más que SISMED:
-      - `next` (+ `postcss`, `sharp` que dependen de él) → fix **no-breaking**
-        disponible: actualizar a `next@16.3.2` (hoy en `16.2.11`)
-      - `nanoid`, `fast-uri` → `fixAvailable: true` (npm audit fix sin --force)
-      - `nodemailer` → fix disponible pero **breaking** (9.0.5, usado en todos
-        los correos transaccionales: reset de contraseña, avisos)
-      - `@prisma/config`/`@prisma/dev`/`deepmerge-ts`/`find-my-way`/`valibot` →
-        misma familia que en SISMED: cuelgan de `prisma` (CLI, `devDependency`),
-        no de `@prisma/client`/`@prisma/adapter-pg` (lo que corre en
-        producción); el único fix es downgrade breaking a `prisma@6.12.0`
+- [x] Dependencias sin vulnerabilidades críticas — **corregido el 2026-08-23**:
+      `npm audit --omit=dev` bajó de 12 vulnerabilidades (11 high, 1 moderate) a
+      3 (todas high). `next` actualizado a `16.3.2` (resolvió `next`, `postcss`,
+      `sharp`), `nanoid`/`fast-uri`/`find-my-way`/`valibot` resueltos con
+      `npm audit fix`, `nodemailer` actualizado a `9.0.5` (breaking, verificado
+      con build+129 pruebas unitarias+80 funcionales). Las 3 restantes
+      (`@prisma/config`/`deepmerge-ts`/`prisma`) son la misma familia que en
+      SISMED: CLI de Prisma, `devDependency`, no corren en producción — **riesgo
+      bajo aceptado**, no se fuerza el downgrade breaking a `prisma@6.12.0`
+- [x] CSP aplicada — **cerrado el 2026-08-23**: `src/proxy.ts` (no existía
+      ningún proxy/middleware antes) genera un nonce por petición;
+      `script-src` estricto (nonce + `strict-dynamic`, sin `unsafe-eval` en
+      producción), `style-src` con `unsafe-inline` a propósito (hay
+      `style={{}}` en línea en 6 archivos que un nonce no puede cubrir). 3
+      páginas que eran estáticas (`/consulta`, `/cambiar-password`,
+      `/login/olvide`) se convirtieron a envoltorios de servidor + componente
+      cliente para forzar renderizado dinámico (el nonce exige que todas las
+      páginas lo sean). Verificado en el navegador sin errores de CSP en
+      login, consulta, olvidé-contraseña y una landing pública real
+      (`/e/empresa-demo`, confirmando que `brandCss()` sigue aplicando el
+      color de marca con el nonce puesto)
+- [x] Token de reset de contraseña de un solo uso — **cerrado el 2026-08-23**:
+      antes, una sola petición de "olvidé mi contraseña" ya cambiaba la
+      contraseña del titular en el acto (mitigado solo por rate-limit). Ahora
+      es un flujo de dos pasos: solicitar genera un token (30 min, un solo
+      uso, tabla nueva `saas.reset_tokens`, migración `0025`) y envía un
+      enlace por correo; confirmar el enlace es lo único que cambia la
+      contraseña. Verificado con lógica real (funcional) y en el navegador
+      contra un usuario real de `empresa-demo` sin tocarle la contraseña
+      (solo se creó y luego se borró el token de prueba)
+- [x] Credenciales de integraciones cifradas en reposo — **cerrado el
+      2026-08-23**: `src/lib/crypto-integraciones.ts` (AES-256-GCM, clave
+      derivada por SHA-256 de `INTEGRACIONES_ENCRYPTION_KEY`) cifra
+      `wompi_private_key`, `wompi_events_secret`, `whatsapp_token` y
+      `sms_api_key` al guardar; `obtenerCredencialesWompi` (el único punto que
+      devuelve secretos en claro, para el flujo de pago) descifra. No hizo
+      falta migrar datos existentes: la tabla `tenant_integraciones` no tenía
+      ninguna fila con secretos guardados todavía. **Pendiente del dueño**:
+      agregar `INTEGRACIONES_ENCRYPTION_KEY` a las variables de Vercel antes
+      de desplegar — sin ella, guardar o leer una integración falla con un
+      error claro (no falla en silencio)
 - [x] Hallazgos abiertos con diagnóstico priorizado — mejor que SISMED: cada
       auditoría de especialista deja explícito qué se corrigió y qué se dejó
-      pendiente **a propósito**, con la razón. Pendientes vigentes documentados
-      por el propio proyecto: CSP nunca aplicado (confirmado en esta sesión —
-      no hay cabeceras de seguridad en `next.config.ts` ni en ningún
-      middleware), token de reset de contraseña no es de un solo uso (mitigado
-      solo por rate-limit), y credenciales de integraciones (`tenant_integraciones`)
-      sin cifrar en reposo
+      pendiente **a propósito**, con la razón
 
-**Compuerta 5: abierta formalmente (nunca se "cerró" con una firma), pero es
-la etapa con más trabajo real detrás de las dos auditorías hechas con esta
-skill — la deuda que queda está identificada por el propio equipo, no
-descubierta recién ahora.**
+**Compuerta 5: muy avanzada tras el 2026-08-23** — de los 6 hallazgos
+priorizados por el dueño (lint, `npm audit`, CSP, token de un solo uso,
+cifrado de credenciales, y los 14 commits de la Etapa 3/6), **5 quedaron
+cerrados y verificados en el navegador y contra la base real**. Solo falta
+que el propio despliegue a producción se complete (ver Etapa 6) — el código
+está listo, verificado, comiteado, pero **no desplegado** porque este
+entorno no tiene sesión de Vercel CLI.
 
 ### Etapa 6 — Despliegue
 - [x] Despliegue funcionando — producción real y viva en
@@ -276,11 +302,12 @@ pedir la autorización consciente que la skill exige.
 |---|---|---|---|---|
 | 2026-08-23 | Requisitos no funcionales numéricos y presupuesto (Etapa 1) | Nunca se documentaron | Pendiente | Pendiente |
 | 2026-08-23 | 14 commits locales sin subir a `origin/rifax2` | Confirmado con `git status` al iniciar esta auditoría | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) hacer push de inmediato | Cerrado en esta misma instrucción |
-| 2026-08-23 | Cero CI automatizada; `npm run build` no corre ESLint (3 errores de lint activos ahora mismo) | Confirmado en esta sesión; ya señalado por el propio proyecto el 2026-08-06 sin corregirse el proceso | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) cerrarlo antes de seguir con features | Próxima instrucción |
-| 2026-08-23 | CSP nunca aplicado | Documentado como pendiente desde 2026-08-04, confirmado que sigue sin aplicarse | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) cerrarlo antes de seguir con features | Próxima instrucción |
-| 2026-08-23 | Token de reset de contraseña no es de un solo uso (mitigado solo por rate-limit) | Documentado desde 2026-08-04, sin cambiar por ser un cambio de comportamiento | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) cerrarlo antes de seguir con features | Próxima instrucción |
-| 2026-08-23 | Credenciales de integraciones (Wompi/WhatsApp/SMS por tenant) sin cifrar en reposo | Decisión explícita "por ahora" del 2026-08-11, sin fecha de revisión | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) cerrarlo antes de seguir con features | Próxima instrucción |
-| 2026-08-23 | 12 vulnerabilidades de `npm audit` (11 high, 1 moderate) sin resolver | Confirmado en esta sesión; algunas con fix no-breaking disponible (`next`, `nanoid`, `fast-uri`) | **Ya no es desvío aceptado** — Dueño decidió (2026-08-23) cerrarlo antes de seguir con features (la cadena de `prisma` CLI se documentará como riesgo bajo aceptado, mismo criterio que SISMED) | Próxima instrucción |
+| 2026-08-23 | Cero CI automatizada; `npm run build` no corre ESLint | Confirmado en esta sesión; ya señalado por el propio proyecto el 2026-08-06 sin corregirse el proceso | **Cerrado parcialmente**: los 3 errores puntuales se corrigieron; la causa raíz (CI ausente) sigue como deuda sin fecha | Pendiente (CI en sí) |
+| 2026-08-23 | CSP nunca aplicado | Documentado como pendiente desde 2026-08-04 | **Cerrado en esta instrucción** — `src/proxy.ts` con nonce, verificado en el navegador | — |
+| 2026-08-23 | Token de reset de contraseña no es de un solo uso | Documentado desde 2026-08-04 | **Cerrado en esta instrucción** — flujo de dos pasos con `saas.reset_tokens` | — |
+| 2026-08-23 | Credenciales de integraciones (Wompi/WhatsApp/SMS por tenant) sin cifrar en reposo | Decisión explícita "por ahora" del 2026-08-11 | **Cerrado en esta instrucción** — AES-256-GCM en `src/lib/crypto-integraciones.ts`. Falta que el dueño agregue `INTEGRACIONES_ENCRYPTION_KEY` en Vercel | Pendiente solo la variable en Vercel |
+| 2026-08-23 | 12 vulnerabilidades de `npm audit` (11 high, 1 moderate) sin resolver | Confirmado en esta sesión | **Cerrado a 3** (`next`, `nodemailer` actualizados; `nanoid`/`fast-uri`/etc. con `npm audit fix`). Las 3 restantes (cadena `prisma` CLI) quedan como riesgo bajo aceptado, mismo criterio que SISMED | — |
+| 2026-08-23 | Todo lo anterior está comiteado pero **no desplegado a producción** | Este entorno no tiene sesión de Vercel CLI (`vercel login` requiere confirmación interactiva del dueño) | Pendiente del dueño: `vercel login` o pasar un `VERCEL_TOKEN` | Pendiente |
 | 2026-08-23 | Sin respaldo restaurado nunca en simulacro, sin monitoreo/alertas de infraestructura | Mismo patrón que SISMED | Pendiente — requiere dashboard de Neon/Vercel | Pendiente |
 | 2026-08-23 | Sin ADRs de decisiones estructurales | Decisiones bien razonadas en README/bitácora, no en formato ADR | Pendiente | Pendiente |
 

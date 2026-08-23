@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { requirePermission, hasPermission } from "@/lib/auth/rbac";
 import { PageTitle } from "@/components/icons";
 import { estadoComisiones, comisionesDetalladas } from "@/lib/comisiones";
@@ -10,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ComisionesPage({ searchParams }: { searchParams: Promise<{ liquidado?: string; masivo?: string; error?: string }> }) {
   const user = await requirePermission("cartera.ver");
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const sp = await searchParams;
   const [todas, detalleTodas] = await Promise.all([
     estadoComisiones(user.tenant.id),
@@ -30,7 +32,7 @@ export default async function ComisionesPage({ searchParams }: { searchParams: P
 
   return (
     <div>
-      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
+      <style nonce={nonce}>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <PageTitle icon="comisiones">Comisiones</PageTitle>

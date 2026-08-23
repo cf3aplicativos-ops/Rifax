@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { requirePermission } from "@/lib/auth/rbac";
 import { prisma } from "@/lib/prisma";
 import { estadoSedes, boletasPorEstado, carteraPorTramo, topVendedores } from "@/lib/dashboard";
@@ -13,6 +14,7 @@ const tramoLabel: Record<string, string> = { corriente: "Corriente", mora_1: "Mo
 
 export default async function SedeRadiografia({ params }: { params: Promise<{ id: string }> }) {
   const user = await requirePermission("sede.ver");
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const { id } = await params;
   let sedeId: bigint;
   try { sedeId = BigInt(id); } catch { notFound(); }
@@ -40,7 +42,7 @@ export default async function SedeRadiografia({ params }: { params: Promise<{ id
 
   return (
     <div>
-      <style>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
+      <style nonce={nonce}>{"@media print{header{display:none!important}.no-print{display:none!important}}"}</style>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link href="/app/sedes" className="no-print text-sm text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">← Volver a sedes</Link>

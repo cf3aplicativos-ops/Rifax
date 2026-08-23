@@ -917,3 +917,15 @@ model vencimientos {
   @@index([tenant_id], map: "idx_vencimientos_tenant")
   @@schema("saas")
 }
+
+model reset_tokens {
+  id         BigInt   @id @default(autoincrement())
+  correo     String   @db.Citext
+  token_hash String   @unique
+  expira_en  DateTime @db.Timestamptz(6)
+  usado      Boolean  @default(false)
+  creado_en  DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([token_hash], map: "idx_reset_tokens_vigentes", where: raw("(usado = false)"))
+  @@schema("saas")
+}

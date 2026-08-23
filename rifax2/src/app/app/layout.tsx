@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { requireUser } from "@/lib/auth/rbac";
 import { getBranding } from "@/lib/branding";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Tras un restablecimiento, obliga a cambiar la contraseña temporal.
   if (user.debeCambiar) redirect("/cambiar-password");
   const branding = await getBranding(user.tenant.id);
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   const items = nav
     .filter((n) => n.permiso === null || user.permisos.includes(n.permiso))
@@ -46,7 +48,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="relative min-h-screen bg-slate-50 dark:bg-slate-950">
-      <style>{brandCss(branding.colorPrimario)}</style>
+      <style nonce={nonce}>{brandCss(branding.colorPrimario)}</style>
       {venc?.dias != null && venc.fecha ? <VencimientoAviso dias={Number(venc.dias)} fecha={venc.fecha} /> : null}
 
       {/* #3 Fondo: imagen fija que se ajusta a la pantalla, con gradiente degradado

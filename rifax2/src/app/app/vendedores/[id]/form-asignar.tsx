@@ -11,19 +11,34 @@ export default function FormAsignarTalonario({ vendedorId, rifas, sedeVendedor }
   const [rifaId, setRifaId] = useState(rifas[0]?.id ?? "");
   const [disponibles, setDisponibles] = useState<number[]>([]);
   const [seleccionados, setSeleccionados] = useState<number[]>([]);
-  const [cargando, setCargando] = useState(false);
+  // "loadedKey" identifica de qué combinación tipo+rifa son los `disponibles`
+  // ya cargados; mientras no coincida con la combinación actual, se está
+  // cargando. Evita un estado `cargando` aparte que solo duplicaría lo que ya
+  // se puede derivar, y evita también resetear `seleccionados` con un
+  // `setState` síncrono dentro del efecto (ver "Adjusting state when a prop
+  // changes" en react.dev): se resetea durante el render, no en el efecto.
+  const key = tipo === "especificas" && rifaId ? `${rifaId}:${vendedorId}` : null;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const cargando = key !== null && key !== loadedKey;
+
+  const [prevKey, setPrevKey] = useState(key);
+  if (key !== prevKey) {
+    setPrevKey(key);
+    setSeleccionados([]);
+  }
 
   useEffect(() => {
-    if (tipo !== "especificas" || !rifaId) return;
+    if (!key) return;
     let cancelado = false;
-    setCargando(true);
-    setSeleccionados([]);
     fetch(`/api/boletas/disponibles?rifaId=${rifaId}&vendedorId=${vendedorId}`)
       .then((r) => r.json())
-      .then((data) => { if (!cancelado) setDisponibles(data.numeros ?? []); })
-      .finally(() => { if (!cancelado) setCargando(false); });
+      .then((data) => {
+        if (cancelado) return;
+        setDisponibles(data.numeros ?? []);
+        setLoadedKey(key);
+      });
     return () => { cancelado = true; };
-  }, [tipo, rifaId, vendedorId]);
+  }, [key, rifaId, vendedorId]);
 
   return (
     <form action={asignarTalonarioAction} className="mt-8 space-y-3 rounded-2xl border border-slate-300 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">

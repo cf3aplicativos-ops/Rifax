@@ -3,8 +3,9 @@
 // lleva el nonce en sus scripts de hidratación y el navegador los bloquea.
 export const dynamic = "force-dynamic";
 
-import CambiarPasswordClient from "./cambiar-password-client";
+import RestablecerClient from "./restablecer-client";
 
-export default function CambiarPasswordPage() {
-  return <CambiarPasswordClient />;
+export default async function RestablecerPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  return <RestablecerClient token={token} />;
 }
