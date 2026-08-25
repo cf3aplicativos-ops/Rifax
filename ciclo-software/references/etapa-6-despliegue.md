@@ -46,6 +46,8 @@ incidente. El objetivo es enterarse de que algo se cayó antes que los usuarios.
 - Respaldos configurados pero nunca restaurados.
 - Sin plan de reversión: el primer despliegue malo se resuelve improvisando.
 - Alertas que llegan a un correo que nadie revisa.
+- Cuota de un plan gratuito agotada sin aviso: el proveedor suspende el servicio y
+  la primera señal es la caída, no la alerta.
 
 ## Criterio de salida (compuerta 6)
 
@@ -55,3 +57,5 @@ incidente. El objetivo es enterarse de que algo se cayó antes que los usuarios.
 - [ ] Titularidad de dominios, certificados y cuentas en cabeza de la organización
 - [ ] Contactos y canal de incidentes definidos
 - [ ] Costo mensual real medido, no estimado
+- [ ] Límites del plan de cada proveedor identificados (transferencia, cómputo,
+      almacenamiento) con alarma por debajo del tope y destinatario que la revisa

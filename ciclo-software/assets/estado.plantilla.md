@@ -5,6 +5,7 @@
 > se decidió.
 
 - **Tamaño**: pequeño / mediano / crítico
+- **Modo de compuertas**: desarrollo / producción (cambiado el AAAA-MM-DD por [quién])
 - **Sector público colombiano**: sí / no
 - **Etapa actual**: 1
 - **Última actualización**: AAAA-MM-DD

@@ -89,19 +89,41 @@ temas que no aplican.
 
 ### Las compuertas
 
-**No avances de etapa mientras queden decisiones `[H]` sin cerrar.** Esto es firme,
-no una sugerencia. Si el usuario pide saltar adelante —típicamente "empecemos a
-programar ya"— responde así:
+Las compuertas tienen dos durezas. El modo vigente se declara en `.ciclo/estado.md`
+y se puede cambiar en cualquier momento, pero el cambio se registra con fecha y quién
+lo autorizó.
 
-> Podemos, pero faltan estas decisiones de la Etapa 2: [lista]. Sin ellas, lo que
-> escribamos hoy probablemente haya que rehacerlo. ¿Las cerramos ahora (calculo unos
-> X minutos) o las registro como desvío aceptado y seguimos?
+**Modo desarrollo — compuerta blanda.** Aplica mientras el sistema no tenga usuarios
+externos, no mueva dinero y no guarde datos personales de terceros. Cuando falten
+decisiones `[H]`, **avisa una vez, registra el desvío y sigue trabajando sin esperar
+respuesta**:
 
-Si el usuario elige seguir de todos modos, **regístralo como desvío** en
-`.ciclo/estado.md`: qué se saltó, por qué, quién lo autorizó, qué se rompería si el
-supuesto falla y en qué momento hay que volver. Un desvío consciente y anotado es
-gestión de riesgo; uno silencioso es la falla del video. Nunca lo dejes pasar sin
-anotarlo, y recuérdalo al inicio de la siguiente sesión.
+> ⚠️ Avanzo con estas decisiones abiertas de la Etapa N: [lista]. Riesgo si el
+> supuesto falla: [consecuencia concreta]. Queda registrado; lo levanto de nuevo
+> antes del despliegue.
+
+Una vez por sesión, no en cada mensaje. El objetivo es que el desarrollo no se
+detenga, no que el riesgo desaparezca.
+
+**Modo producción — compuerta dura.** Se activa en cuanto ocurra cualquiera de las
+tres cosas de arriba. Aquí sí presentas las opciones y **te detienes a esperar** la
+decisión `[H]`.
+
+Antes de cambiar de modo, verifica el hecho en vez de inferirlo. Que una integración
+de pagos esté *documentada* no significa que esté *implementada*, y que exista una
+URL pública no significa que tenga usuarios. Pregunta; un proyecto clasificado de más
+genera alarmas que nadie atiende, y uno clasificado de menos se cae con gente adentro.
+
+**Decisiones que nunca son blandas, en ningún modo:**
+
+- Secretos fuera del repositorio, sin credenciales por defecto en ningún `.env`
+- Respaldo con restauración probada al menos una vez
+- Qué datos personales se guardan y quién puede verlos
+- Dinero: idempotencia, conciliación y qué pasa si un pago falla a medias
+- Límites de consumo del proveedor con alarma configurada por debajo del tope
+
+Estas se detienen aunque el proyecto esté en modo desarrollo: son las que no se
+arreglan después sin daño ya hecho.
 
 Excepción legítima al orden: un **spike** o prototipo desechable para responder una
 duda técnica. Se permite en cualquier momento, siempre que quede marcado como
