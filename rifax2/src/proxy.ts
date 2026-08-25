@@ -22,6 +22,13 @@ function buildCsp(nonce: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self'",
+    // Sin esto, la comprobación de Deployment Protection de Vercel (redirige
+    // a vercel.com/sso-api en URLs de deployment que no son el dominio de
+    // producción) rompe con un 500: intenta cargar un manifest desde
+    // vercel.com y "default-src 'self'" lo bloquea al no haber manifest-src
+    // explícito. No afecta al dominio de producción (rifax2.vercel.app), que
+    // nunca pasa por ese flujo.
+    "manifest-src 'self' https://vercel.com",
     "connect-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
